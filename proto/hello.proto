@@ -1,0 +1,13 @@
+option cc_generic_services = true;
+message Say
+{
+}
+
+message Hello
+{
+}
+
+service EchoService
+{
+    rpc Echo(Say) returns(Hello);
+}
