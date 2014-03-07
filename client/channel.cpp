@@ -9,10 +9,10 @@
 #include "channel.h"
 #include "controller.h"
 
-using namespace maid::channel;
-using namespace maid::controller;
+using maid::channel::Channel;
+using maid::controller::Controller;
 
-Channel::Channel(std::string host, int32_t port)
+Channel::Channel(struct ev_loop* loop, std::string host, int32_t port)
     :host_(host),
     port_(port),
     buffer_pending_index_(0),
@@ -20,7 +20,7 @@ Channel::Channel(std::string host, int32_t port)
     header_length_(8),
     fd_(-1)
 {
-    loop_ = EV_DEFAULT;
+    loop_ = loop;
     read_watcher_.data = this;
     write_watcher_.data = this;
     prepare.data = this;

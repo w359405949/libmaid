@@ -29,7 +29,7 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    maid::proto::Controller& get_meta_data() const;
+    maid::proto::Controller& get_meta_data();
 
 private:
     maid::proto::Controller meta_data_;

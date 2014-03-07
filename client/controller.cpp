@@ -1,5 +1,7 @@
 #include "controller.h"
 
+using maid::controller::Controller;
+
 Controller::Controller()
 {
 }
@@ -37,7 +39,7 @@ void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 {
 }
 
-maid::proto::Controller& get_meta_data() const
+maid::proto::Controller& Controller::get_meta_data()
 {
     return meta_data_;
 }

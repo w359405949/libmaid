@@ -4,14 +4,17 @@
 #include "channel.h"
 #include "controller.h"
 
+using maid::channel::Channel;
+using maid::controller::Controller;
 
 int main()
 {
-    Channel *channel = new Channel("192.168.85.58", 5000);
+    struct ev_loop* loop = EV_DEFAULT;
+    Channel *channel = new Channel(loop, "192.168.85.58", 5000);
     EchoService_Stub *service = new EchoService_Stub(channel);
     Controller *controller = new Controller();
     Say *say = new Say();
     service->Echo(controller, say, NULL, NULL);
 
-    ev_run(EV_A_ 0);
+    ev_run(loop, 0);
 }
