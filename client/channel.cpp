@@ -34,12 +34,13 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     assert(("libmaid: request must not be NULL", request != NULL));
 
     Controller * _controller = (Controller*) controller;
-    google::protobuf::Message * meta = _controller->GetMeta();
+    google::protobuf::Message& meta = _controller->GetMeta();
     assert(("libmaid: controller's meta can not be NULL", meta != NULL));
 
-    meta->set_service_name(method->service()->full_name());
-    meta->set_method_name(method->name());
-    meta->set_transmit_id(1); //TODO: auto_add
+    meta.set_service_name(method->service()->full_name());
+    meta.set_method_name(method->name());
+    meta.set_transmit_id(1); //TODO: auto_add
+    meta.set_stub_side(true);
 
     Context * packet = new Context();
     packet->method_ = method;
@@ -47,7 +48,6 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     packet->request_ = request;
     packet->response_ = response;
     packet->done_ = done;
-    packet->stub_size_ = true;
 
     // TODO：another way
     if(pending_packets_){
@@ -93,7 +93,7 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
             self->buffer_max_size_ <<= 1;
             self->buffer_ = ::realloc(self->buffer_, self->buffer_max_size_);
             if(self->buffer_ == NULL){
-                perror("relloc error");
+                perror("realloc:");
             }
             rest_space = self->buffer_max_size_ - self->buffer_pending_index_;
         }
@@ -171,17 +171,13 @@ void Channel::CloseConnection()
     assert(("not connected", read_watcher_ != NULL));
     buffer_pending_index_ = 0;
     ev_io_stop(loop_, &read_watcher_);
+    ev_io_stop(loop_, &write_watcher_);
     ::close(fd_);
-    read_watcher_.fd = -1;
+    fd_ = -1;
 }
 
 Channel::~Channel()
 {
-    if(read_watcher_ != NULL){
-        delete read_watcher_;
-    }
-    read_watcher_ = NULL;
-
     if(buffer_ != NULL){
         delete buffer_;
     }

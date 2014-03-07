@@ -1,0 +1,8 @@
+pushd proto
+protoc *.proto --python_out=. --cpp_out=.
+popd
+
+for file in `find proto/ -name '*.pb.*'`
+do
+   mv $file client/
+done

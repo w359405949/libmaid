@@ -1,6 +1,9 @@
+#include <ev.h>
+
 #include "../proto/hello.pb.h"
 #include "channel.h"
 #include "controller.h"
+
 
 int main()
 {
@@ -9,7 +12,6 @@ int main()
     Controller *controller = new Controller();
     Say *say = new Say();
     service->Echo(controller, say, NULL, NULL);
-    while(1){
-        channel->Update();
-    }
+
+    ev_run(EV_A_ 0);
 }

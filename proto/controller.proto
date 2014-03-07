@@ -1,0 +1,12 @@
+package maid.controller;
+
+message Controller
+{
+    optional string service_name = 1;
+    optional string method_name = 2;
+    optional int32 transmit_id = 3;
+    optional bool stub_side = 4;
+    optional bool is_canceled = 5;
+    optional bool failed = 6;
+    optional string error_text = 7;
+}
