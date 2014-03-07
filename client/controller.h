@@ -1,8 +1,14 @@
-#ifndef CONTROLLER_H
-#define CONTROLLER_H
+#ifndef MAID_CONTROLLER_H
+#define MAID_CONTROLLER_H
 #include <google/protobuf/service.h>
 #include <google/protobuf/stubs/common.h>
 #include "controller.pb.h"
+
+namespace maid
+{
+
+namespace controller
+{
 
 class Controller : public google::protobuf::RpcController
 {
@@ -23,10 +29,14 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    google::protobuf::Message& get_meta_data() const;
+    maid::proto::Controller& get_meta_data() const;
 
 private:
-    google::protobuf::Message meta_data_;
+    maid::proto::Controller meta_data_;
 };
+
+} /* controller */
+
+} /* maid */
 
 #endif /*CONTROLLER_H*/

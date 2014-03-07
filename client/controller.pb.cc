@@ -14,7 +14,7 @@
 // @@protoc_insertion_point(includes)
 
 namespace maid {
-namespace controller {
+namespace proto {
 
 namespace {
 
@@ -82,11 +82,11 @@ void protobuf_AddDesc_controller_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\020controller.proto\022\017maid.controller\"\230\001\n\n"
-    "Controller\022\024\n\014service_name\030\001 \001(\t\022\023\n\013meth"
-    "od_name\030\002 \001(\t\022\023\n\013transmit_id\030\003 \001(\005\022\021\n\tst"
-    "ub_side\030\004 \001(\010\022\023\n\013is_canceled\030\005 \001(\010\022\016\n\006fa"
-    "iled\030\006 \001(\010\022\022\n\nerror_text\030\007 \001(\t", 190);
+    "\n\020controller.proto\022\nmaid.proto\"\230\001\n\nContr"
+    "oller\022\024\n\014service_name\030\001 \001(\t\022\023\n\013method_na"
+    "me\030\002 \001(\t\022\023\n\013transmit_id\030\003 \001(\005\022\021\n\tstub_si"
+    "de\030\004 \001(\010\022\023\n\013is_canceled\030\005 \001(\010\022\016\n\006failed\030"
+    "\006 \001(\010\022\022\n\nerror_text\030\007 \001(\t", 185);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "controller.proto", &protobuf_RegisterTypes);
   Controller::default_instance_ = new Controller();
@@ -596,7 +596,7 @@ void Controller::Swap(Controller* other) {
 
 // @@protoc_insertion_point(namespace_scope)
 
-}  // namespace controller
+}  // namespace proto
 }  // namespace maid
 
 // @@protoc_insertion_point(global_scope)

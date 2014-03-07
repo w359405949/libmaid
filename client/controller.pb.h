@@ -26,7 +26,7 @@
 // @@protoc_insertion_point(includes)
 
 namespace maid {
-namespace controller {
+namespace proto {
 
 // Internal implementation detail -- do not call these.
 void  protobuf_AddDesc_controller_2eproto();
@@ -152,7 +152,7 @@ class Controller : public ::google::protobuf::Message {
   inline ::std::string* mutable_error_text();
   inline ::std::string* release_error_text();
   
-  // @@protoc_insertion_point(class_scope:maid.controller.Controller)
+  // @@protoc_insertion_point(class_scope:maid.proto.Controller)
  private:
   inline void set_has_service_name();
   inline void clear_has_service_name();
@@ -461,7 +461,7 @@ inline ::std::string* Controller::release_error_text() {
 
 // @@protoc_insertion_point(namespace_scope)
 
-}  // namespace controller
+}  // namespace proto
 }  // namespace maid
 
 #ifndef SWIG

@@ -37,7 +37,7 @@ void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 {
 }
 
-google::protobuf::Message& get_meta_data() const
+maid::proto::Controller& get_meta_data() const
 {
     return meta_data_;
 }

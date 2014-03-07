@@ -5,21 +5,25 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ev.h>
 #include "channel.h"
+#include "controller.h"
+
+using namespace maid::channel;
+using namespace maid::controller;
 
 Channel::Channel(std::string host, int32_t port)
     :host_(host),
     port_(port),
     buffer_pending_index_(0),
     buffer_max_size_(0),
-    header_length(8),
-    fd_(-1),
-    pending_request_index_(0)
+    header_length_(8),
+    fd_(-1)
 {
-    loop_ = EV_DEFAULT_LOOP;
+    loop_ = EV_DEFAULT;
     read_watcher_.data = this;
     write_watcher_.data = this;
-    check_.data = this;
+    prepare.data = this;
     ev_prepare_init(&prepare, OnPrepare);
     ev_prepare_start(loop_, &prepare);
 }
@@ -30,12 +34,11 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
                             google::protobuf::Message * response,
                             google::protobuf::Closure * done)
 {
-    assert(("libmaid: controller must have type Controller", dynamic_cast<Controller *> controller != NULL));
+    assert(("libmaid: controller must have type Controller", dynamic_cast<Controller *>(controller) != NULL));
     assert(("libmaid: request must not be NULL", request != NULL));
 
     Controller * _controller = (Controller*) controller;
-    google::protobuf::Message& meta = _controller->GetMeta();
-    assert(("libmaid: controller's meta can not be NULL", meta != NULL));
+    maid::proto::Controller& meta = _controller->get_meta_data();
 
     meta.set_service_name(method->service()->full_name());
     meta.set_method_name(method->name());
@@ -50,48 +53,52 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     packet->done_ = done;
 
     // TODO：another way
-    if(pending_packets_){
-        for(; pending_packets_->next; pending_packets_ = pending_packets_->next);
-        pending_packets_->next = packet;
+    if(pending_send_packets_){
+        for(; pending_send_packets_->next; pending_send_packets_ = pending_send_packets_->next);
+        pending_send_packets_->next = packet;
     }else{
-        pending_packets_ = packet;
+        pending_send_packets_ = packet;
     }
 }
 
 void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 {
-    assert(("libmaid: OnWrite get an unexpected data type", dynamic_cast<Channel*>(w->data) != NULL));
     Channel * self = (Channel *)(w->data);
 
     while(self->pending_send_packets_){
-        Context * packet = self->pending_packets_;
-        Controller * _controller = (Controller*) packet->controller_;
-        google::protobuf::Message * meta = _controller->GetMeta();
+        Context * packet = self->pending_send_packets_;
+        Controller * _controller = (Controller*)packet->controller_;
+        maid::proto::Controller meta = _controller->get_meta_data();
 
-        int32_t controller_length = meta->ByteSize();
-        int32_t request_length = request->ByteSize();
+        assert(("packet->request cat not be NULL", packet->request_ != NULL));
+        std::string controller_buffer;
+        meta.SerializeToString(&controller_buffer);
+        std::string request_buffer;
+        packet->request_->SerializeToString(&request_buffer);
+
+        uint32_t controller_nl = htonl(controller_buffer.length());
+        uint32_t request_nl = htonl(request_buffer.length());
         int32_t result = 0;
-        result += ::write(fd_, controller_length, 4);
-        result += ::write(fd_, request_length, 4);
-        result += ::write(fd_, meta->SerializerToString(), controller_length);
-        result += :;write(fd_, request->SerializerToString(), request_length);
-        assert(("libmaid: lose data", self->header_length_ + controller_length + request_length == result));
-        self->pending_packets_ = packets->next;
+        result += ::write(self->fd_, (const void *)&controller_nl, sizeof(controller_nl));
+        result += ::write(self->fd_, (const void *)&request_nl, sizeof(request_nl));
+        result += ::write(self->fd_, controller_buffer.c_str(), controller_buffer.length());
+        result += ::write(self->fd_, request_buffer.c_str(), request_buffer.length());
+        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + request_buffer.length() == result));
+        self->pending_send_packets_ = packet->next;
     }
 }
 
 void Channel::OnRead(EV_P_ ev_io *w, int revents)
 {
     // receive
-    assert(("libmaid: OnRead get an unexpected data type", dynamic_cast<Channel*>(w->data) != NULL));
-    Channel * self = (Channel*)w->data;
+    Channel * self = (Channel*)(w->data);
     int32_t nread = -1;
     do{
         int32_t rest_space = self->buffer_max_size_ - self->buffer_pending_index_;
         if(rest_space <= 0){ // expend size double 2
             self->buffer_max_size_ += 1;
             self->buffer_max_size_ <<= 1;
-            self->buffer_ = ::realloc(self->buffer_, self->buffer_max_size_);
+            self->buffer_ = (int8_t*)::realloc((void*)self->buffer_, self->buffer_max_size_);
             if(self->buffer_ == NULL){
                 perror("realloc:");
             }
@@ -125,13 +132,12 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
 
 void Channel::OnPrepare(EV_P_ ev_prepare * w, int revents)
 {
-    assert(("libmaid: OnPrepare get an unexpected data type", dynamic_cast<Channel*>(w->data) != NULL));
     Channel * self = (Channel *)(w->data);
     if(!self->IsConnected()){
         struct sockaddr_in sock_addr;
-        sock_addr.sin_addr.s_addr = inet_addr(host_.c_str());
+        sock_addr.sin_addr.s_addr = inet_addr(self->host_.c_str());
         sock_addr.sin_family = AF_INET;
-        sock_addr.sin_port = htons(port_);
+        sock_addr.sin_port = htons(self->port_);
 
         int32_t sock_fd = ::socket(AF_INET, SOCK_STREAM, 0);
         if(sock_fd < 0){
@@ -154,7 +160,7 @@ void Channel::OnPrepare(EV_P_ ev_prepare * w, int revents)
 
 bool Channel::IsConnected() const
 {
-    return fd > 0;
+    return fd_ > 0;
 }
 
 int32_t Channel::Handle(int8_t* buffer, int32_t start, int32_t end)
@@ -168,7 +174,7 @@ int32_t Channel::Handle(int8_t* buffer, int32_t start, int32_t end)
 
 void Channel::CloseConnection()
 {
-    assert(("not connected", read_watcher_ != NULL));
+    assert(("not connected", fd_ > 0));
     buffer_pending_index_ = 0;
     ev_io_stop(loop_, &read_watcher_);
     ev_io_stop(loop_, &write_watcher_);

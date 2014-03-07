@@ -1,4 +1,4 @@
-package maid.controller;
+package maid.proto;
 
 message Controller
 {

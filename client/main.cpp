@@ -1,6 +1,6 @@
 #include <ev.h>
 
-#include "../proto/hello.pb.h"
+#include "hello.pb.h"
 #include "channel.h"
 #include "controller.h"
 

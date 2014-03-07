@@ -7,14 +7,15 @@
 namespace maid
 {
 namespace channel
+{
 
 struct Context
 {
-    google::protobuf::MethodDescriptor * method_;
-    google::protobuf::RpcController * controller_;
-    google::protobuf::Message * request_;
-    google::protobuf::Message * response_;
-    google::protobuf::Closure * done_;
+    const google::protobuf::MethodDescriptor * method_;
+    const google::protobuf::RpcController * controller_;
+    const google::protobuf::Message * request_;
+    const google::protobuf::Message * response_;
+    const google::protobuf::Closure * done_;
     struct Context * next;
 };
 
@@ -33,7 +34,7 @@ public:
 private:
     static void OnRead(EV_P_ ev_io * w, int revents);
     static void OnWrite(EV_P_ ev_io * w, int revents);
-    static void OnPrepare(EV_P_ ev_check * w, int revents); // Connect and Reconnect
+    static void OnPrepare(EV_P_ ev_prepare * w, int revents); // Connect and Reconnect
 
 private:
     bool IsConnected() const;
