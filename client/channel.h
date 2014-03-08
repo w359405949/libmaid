@@ -37,32 +37,30 @@ private:
     static void OnPrepare(EV_P_ ev_prepare * w, int revents); // Connect and Reconnect
 
 private:
-    bool IsConnected() const;
-    int32_t Handle(int8_t *buffer, int32_t start, int32_t end);
-    void CloseConnection();
+    void CloseConnection(int32_t fd);
+    void Handle(int32_t fd);
 
 private:
     // libev loop
-    struct ev_loop * loop_;
-    struct ev_io read_watcher_;
-    struct ev_io write_watcher_;
-    struct ev_prepare prepare;
+    struct ev_loop* loop_;
+    struct ev_io* read_watcher_;
+    struct ev_io* write_watcher_;
+    struct ev_prepare prepare_;
+    struct ev_check check_;
 
-    //
-    std::string host_;
-    int32_t port_;
-    int32_t fd_;
+    int32_t io_watcher_max_size_;
 
     // packet
-    int32_t header_length_;
+    const int32_t header_length_;
 
     // read buffer
-    int8_t *buffer_;
-    int32_t buffer_pending_index_;
-    int32_t buffer_max_size_;
+    int8_t ** buffer_;
+    int32_t * buffer_pending_index_;
+    int32_t * buffer_max_length_; // expend double size
+    int32_t buffer_max_size_; // expend double size
 
     //
-    Context * pending_send_packets_;
+    Context ** pending_send_packets_;
 };
 
 } /* namespace channel */

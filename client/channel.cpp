@@ -24,8 +24,11 @@ Channel::Channel(struct ev_loop* loop, std::string host, int32_t port)
     read_watcher_.data = this;
     write_watcher_.data = this;
     prepare.data = this;
-    ev_prepare_init(&prepare, OnPrepare);
+    check.data = this;
+    ev_prepare_init(&prepare_, OnPrepare);
     ev_prepare_start(loop_, &prepare);
+    ev_check_init(&check_, OnCheck);
+    ev_check_start(loop_, &check_);
 }
 
 void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
@@ -92,9 +95,26 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
 {
     // receive
     Channel * self = (Channel*)(w->data);
+    while(w->fd > self->buffer_max_size_){
+        self->buffer_max_size_ += 1;
+        self->buffer_max_size_  <<= 2;
+
+        self->buffer_pending_index_ = (int32_t *)realloc(self->buffer_pending_index_, self->buffer_max_size_ * sizeof(int32_t));
+        self->buffer_max_length = (int32_t *)realloc(self->buffer_max_length_, self->buffer_max_size_ * sizeof(int32_t));
+        self->buffer_ = (int8_t **)realloc(self->buffer_, self->buffer_max_size_ * sizeof(int8_t));
+
+
+        self->buffer_pending_index_[w->fd] = 0;
+        self->buffer_max_length_[w->fd] = 0;
+        self->buffer_[w->fd] = NULL;
+    }
+
+    int32_t buffer_pending_index = self->buffer_pending_index_[w->fd];
+    int32_t buffer_max_length = self->buffer_max_length_[w->fd];
+
     int32_t nread = -1;
     do{
-        int32_t rest_space = self->buffer_max_size_ - self->buffer_pending_index_;
+        int32_t rest_space = buffer_max_size__ - buffer_pending_index_;
         if(rest_space <= 0){ // expend size double 2
             self->buffer_max_size_ += 1;
             self->buffer_max_size_ <<= 1;
@@ -107,27 +127,31 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
         assert(("out of buffer", rest_space > 0));
         int8_t * buffer_start = self->buffer_ + self->buffer_pending_index_;
         nread = ::read(w->fd, buffer_start, rest_space);
+        if nread
         self->buffer_pending_index_ += nread;
     }while(nread > 0);
+
+    self->Handle(w->fd);
+}
+
+void Channel::OnCheck(EV_P_ ev_check * w, int revents)
+{
+    Channel * self = (Channel *)(w->data);
 
     // handle
     int32_t handled_start = 0;
     while(self->buffer_pending_index_ - handled_start >= self->header_length_){
-        int32_t handled = self->Handle(self->buffer_, handled_start, self->buffer_pending_index_);
-        if(handled < 0){ // error happend
-            return;
-        }
-        handled_start += handled;
+        int32_t controller_length = 0;
+        int32_t message_length = 0;
+        memcpy(self->buffer_, &controller_length, 4);
+        memcpy(self->buffer_, &message_length, 4);
+        handled_start += self->buffer_pending_index;
     }
 
     // move
     assert(("overflowed", handled_start <= self->buffer_pending_index_));
-    if(nread <=0){
-        self->CloseConnection();
-    }else{
-        self->buffer_pending_index_ -= handled_start;
-        ::memmove(self->buffer_ + handled_start, self->buffer_, self->buffer_pending_index_);
-    }
+    self->buffer_pending_index_ -= handled_start;
+    ::memmove(self->buffer_ + handled_start, self->buffer_, self->buffer_pending_index_);
 }
 
 void Channel::OnPrepare(EV_P_ ev_prepare * w, int revents)

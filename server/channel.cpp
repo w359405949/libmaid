@@ -68,29 +68,6 @@ int32_t Channel::Handle(int8_t* buffer, int32_t start, int32_t end)
     return start - end;
 }
 
-void Channel::CheckConnection()
-{
-    if(m_fd < 0){
-        struct sockaddr_in sock_addr;
-        sock_addr.sin_addr.s_addr = inet_addr(m_host.c_str());
-        sock_addr.sin_family = AF_INET;
-        sock_addr.sin_port = htons(m_port);
-
-        int32_t sock_fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        int32_t result = ::connect(sock_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
-        if(result < 0){
-            printf("connect failed\n");
-            m_fd = result;
-        }else{
-            m_fd = sock_fd;
-        }
-        m_read_watcher = new ev_io;
-        m_read_watcher->data = this;
-        ev_io_init(m_read_watcher, OnRecevied, m_fd, EV_READ);
-        ev_io_start(m_loop, m_read_watcher);
-    }
-}
-
 Channel::~Channel()
 {
     if(m_read_watcher != NULL){
@@ -99,9 +76,4 @@ Channel::~Channel()
     m_read_watcher = NULL;
     delete m_buffer;
     m_loop = NULL;
-}
-
-void Channel::Update()
-{
-    ev_run(m_loop, EVRUN_NOWAIT);
 }
