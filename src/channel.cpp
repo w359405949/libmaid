@@ -121,7 +121,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     }
 
     Controller * _controller = (Controller*) controller;
-    maid::proto::Controller& meta = _controller->get_meta_data();
+    maid::proto::ControllerMeta& meta = _controller->get_meta_data();
 
     meta.set_service_name(method->service()->full_name());
     meta.set_method_name(method->name());
@@ -183,7 +183,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 
     while(context){
         Controller * _controller = (Controller*)context->controller_;
-        maid::proto::Controller meta = _controller->get_meta_data();
+        maid::proto::ControllerMeta meta = _controller->get_meta_data();
 
         /*
          * serializer can be cached if neccessary
@@ -320,9 +320,9 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
 
 void Channel::Handle(int32_t fd)
 {
-    uint32_t buffer_pending_index = buffer_pending_index_[w->fd];
-    uint32_t buffer_max_length = buffer_max_length_[w->fd];
-    int8_t* buffer = buffer_[w->fd];
+    uint32_t buffer_pending_index = buffer_pending_index_[fd];
+    uint32_t buffer_max_length = buffer_max_length_[fd];
+    int8_t* buffer = buffer_[fd];
 
     // handle
     int32_t handled_start = 0;
@@ -337,75 +337,28 @@ void Channel::Handle(int32_t fd)
         memcpy(buffer, &message_length, 4);
         int32_t controller_length = ntohl(controller_length_nl);
         int32_t message_length = ntohl(message_length_nl);
-        if(header_length_ + controller_length + message_length < buffer_pending_index - handled_start){
+        /*
+         * TODO:check length valid and overflow
+         */
+        int32_t total_length = header_length_ + controller_length + message_length;
+        if(total_length < buffer_pending_index - handled_start){
             break; // lack data
         }
-        maid::proto::Controller new_meta;
+        maid::proto::ControllerMeta meta;
         /*TODO: check parse*/
-        controller.ParseFromArray(buffer + handled_start + header_length_,
-                controller_length);
-        if(!new_meta.stub()){//response
-            if(new_meta.transmit_id < connect_watcher_max_size_){
-                /*
-                 * TODO: do something while context is lost, log?
-                 */
-            }
-            Context* context = context_[meta.transmit_id];
-            if(NULL == context){
-                /*
-                 * TODO: do something while context is lost, log?
-                 */
-            }
-            Controller* controller = context->controller_;
-            if(NULL == controller){
-                /*
-                 * TODO: should not happend
-                 */
-            }
-            google::protobuf::Message* response = context->response_;
-            if(NULL == response){
-                /*
-                 * TODO: should not happen
-                 */
-            }
-
-            maid::proto::Controller& meta = controller->get_meta_data();
-            if(meta.wide()){
-                controller->Unref();
-                /*
-                 * TODO: parse and merge
-                 */
-                handled_start += header_length_ + controller_length + message_length;
-                if(controller->get_ref() < 0){
-                    /*
-                     * TODO: should not happend
-                     */
-                }
-                if(controller->get_ref() > 0){// do not finished
-                    continue;
-                }
-            }else{
-                response->ParseFromArray(buffer + handled_start + header_length_ + controller_length, message_length);
-                /* check */
-                handled_start += header_length_ + controller_length + message_length;
-            }
-
-            if(NULL == context->done_){
-                /*
-                 * TODO: should not happen
-                 */
-            }
-            context->done_->Run();
-            ::free(context);
-            context_[meta.transmit_id] = NULL;
-        }else{ // request
-            maid::proto::Controller& meta = controller->get_meta_data();
-            if(meta.wide()){
-                handled_start += header_length_ + controller_length + message_length;
-            }
-
+        meta.ParseFromArray(buffer + handled_start + header_length_, controller_length);
+        int8_t* message_start = buffer + handled_start + header_length_, controller_length;
+        int32_t handled = -1;
+        if(meta.stub()){
+            handled = HandleRequest(fd, meta, message_start, message_length);
+        }else{
+            handled = HandleResponse(fd, meta, message_start, message_length);
         }
-
+        if(handled < 0){
+            CloseConnection(fd);
+            return;
+        }
+        handled_start += header_length_ + controller_length + handled;
     }
 
     // move
@@ -416,6 +369,60 @@ void Channel::Handle(int32_t fd)
     buffer_pending_index_[w->fd] = buffer_pending_index;
     buffer_max_length_[w->fd] = buffer_max_length;
     buffer_[w->fd] = buffer;
+}
+
+int32_t HandleResponse(const int32_t fd, const maid::proto::ControllerMeta& meta,
+        const int8_t* message_start, const int32_t message_length)
+{
+    if(new_meta.transmit_id < connect_watcher_max_size_){
+        /*
+         * TODO: do something while context is lost, log?
+         */
+        return message_length;
+    }
+    Context* context = context_[meta.transmit_id];
+    if(NULL == context){
+        /*
+         * TODO: do something while context is lost, log?
+         */
+        return message_length;
+    }
+    Controller* controller = context->controller_;
+    if(NULL == controller){
+        /*
+         * TODO: should not happend
+         */
+        return message_length;
+    }
+    google::protobuf::Message* response = context->response_;
+    if(NULL == response){
+        /*
+         * TODO: should not happen
+         */
+        return message_length;
+    }
+
+    maid::proto::ControllerMeta& stub_meta = controller->get_meta();
+    if(stub_meta.wide()){
+        controller->Unref();
+    }
+
+    /*
+     * TODO:
+     */
+    new_response.ParseFromArray(buffer, message_length);
+    response->MergeFrom(new_response);
+
+    if(!stub_meta.wide() || (stub_meta.get_ref() == stub_meta.get_failed_ref())){
+        if(NULL == context->done_){
+            /*
+             * TODO: should not happen
+             */
+        }
+        context->done_->Run();
+        ::free(context);
+        context_[meta.transmit_id] = NULL;
+    }
 }
 
 int32_t Channel::Connect(std::string& host, int32_t port)

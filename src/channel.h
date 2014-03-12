@@ -47,11 +47,16 @@ private
 private:
     void CloseConnection(const int32_t fd);
     void Handle(const int32_t fd);
+    int32_t HandleRequest(const int32_t fd, const maid::proto::ControllerMeta& stub_meta,
+            const int8_t* message_start, const int32_t message_length);
+    int32_t HandleResponse(const int32_t fd, const maid::proto::ControllerMeta& meta,
+            const int8_t* message_start, const int32_t message_length);
     bool IsEffictive(const int32_t fd) const;
-    bool IsConnected(const int32_t fd) const;
-    bool SetNonBlock(const int32_t fd) const;
+    bool IsConnected(const int32_t fd);
+    bool SetNonBlock(const int32_t fd);
 
-private: // service
+private:
+    // service
     int32_t google::protobuf::Service * service_;
     int32_t service_current_size_;
     int32_t service_max_size_;
@@ -71,7 +76,7 @@ private:
 
 private:
     // packet
-    const int32_t header_length_;
+    const uint32_t header_length_;
 
     // read buffer
     int8_t ** buffer_;
