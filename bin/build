@@ -4,5 +4,5 @@ popd
 
 for file in `find proto/ -name '*.pb.*'`
 do
-   mv $file client/
+   mv $file src/
 done

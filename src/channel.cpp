@@ -39,7 +39,7 @@ Channel::~Channel()
         ::free(buffer_);
     }
     if(NULL != buffer_pending_index_){
-        ::free(buffer_pending_index):
+        ::free(buffer_pending_index_):
     }
     if(NULL != buffer_max_length_){
         ::free(buffer_max_length_);
@@ -278,43 +278,30 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
     /*
      * read
      */
-    uint32_t buffer_pending_index = self->buffer_pending_index_[w->fd];
-    uint32_t buffer_max_length = self->buffer_max_length_[w->fd];
-    int8_t* buffer = self->buffer_[w->fd];
-    int32_t nread = 0;
-    do{
-        buffer_pending_index += nread;
-        int32_t result = Realloc((void**)&buffer,
-                &buffer_max_length, buffer_pending_index, typeof(int8_t));
-        if(0 > result){
-            self->buffer_[w->fd] = buffer;
-            CloseConnection(w->fd);
-            perror("realloc:");
+    int32_t result = Realloc((void**)&)(self->buffer_[w->fd]),
+            &(self->buffer_max_length_[w->fd]),
+            self->buffer_pending_index_[w->fd], typeof(int8_t));
+    if(0 > result){
+        CloseConnection(w->fd);
+        perror("realloc:");
+        return;
+    }
+
+    int8_t* buffer_start = self->buffer_[w->fd] + self->buffer_pending_index_[w->fd];
+    int32_t rest_space = self->buffer_max_length_[w->fd] - self->buffer_pending_index_[w->fd];
+    int32_t nread = ::read(w->fd, buffer_start, rest_space);
+    if(nread <= 0){
+        if(errno != EAGAIN && errno != EWOULDBLOCK || nread == 0){
+            self->CloseConnection(w->fd);
             return;
         }
-
-        int32_t rest_space = buffer_max_length - buffer_pending_index;
-        int8_t * buffer_start = buffer + buffer_pending_index;
-        nread = ::read(w->fd, buffer_start, rest_space);
-    }while(nread > 0);
-    self->buffer_pending_index_[w->fd] = buffer_pending_index;
-    self->buffer_max_length_[w->fd] = buffer_max_length;
-    self->buffer_[w->fd] = buffer;
-
+    }
+    self->buffer_pending_index_[w->fd] += nread;
     /*
      * handle
      */
     if(self->buffer_pending_index_[w->fd] > self->header_length_){
         self->Handle(w->fd);
-    }
-
-    /*
-     * check
-     */
-    if(nread <= 0){
-        if(errno != EAGAIN && errno != EWOULDBLOCK || nread == 0){
-            self->CloseConnection(w->fd);
-        }
     }
 }
 
@@ -650,15 +637,15 @@ bool Channel::SetNonBlock(int32_t fd) const
 }
 
 /*
- * extend ptr size double * while times utils large than expected_size. and auto initial new add space as 0.
+ * extend *ptr double size utils large than expected_size. and initial new add space as 0.
  * UGLY IMPLEMENT, DO NOT REPLACE realloc AT OTHER PLACE.
  *
  * parameters
  * ptr: changed every time call realloc(if realloc changed), can not be NULL. but (*ptr) can be NULL(realloc allowed).
- * origin_size: changed ONLY large than expected size, can not be NULL. origin_size <= the real (*ptr) size is safe when error happend.
+ * origin_size: changed ONLY LARGE THAN expected size, can not be NULL. origin_size <= the real (*ptr) size is safe when error happend.
  *
  * returns
- * 0: SUCCESS, if origin_size large than expted size.
+ * 0: SUCCESS.
  * -1: FAILED. (realloc failed).
  */
 int32_t Channel::Realloc(void** ptr, uint32_t* origin_size, const uint32_t expect_size, const size_t type_size)
