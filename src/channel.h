@@ -31,9 +31,24 @@ public:
 
     virtual ~Channel();
 
-    int32_t Listen(const std::string& host, const int32_t port, const int32_t backlog=1); // return fd for check, but do not do any operation directly.
+    /*
+     * add a Listen Address
+     * return
+     * < 0: error happend, may be errno(will perror), may be -1.
+     * > 0: fd. check only, NEVER do any operation(read/write/close .etc) on it.
+     */
+    int32_t Listen(const std::string& host, const int32_t port, const int32_t backlog=1);
+
+    /*
+     * add a Peer Address
+     * return
+     * < 0: error happend, may be errno(will perror), may be -1.
+     * > 0: fd. check only, NEVER do any operation(read/write/close .etc) on it.
+     */
     int32_t Connect(const std::string& host, const int32_t port); // return fd for visit, but do not do any operation directly.
     int32_t AppendService(const google::protobuf::Service* service);
+    const google::protobuf::Service* GetServiceByName(const char * name) const;
+    const google::protobuf:;Service* GetServiceByName(const std::string& name) const;
 
 private:
     static void OnRead(EV_P_ ev_io* w, int32_t revents);
@@ -47,11 +62,17 @@ private
 private:
     void CloseConnection(const int32_t fd);
     void Handle(const int32_t fd);
+    int32_t HandleRequest(const int32_t fd, const maid::proto::ControllerMeta& stub_meta,
+            const int8_t* message_start, const int32_t message_length);
+    int32_t HandleResponse(const int32_t fd, const maid::proto::ControllerMeta& meta,
+            const int8_t* message_start, const int32_t message_length);
     bool IsEffictive(const int32_t fd) const;
-    bool IsConnected(const int32_t fd) const;
-    bool SetNonBlock(const int32_t fd) const;
+    bool IsConnected(const int32_t fd);
+    bool SetNonBlock(const int32_t fd);
 
-private: // service
+
+private:
+    // service
     int32_t google::protobuf::Service * service_;
     int32_t service_current_size_;
     int32_t service_max_size_;
@@ -71,7 +92,7 @@ private:
 
 private:
     // packet
-    const int32_t header_length_;
+    const uint32_t header_length_;
 
     // read buffer
     int8_t ** buffer_;
