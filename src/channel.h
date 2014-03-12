@@ -31,9 +31,24 @@ public:
 
     virtual ~Channel();
 
-    int32_t Listen(const std::string& host, const int32_t port, const int32_t backlog=1); // return fd for check, but do not do any operation directly.
+    /*
+     * add a Listen Address
+     * return
+     * < 0: error happend, may be errno(will perror), may be -1.
+     * > 0: fd. check only, NEVER do any operation(read/write/close .etc) on it.
+     */
+    int32_t Listen(const std::string& host, const int32_t port, const int32_t backlog=1);
+
+    /*
+     * add a Peer Address
+     * return
+     * < 0: error happend, may be errno(will perror), may be -1.
+     * > 0: fd. check only, NEVER do any operation(read/write/close .etc) on it.
+     */
     int32_t Connect(const std::string& host, const int32_t port); // return fd for visit, but do not do any operation directly.
     int32_t AppendService(const google::protobuf::Service* service);
+    const google::protobuf::Service* GetServiceByName(const char * name) const;
+    const google::protobuf:;Service* GetServiceByName(const std::string& name) const;
 
 private:
     static void OnRead(EV_P_ ev_io* w, int32_t revents);
@@ -54,6 +69,7 @@ private:
     bool IsEffictive(const int32_t fd) const;
     bool IsConnected(const int32_t fd);
     bool SetNonBlock(const int32_t fd);
+
 
 private:
     // service

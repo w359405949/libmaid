@@ -35,13 +35,9 @@ public:
     void Unref();
     int32_t get_ref();
 
-    void FailedRef();
-    int32_t get_failed_ref();
-
 private:
     maid::proto::Controller meta_data_;
     int32_t ref_;
-    int32_t failed_ref_;
 };
 
 } /* controller */
