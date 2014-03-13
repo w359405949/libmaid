@@ -12,31 +12,27 @@
 
 using maid::channel::Channel;
 using maid::controller::Controller;
-using maid:proto::ControllerMeta;
+using maid::proto::ControllerMeta;
+using maid::channel::Context;
 
 Channel::Channel(struct ev_loop* loop)
-    :read_watcher(NULL),
-    write_watcher(NULL),
+    :loop_(loop),
+    read_watcher_(NULL),
+    write_watcher_(NULL),
     io_watcher_max_size_(0),
-    header_length_(8)
+    header_length_(8),
     buffer_(NULL),
     buffer_pending_index_(NULL),
     buffer_max_length_(NULL),
     buffer_list_max_size_(0),
-    packet_(NULL),
-    packet_list_max_size_(0)
+    context_(NULL),
+    context_list_max_size_(0)
 {
     assert(("libmaid: loop can not be none", NULL != loop));
-    loop_ = loop;
-    gc_.data = this;
-    ev_check_init(&gc_, OnGabageCollection);
-    ev_check_start(loop_, &gc_);
 }
 
 Channel::~Channel()
 {
-    ev_stop(loop_, &gc_);
-
     if(NULL != buffer_){
         for(int32_t i = 0; i < buffer_list_max_size_; ++i){
             if(NULL != buffer_[i]){
@@ -47,13 +43,14 @@ Channel::~Channel()
         ::free(buffer_);
     }
     if(NULL != buffer_pending_index_){
-        ::free(buffer_pending_index_):
+        ::free(buffer_pending_index_);
     }
     if(NULL != buffer_max_length_){
         ::free(buffer_max_length_);
     }
     for(int32_t fd = 0; fd < io_watcher_max_size_; ++fd){
         CloseConnection(fd);
+    }
     if(0 <  io_watcher_max_size_){
         ::free(read_watcher_);
         ::free(write_watcher_);
@@ -64,7 +61,7 @@ int32_t Channel::AppendService(google::protobuf::Service* service)
 {
     assert(("service can not be NULL", NULL != service));
     int32_t result = Realloc((void**)&service_, &service_max_size_,
-            service_current_size_, sizeof(google::protobuff::Service);
+            service_current_size_, sizeof(google::protobuf::Service));
     if(0 > result){
         return -1;
     }
@@ -419,7 +416,7 @@ int32_t HandleResponse(const int32_t fd, const ControllerMeta& meta,
         delete new_response;
     }
 
-    if(!stub_meta.wide() || !stub_meta.get_ref())
+    if(!stub_meta.wide() || !stub_meta.get_ref()){
         context->done_->Run();
         ::free(context);
         context_[meta.transmit_id] = NULL;
@@ -605,7 +602,10 @@ int32_t Channel::Listen(std::string& host, int32_t port, int32_t backlog)
 void Channel::OnConnect(EV_P_ ev_io* w, int revents)
 {
     Channel* self = (Channel*)(w->data);
-    int32_t result = ::conenct(w->fd);
+    struct sockaddr_in addr;
+    socklen_t len;
+    getpeername(w->fd, (struct sockaddr*)&addr, &len);
+    int32_t result = ::connect(w->fd, (struct sockaddr*)&addr, sizeof(addr));
     if(0 > result && EINPROGRESS == errno){
         return;
     ev_io_stop(EV_A_ w);

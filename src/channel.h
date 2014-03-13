@@ -6,6 +6,12 @@
 
 namespace maid
 {
+namespace proto
+{
+
+class ControllerMeta;
+
+}
 namespace channel
 {
 
@@ -22,7 +28,7 @@ struct Context
 class Channel : public google::protobuf::RpcChannel
 {
 public:
-    Channel(struct ev_loop* loop, std::string host, int32_t port);
+    Channel(struct ev_loop* loop);
     virtual void CallMethod(const google::protobuf::MethodDescriptor * method,
                             google::protobuf::RpcController *controller,
                             const google::protobuf::Message *request,
@@ -43,7 +49,7 @@ public:
     /*
      * service for remote request
      */
-    int32_t AppendService(const google::protobuf::Service* service);
+    int32_t AppendService(google::protobuf::Service* service);
 
     /*
      * context for send.
@@ -59,7 +65,7 @@ private:
     static void OnAccept(EV_P_ ev_io* w, int32_t revents);
     static void OnConnect(EV_P_ ev_io* w, int32_t revents);
 
-private
+private:
     static int32_t Realloc(void** ptr, uint32_t* origin_size, const uint32_t new_size, const size_t type_size);
 
 private:
@@ -73,13 +79,13 @@ private:
     bool IsConnected(const int32_t fd);
     bool SetNonBlock(const int32_t fd);
     const google::protobuf::Service* GetServiceByName(const char * name) const;
-    const google::protobuf:;Service* GetServiceByName(const std::string& name) const;
+    const google::protobuf::Service* GetServiceByName(const std::string& name) const;
 
 private:
     // service
-    int32_t google::protobuf::Service * service_;
-    int32_t service_current_size_;
-    int32_t service_max_size_;
+    google::protobuf::Service * service_;
+    uint32_t service_current_size_;
+    uint32_t service_max_size_;
 
 private:
     // libev

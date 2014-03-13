@@ -5,13 +5,15 @@ using maid::channel::Channel;
 using maid::channel::Context;
 using maid::closure::RemoteClosure;
 
-RemoteClosure::RemoteClosure(Channel* channel, Context* context)
-    :channel_(channel),
+RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Context* context)
+    :loop_(loop),
+    channel_(channel),
     context_(context)
 {
     assert(("channel can not be NULL", NULL != channel));
+    assert(("loop can not be NULL", NULL != loop));
+    assert(("context can not be NULL", NULL != context));
     gc_.data = this;
-    loop_ = channel_.loop_;
 }
 
 RemoteClosure::~RemoteClosure()
@@ -33,7 +35,7 @@ void RemoteClosure::Run()
 
 void RemoteClosure::OnGC(EV_P_ ev_check* w, int32_t revents)
 {
-    RemoteClosure* self = (RemoteClosure*)w->data;
-    ev_check_stop(self->loop_, self->gc_);
+    RemoteClosure* self = (RemoteClosure*)(w->data);
+    ev_check_stop(self->loop_, &(self->gc_));
     delete self;
 }

@@ -29,14 +29,14 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    maid::proto::Controller& get_meta_data();
+    maid::proto::ControllerMeta& get_meta_data();
 
     void Ref();
     void Unref();
     int32_t get_ref();
 
 private:
-    maid::proto::Controller meta_data_;
+    maid::proto::ControllerMeta meta_data_;
     int32_t ref_;
 };
 

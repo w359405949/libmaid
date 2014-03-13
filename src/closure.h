@@ -1,26 +1,30 @@
-#ifndef MAID_CHANNEL_H
-#define MAID_CHANNEL_H
+#ifndef MAID_CHANNEL_CLOSURE_H
+#define MAID_CHANNEL_CLOSURE_H
 #include <google/protobuf/service.h>
 #include <ev.h>
-
-class maid::channel::Channel;
-class maid::channel::Context;
-
 namespace maid
 {
+namespace channel
+{
+
+class Channel;
+class Context;
+
+}
+
 namespace closure
 {
 
 class RemoteClosure : public google::protobuf::Closure
 {
 public:
-    RemoteClosure(struct ev_loop* loop, maid::channel::Channel* channel,
+    RemoteClosure(struct ev_loop* loop_, maid::channel::Channel* channel,
             maid::channel::Context* context);
     ~RemoteClosure();
     void Run();
 
 private:
-    void OnGC(EV_P_ ev_check* w, int32_t revents);
+    static void OnGC(EV_P_ ev_check* w, int32_t revents);
 
 private:
     maid::channel::Channel* channel_;
@@ -33,4 +37,4 @@ private:
 } /* closure */
 
 } /* maid */
-#endif /* MAID_CHANNEL_H */
+#endif /* MAID_CHANNEL_CLOSURE_H */

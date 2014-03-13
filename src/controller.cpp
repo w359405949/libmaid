@@ -1,11 +1,10 @@
 #include "controller.h"
 
 using maid::controller::Controller;
-using maid::controller::ControllerMeta;
+using maid::proto::ControllerMeta;
 
 Controller::Controller()
-    :ref_(0),
-    failed_ref(0),
+    :ref_(0)
 {
 }
 
@@ -57,17 +56,7 @@ void Controller::Unref()
     --ref_;
 }
 
-void Controller::get_ref()
+int32_t Controller::get_ref()
 {
     return ref_;
-}
-
-void Controller::FailedRef()
-{
-    ++failed_ref_;
-}
-
-void Controller::get_failed_ref()
-{
-    return failed_ref_;
 }
