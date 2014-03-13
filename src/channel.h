@@ -47,14 +47,13 @@ public:
      */
     int32_t Connect(const std::string& host, const int32_t port); // return fd for visit, but do not do any operation directly.
     int32_t AppendService(const google::protobuf::Service* service);
-    const google::protobuf::Service* GetServiceByName(const char * name) const;
-    const google::protobuf:;Service* GetServiceByName(const std::string& name) const;
 
 private:
     static void OnRead(EV_P_ ev_io* w, int32_t revents);
     static void OnWrite(EV_P_ ev_io* w, int32_t revents);
     static void OnAccept(EV_P_ ev_io* w, int32_t revents);
     static void OnConnect(EV_P_ ev_io* w, int32_t revents);
+    static void OnGabageCollection(EV_P_ ev_check* w, int32_t revents);
 
 private
     static int32_t Realloc(void** ptr, uint32_t* origin_size, const uint32_t new_size, const size_t type_size);
@@ -69,7 +68,8 @@ private:
     bool IsEffictive(const int32_t fd) const;
     bool IsConnected(const int32_t fd);
     bool SetNonBlock(const int32_t fd);
-
+    const google::protobuf::Service* GetServiceByName(const char * name) const;
+    const google::protobuf:;Service* GetServiceByName(const std::string& name) const;
 
 private:
     // service
@@ -90,6 +90,8 @@ private:
     struct ev_io* connect_watcher_;
     uint32_t connect_watcher_max_size_;
 
+    struct ev_check gc_; // clean unused closure.
+
 private:
     // packet
     const uint32_t header_length_;
@@ -104,9 +106,12 @@ private:
     Context ** stub_context_;
     uint32_t stub_context_list_max_size_;
 
-    // non-stub
+    //
     Context ** context_;
     uint32_t context_list_max_size_;
+
+    //
+    RemoteClosure * closure_;
 
 };
 
