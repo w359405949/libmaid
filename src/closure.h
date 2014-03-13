@@ -27,8 +27,8 @@ private:
     static void OnGC(EV_P_ ev_check* w, int32_t revents);
 
 private:
-    maid::channel::Channel* channel_;
-    maid::channel::Context* context_;
+    const maid::channel::Channel* channel_;
+    const maid::channel::Context* context_;
 
     struct ev_check gc_;
     struct ev_loop* loop_;

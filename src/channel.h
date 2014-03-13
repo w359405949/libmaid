@@ -6,23 +6,28 @@
 
 namespace maid
 {
+
 namespace proto
 {
-
 class ControllerMeta;
-
 }
+
+namespace controller
+{
+class Controller;
+}
+
 namespace channel
 {
 
 struct Context
 {
     const google::protobuf::MethodDescriptor * method_;
-    const google::protobuf::RpcController * controller_;
-    const google::protobuf::Message * request_;
-    const google::protobuf::Message * response_;
-    const google::protobuf::Closure * done_;
-    struct Context * next;
+    maid::controller::Controller * controller_;
+    google::protobuf::Message * request_;
+    google::protobuf::Message * response_;
+    google::protobuf::Closure * done_;
+    struct Context * next_;
 };
 
 class Channel : public google::protobuf::RpcChannel
@@ -57,7 +62,7 @@ public:
      * 0: success.
      * -1: failed. invalid fd.
      */
-    int32_t AppendContext(const int32_t fd, const Context* context); // send
+    int32_t AppendContext(const int32_t fd, Context* context); // send
 
 private:
     static void OnRead(EV_P_ ev_io* w, int32_t revents);
@@ -68,22 +73,24 @@ private:
 private:
     static int32_t Realloc(void** ptr, uint32_t* origin_size, const uint32_t new_size, const size_t type_size);
 
+    static bool SetNonBlock(const int32_t fd);
+
 private:
     void CloseConnection(const int32_t fd);
     void Handle(const int32_t fd);
-    int32_t HandleRequest(const int32_t fd, const maid::proto::ControllerMeta& stub_meta,
+    int32_t HandleRequest(const int32_t fd,
+            maid::proto::ControllerMeta& stub_meta,
             const int8_t* message_start, const int32_t message_length);
-    int32_t HandleResponse(const int32_t fd, const maid::proto::ControllerMeta& meta,
+    int32_t HandleResponse(const int32_t fd,
+            maid::proto::ControllerMeta& meta,
             const int8_t* message_start, const int32_t message_length);
     bool IsEffictive(const int32_t fd) const;
     bool IsConnected(const int32_t fd);
-    bool SetNonBlock(const int32_t fd);
-    const google::protobuf::Service* GetServiceByName(const char * name) const;
-    const google::protobuf::Service* GetServiceByName(const std::string& name) const;
+    google::protobuf::Service* GetServiceByName(const std::string& name) const;
 
 private:
     // service
-    google::protobuf::Service * service_;
+    google::protobuf::Service ** service_;
     uint32_t service_current_size_;
     uint32_t service_max_size_;
 

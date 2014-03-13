@@ -11,4 +11,5 @@ message ControllerMeta
     optional string error_text = 7;
     optional bool wide = 8;
     optional int32 depth = 9; // effect when wide is true.
+    optional int32 fd = 10;
 }
