@@ -72,9 +72,6 @@ int32_t Channel::AppendService(google::protobuf::Service* service)
     return 0;
 }
 
-/*
- * wether a 'done' is required need more ''.
- */
 void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
         google::protobuf::RpcController * controller,
         const google::protobuf::Message * request,
@@ -115,10 +112,6 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
             break;
         }
     }
-
-    /*
-     * extend size double.
-     */
     int32_t result = Realloc(&packet_, &packet_list_max_size_, transmit_id);
     if(0 > result){
         std::string error_text(strerror(errno));
@@ -146,29 +139,27 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
          * BroadCast to all connected fd
          */
         for(int32_t fd = 0; fd < context_list_max_size; ++fd) {
-            if(!IsEffictive(fd)){
-                continue;
+            if(0 == AppendContext(fd, context)){
+                int32_t ref = meta.ref();
+                meta.set_ref(++ref);
             }
-            int32_t ref = meta.ref();
-            meta.set_ref(++ref);
-            Context * head = context_[fd];
-            if(NULL != head){
-                for(; head->next; head = head->next);
-                head->next = context;
-            }else{
-                head = context;
-            }
-            context_[fd] = head;
         }
         if(meta.ref() == 0){
             controller->setFaield("no effective connection");
-            ::free(context);
             done->Run();
+            ::free(context);
         }
         return;
+    }else{
+        return AppendService(meta.fd, context);
     }
+}
 
-    int32_t fd = meta.fd; /* has been checked */
+int32_t AppendContext(const int32_t fd, const Context* context)
+{
+    if(!IsEffictive(fd)){
+        return -1;
+    }
     Context * head = context_[fd];
     if(NULL != head){
         for(; head->next; head = head->next);
@@ -177,6 +168,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
         head = context;
     }
     context_[fd] = head;
+    return 0;
 }
 
 bool Channel::IsEffictive(int32_t fd) const
@@ -434,26 +426,65 @@ int32_t HandleResponse(const int32_t fd, const ControllerMeta& meta,
     }
 }
 
+/*
+ * TODO: wide == true
+ */
 int32_t HandleRequest(const int32_t fd, const ControllerMeta& stub_meta,
         const int8_t* message_start, const int32_t message_length)
 {
     Context* context = new Context();
-    Controller* controller = new Controller();
+    if(NULL == context){
+        return 0; // delay
+    }
+    context->controller_ = new Controller();
+    if(NULL == context->controller_){
+        delete context;
+        return 0; // delay
+    }
+    context->done_ = new RemoteClosure(this, context);
+    if(NULL == context->done_){
+        delete context->controller_;
+        delete context;
+        return 0;
+    }
 
-    /*
-     * TODO: check
-     */
-
-    context->controller_ = controller;
     controller->get_meta_data().CopyFrom(stub_meta);
     controller->get_meta_data().set_stub(false);
     const google::protobuf::Service* service = GetServiceByName(stub_meta.method_name());
     if(NULL == service){
-        controller->SetFailed("no such service");
+        delete context->done_;
+        delete context->controller_;
+        delete context;
+        return -1;
     }
     const google::protobuf::ServiceDescriptor* service_descriptor = serivce->GetDescriptor();
-    const google::protobuf::MethodDescriptor* method_descriptor = service_descriptor->FindMethodByName(stub_meta.method_name());
-    service->CallMethod(method_descriptor, controller, request, response, done);
+    context->method_ = service_descriptor->FindMethodByName(stub_meta.method_name());
+    context->request_ = service->GetRequestPrototype(context->method_)->New();
+    if(NULL == context->request_){
+        delete context->done_;
+        delete context->controller_;
+        delete context->request_;
+        delete context;
+        return 0;
+    }
+    if(!context->request_->ParseFromArray(message_start, message_length)){
+        delete context->done_;
+        delete context->controller_;
+        delete context->request_;
+        delete context;
+        return -1;
+    }
+    context->response = service->GetResponsePrototype(method_descriptor)->New();
+    if(NULL == context->request_){
+        delete context->done_;
+        delete context->controller_;
+        delete context->request_;
+        delete context;
+        return 0; // delay
+    }
+    service->CallMethod(context->method_, context->controller_, context->request_,
+            context->response_, context->done_);
+    return message_length;
 }
 
 int32_t Channel::Connect(std::string& host, int32_t port)
@@ -591,7 +622,7 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
     while(1){
         struct sockaddr_in addr;
         int32_t fd = ::accept(w->fd, (struct sockaddr *)&addr, sizeof(addr));
-        if(0 > fd&& (EAGAIN == errno|| EWOULDBLOCK == errno)){
+        if(0 > fd && (EAGAIN == errno|| EWOULDBLOCK == errno)){
             break;
         }
         int32_t non_block = SetNonBlock(fd);
@@ -625,12 +656,6 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
         ev_io_init(&write_watcer_[fd], OnWrite, fd, EV_WRITE);
         ev_io_start(EV_A_ &write_watcher_[fd]);
     }
-}
-
-void Channel::OnGabageCollection(EV_P_ ev_check* w, int32_t revents)
-{
-    Channel* self = (Channel*)w->data;
-    RemoteClosure* closure = self->closure_;
 }
 
 void Channel::CloseConnection(int32_t fd)
