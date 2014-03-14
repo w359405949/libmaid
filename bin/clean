@@ -1,3 +1,1 @@
-find proto/ -name '*.pb.*' |xargs rm -s
-find proto/ -name '*pb2.py' |xargs rm -s
-find client/ -name '*.pb.*' |xargs rm -s
+git clean -d -f .
