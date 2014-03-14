@@ -87,7 +87,7 @@ void protobuf_AddDesc_controller_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\020controller.proto\022\nmaid.proto\"\300\001\n\016Contr"
     "ollerMeta\022\024\n\014service_name\030\001 \001(\t\022\023\n\013metho"
-    "d_name\030\002 \001(\t\022\023\n\013transmit_id\030\003 \001(\005\022\014\n\004stu"
+    "d_name\030\002 \001(\t\022\023\n\013transmit_id\030\003 \001(\r\022\014\n\004stu"
     "b\030\004 \001(\010\022\023\n\013is_canceled\030\005 \001(\010\022\016\n\006failed\030\006"
     " \001(\010\022\022\n\nerror_text\030\007 \001(\t\022\014\n\004wide\030\010 \001(\010\022\r"
     "\n\005depth\030\t \001(\005\022\n\n\002fd\030\n \001(\005", 225);
@@ -139,7 +139,7 @@ void ControllerMeta::SharedCtor() {
   _cached_size_ = 0;
   service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   method_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  transmit_id_ = 0;
+  transmit_id_ = 0u;
   stub_ = false;
   is_canceled_ = false;
   failed_ = false;
@@ -200,7 +200,7 @@ void ControllerMeta::Clear() {
         method_name_->clear();
       }
     }
-    transmit_id_ = 0;
+    transmit_id_ = 0u;
     stub_ = false;
     is_canceled_ = false;
     failed_ = false;
@@ -258,13 +258,13 @@ bool ControllerMeta::MergePartialFromCodedStream(
         break;
       }
       
-      // optional int32 transmit_id = 3;
+      // optional uint32 transmit_id = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_transmit_id:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
                  input, &transmit_id_)));
           set_has_transmit_id();
         } else {
@@ -423,9 +423,9 @@ void ControllerMeta::SerializeWithCachedSizes(
       2, this->method_name(), output);
   }
   
-  // optional int32 transmit_id = 3;
+  // optional uint32 transmit_id = 3;
   if (has_transmit_id()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(3, this->transmit_id(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->transmit_id(), output);
   }
   
   // optional bool stub = 4;
@@ -495,9 +495,9 @@ void ControllerMeta::SerializeWithCachedSizes(
         2, this->method_name(), target);
   }
   
-  // optional int32 transmit_id = 3;
+  // optional uint32 transmit_id = 3;
   if (has_transmit_id()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(3, this->transmit_id(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->transmit_id(), target);
   }
   
   // optional bool stub = 4;
@@ -565,10 +565,10 @@ int ControllerMeta::ByteSize() const {
           this->method_name());
     }
     
-    // optional int32 transmit_id = 3;
+    // optional uint32 transmit_id = 3;
     if (has_transmit_id()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::Int32Size(
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->transmit_id());
     }
     

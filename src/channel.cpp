@@ -36,7 +36,7 @@ Channel::Channel(struct ev_loop* loop)
 Channel::~Channel()
 {
     if(NULL != buffer_){
-        for(int32_t i = 0; i < buffer_list_max_size_; ++i){
+        for(uint32_t i = 0; i < buffer_list_max_size_; ++i){
             if(NULL != buffer_[i]){
                 ::free(buffer_[i]);
                 buffer_[i] = NULL;
@@ -50,7 +50,7 @@ Channel::~Channel()
     if(NULL != buffer_max_length_){
         ::free(buffer_max_length_);
     }
-    for(int32_t fd = 0; fd < io_watcher_max_size_; ++fd){
+    for(uint32_t fd = 0; fd < io_watcher_max_size_; ++fd){
         CloseConnection(fd);
     }
     if(0 <  io_watcher_max_size_){
@@ -62,7 +62,7 @@ Channel::~Channel()
 int32_t Channel::AppendService(google::protobuf::Service* service)
 {
     assert(("service can not be NULL", NULL != service));
-    int32_t result = Realloc((void**)service_, &service_max_size_,
+    int32_t result = Realloc((void**)&service_, &service_max_size_,
             service_current_size_, sizeof(google::protobuf::Service*));
     if(0 > result){
         return -1;
@@ -129,7 +129,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
          * BroadCast to all connected fd
          */
         Controller * con = (Controller*)controller;
-        for(int32_t fd = 0; fd < context_list_max_size_; ++fd) {
+        for(uint32_t fd = 0; fd < context_list_max_size_; ++fd) {
 
             if(0 > AppendContext(fd, context)){
                 continue;
@@ -169,7 +169,7 @@ int32_t Channel::AppendContext(const int32_t fd, Context* context)
 
 bool Channel::IsEffictive(int32_t fd) const
 {
-    return fd < io_watcher_max_size_ && 0 > fd && fd == write_watcher_[fd].fd && fd == read_watcher_[fd].fd;
+    return fd < io_watcher_max_size_ && 0 > fd && NULL != write_watcher_[fd] && NULL != read_watcher_[fd];
 }
 
 void Channel::OnWrite(EV_P_ ev_io * w, int revents)
@@ -185,7 +185,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
          * serializer can be cached if neccessary
          */
         std::string controller_buffer;
-        uint32_t controller_nl = htonl(controller_buffer.length());
+        uint32_t controller_nl = ::htonl(controller_buffer.length());
         meta.SerializeToString(&controller_buffer);
 
         std::string message_buffer;
@@ -195,9 +195,9 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             context->response_->SerializeToString(&message_buffer);
         }
 
-        uint32_t message_nl = htonl(message_buffer.length());
+        uint32_t message_nl = ::htonl(message_buffer.length());
         int32_t result = 0;
-        result += ::write(w->fd, (const void *)&controller_nl, sizeof(controller_nl));
+        result += ::write(w->fd, &controller_nl, sizeof(controller_nl));
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -205,7 +205,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
-        result += ::write(w->fd, (const void *)&message_nl, sizeof(message_nl));
+        result += ::write(w->fd, &message_nl, sizeof(message_nl));
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -215,7 +215,8 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         }
 
         //if(!meta.SerializeToFileDescriptor(w->fd)){}
-        result += ::write(w->fd, controller_buffer.c_str(), controller_buffer.length());
+        result += ::write(w->fd, controller_buffer.c_str(),
+                controller_buffer.length());
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -224,7 +225,8 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             return;
         }
 
-        result += ::write(w->fd, message_buffer.c_str(), message_buffer.length());
+        result += ::write(w->fd, message_buffer.c_str(),
+                message_buffer.length());
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -232,15 +234,15 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
+        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + message_buffer.length() == result));
 
         if(!meta.stub()){
-            /*
-             * TODO:response. clean unused info, like context.
-             */
+            Context* tmp = context;
+            context = context->next_;
+            ::free(tmp);
+        }else{
+            context = context->next_;
         }
-
-        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + message_buffer.length() == result));
-        context = context->next_;
     }
 }
 
@@ -292,8 +294,8 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
     int8_t* buffer_start = self->buffer_[w->fd] + self->buffer_pending_index_[w->fd];
     int32_t rest_space = self->buffer_max_length_[w->fd] - self->buffer_pending_index_[w->fd];
     int32_t nread = ::read(w->fd, buffer_start, rest_space);
-    if(nread <= 0){
-        if(errno != EAGAIN && errno != EWOULDBLOCK || nread == 0){
+    if(0 >= nread){
+        if((EAGAIN != errno && EWOULDBLOCK != errno) || 0 == nread){
             self->CloseConnection(w->fd);
             return;
         }
@@ -334,6 +336,7 @@ void Channel::Handle(int32_t fd)
             break; // lack data
         }
         ControllerMeta meta;
+
         if(!meta.ParseFromArray(buffer + handled_start + header_length_, controller_length)){
             CloseConnection(fd); // unknown meta, can not recovered
             return;
@@ -368,8 +371,8 @@ void Channel::Handle(int32_t fd)
     buffer_[fd] = buffer;
 }
 
-int32_t Channel::HandleResponse(const int32_t fd, ControllerMeta& meta,
-        const int8_t* message_start, const int32_t message_length)
+int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
+        const int8_t* message_start, int32_t message_length)
 {
     if(meta.transmit_id() < connect_watcher_max_size_){
         /*
@@ -420,14 +423,14 @@ int32_t Channel::HandleResponse(const int32_t fd, ControllerMeta& meta,
         ::free(context);
         context_[stub_meta.transmit_id()] = NULL;
     }
+    return message_length;
 }
 
 /*
  * TODO: wide == true
  */
-int32_t Channel::HandleRequest(const int32_t fd,
-        ControllerMeta& stub_meta, const int8_t* message_start,
-        const int32_t message_length)
+int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
+        const int8_t* message_start, int32_t message_length)
 {
     Context* context = new Context();
     if(NULL == context){
@@ -480,12 +483,12 @@ int32_t Channel::HandleRequest(const int32_t fd,
         delete context;
         return 0; // delay
     }
-    service->CallMethod(context->method_, context->controller_, context->request_,
-            context->response_, context->done_);
+    service->CallMethod(context->method_, context->controller_,
+            context->request_, context->response_, context->done_);
     return message_length;
 }
 
-int32_t Channel::Connect(const std::string& host, const int32_t port)
+int32_t Channel::Connect(const std::string& host, int32_t port)
 {
     int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if(0 > fd){
@@ -496,63 +499,45 @@ int32_t Channel::Connect(const std::string& host, const int32_t port)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     int32_t result = -1;
-    result = inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
+    result = ::inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
     if(0 > result){
         perror("inet_pton:");
         return result;
     }
 
-    SetNonBlock(fd);
     result = ::connect(fd, (struct sockaddr *)&addr, sizeof(addr));
-    if(0 > result) {
-        if(errno == EINPROGRESS){
-            result = Realloc((void**)&connect_watcher_,
-                    &connect_watcher_max_size_, fd, sizeof(struct ev_io));
-            if(0 > result ){
-                perror("realloc:");
-                ::close(fd);
-                return -1;
-            }
-            connect_watcher_[fd].data = this;
-            ev_io_init(&(connect_watcher_[fd]), OnConnect, fd, EV_READ);
-            ev_io_start(loop_, &(connect_watcher_[fd]));
-        }else{
-            perror("connect:");
-            return result;
-        }
-    }else{
-        /*
-         * watcher_size <= the real watcher size is safe.
-         */
-        uint32_t io_watcher_max_size = 0;
-
-        io_watcher_max_size = io_watcher_max_size_;
-        result = Realloc((void**)&(read_watcher_), &io_watcher_max_size,
-                fd, sizeof(struct ev_io));
-        if(0 < result){
-            perror("realloc:");
-            ::close(fd);
-            return -1;
-        }
-        io_watcher_max_size = io_watcher_max_size_;
-        result = Realloc((void**)&(write_watcher_), &io_watcher_max_size,
-                fd, sizeof(struct ev_io));
-        if(0 < result){
-            perror("realloc:");
-            ::close(fd);
-            return -1;
-        }
-
-        io_watcher_max_size_ = io_watcher_max_size;
-        ev_io_init(&(read_watcher_[fd]), OnRead, fd, EV_READ);
-        ev_io_start(loop_, &read_watcher_[fd]);
-        ev_io_init(&(write_watcher_[fd]), OnWrite, fd, EV_WRITE);
-        ev_io_start(loop_, &write_watcher_[fd]);
+    if(0 == result) {
+        NewConnection(fd);
+        return fd;
     }
+    if(errno != EINPROGRESS){
+        perror("connect:");
+        return result;
+    }
+
+    result = Realloc((void**)&connect_watcher_, &connect_watcher_max_size_, fd,
+            sizeof(struct ev_io*));
+    if(0 > result){
+        perror("realloc:");
+        CloseConnection(fd);
+        return -1;
+    }
+    struct ev_io* connect_watcher = (struct ev_io*)malloc(sizeof(struct ev_io));
+    if(NULL == connect_watcher){
+        perror("malloc:");
+        CloseConnection(fd);
+        return -1;
+    }
+
+    connect_watcher->data = this;
+    connect_watcher->fd = fd;
+    connect_watcher_[fd] = connect_watcher;
+    ev_io_init(connect_watcher, OnConnect, fd, EV_READ);
+    ev_io_start(loop_, connect_watcher);
     return fd;
 }
 
-int32_t Channel::Listen(const std::string& host, const int32_t port, const int32_t backlog)
+int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
     int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if(fd <= 0){
@@ -562,7 +547,7 @@ int32_t Channel::Listen(const std::string& host, const int32_t port, const int32
     bool non_block = SetNonBlock(fd); // no care
     if(!non_block){
         perror("realloc:");
-        ::close(fd);
+        CloseConnection(fd);
         return -1;
     }
     struct sockaddr_in addr;
@@ -578,25 +563,35 @@ int32_t Channel::Listen(const std::string& host, const int32_t port, const int32
     result = ::bind(fd, (struct sockaddr *)&addr, sizeof(addr));
     if(0 > result){
         perror("bind:");
-        ::close(fd);
+        CloseConnection(fd);
         return result;
     }
     result = ::listen(fd, backlog);
     if(0 > result){
         perror("listen:");
-        ::close(fd);
+        CloseConnection(fd);
         return result;
     }
-    result = Realloc((void**)&accept_watcher_,
-            &accept_watcher_max_size_, fd, sizeof(struct ev_io));
+
+    result = Realloc((void**)&accept_watcher_, &accept_watcher_max_size_, fd,
+            sizeof(struct ev_io));
     if(0 > result){
         perror("realloc:");
-        ::close(fd);
+        CloseConnection(fd);
         return -1;
     }
 
-    ev_io_init(&(accept_watcher_[fd]), OnAccept, fd, EV_READ);
-    ev_io_start(loop_, &(accept_watcher_[fd]));
+    struct ev_io* accept_watcher = (struct ev_io*)malloc(sizeof(struct ev_io));
+    if(NULL == accept_watcher){
+        CloseConnection(fd);
+        return -1;
+    }
+
+    accept_watcher->data = this;
+    accept_watcher_[fd] = accept_watcher;
+    accept_watcher->fd = fd;
+    ev_io_init(accept_watcher, OnAccept, fd, EV_READ);
+    ev_io_start(loop_, accept_watcher);
     return fd;
 }
 
@@ -605,18 +600,17 @@ void Channel::OnConnect(EV_P_ ev_io* w, int revents)
     Channel* self = (Channel*)(w->data);
     struct sockaddr_in addr;
     socklen_t len;
-    getpeername(w->fd, (struct sockaddr*)&addr, &len);
+    ::getpeername(w->fd, (struct sockaddr*)&addr, &len);
     int32_t result = ::connect(w->fd, (struct sockaddr*)&addr, sizeof(addr));
     if(0 > result && EINPROGRESS == errno){
         return;
     }
     ev_io_stop(EV_A_ w);
-    if(0 == result){ // connected
-        ev_io_init(w, OnRead, w->fd, EV_READ);
-        ev_io_start(EV_A_ w);
-    }else{
-        ::free(w);
+    result = self->NewConnection(w->fd);
+    if(0 > result){
+        self->CloseConnection(w->fd);
     }
+    ::free(w);
 }
 
 void Channel::OnAccept(EV_P_ ev_io* w, int revents)
@@ -629,36 +623,12 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
         if(0 > fd && (EAGAIN == errno|| EWOULDBLOCK == errno)){
             break;
         }
-        int32_t non_block = SetNonBlock(fd);
-        if(!non_block){
-            ::close(fd);
-            continue;
-        }
 
         int32_t result = -1;
-        uint32_t io_watcher_max_size = 0;
-
-        io_watcher_max_size = self->io_watcher_max_size_;
-        result = Realloc((void**)&(self->read_watcher_), &io_watcher_max_size,
-                fd, sizeof(struct ev_io));
-        if(0 < result){
-            perror("realloc:");
-            ::close(fd);
-            return;
+        result = self->NewConnection(w->fd);
+        if(0 > result){
+            self->CloseConnection(w->fd);
         }
-        io_watcher_max_size = self->io_watcher_max_size_;
-        result = Realloc((void**)&(self->write_watcher_), &io_watcher_max_size,
-                fd, sizeof(struct ev_io));
-        if(0 < result){
-            perror("realloc:");
-            ::close(fd);
-            return;
-        }
-
-        ev_io_init(&(self->read_watcher_[fd]), OnRead, fd, EV_READ);
-        ev_io_start(EV_A_ &(self->read_watcher_[fd]));
-        ev_io_init(&(self->write_watcher_[fd]), OnWrite, fd, EV_WRITE);
-        ev_io_start(EV_A_ &(self->write_watcher_[fd]));
     }
 }
 
@@ -669,16 +639,35 @@ void Channel::CloseConnection(int32_t fd)
 
     // libev
     if(fd < io_watcher_max_size_){
-        ev_io_stop(loop_, &read_watcher_[fd]);
-        ev_io_stop(loop_, &write_watcher_[fd]);
-        read_watcher_[fd].fd = -1;
-        write_watcher_[fd].fd = -1;
+        struct ev_io* read_watcher = read_watcher_[fd];
+        if(NULL != read_watcher){
+            ev_io_stop(loop_, read_watcher);
+            ::free(read_watcher);
+        }
+        read_watcher_[fd] = NULL;
+
+        struct ev_io* write_watcher = write_watcher_[fd];
+        if(NULL != write_watcher){
+            ev_io_stop(loop_, write_watcher);
+            ::free(write_watcher);
+        }
+        write_watcher_[fd] = NULL;
     }
     if(fd < accept_watcher_max_size_){
-        ev_io_stop(loop_, &accept_watcher_[fd]);
+        struct ev_io* accept_watcher = accept_watcher_[fd];
+        if(NULL != accept_watcher){
+            ev_io_stop(loop_, accept_watcher);
+            ::free(accept_watcher);
+        }
+        accept_watcher_[fd] = NULL;
     }
     if(fd < connect_watcher_max_size_){
-        ev_io_stop(loop_, &connect_watcher_[fd]);
+        struct ev_io* connect_watcher = connect_watcher_[fd];
+        if(NULL != connect_watcher){
+            ev_io_stop(loop_, connect_watcher);
+            ::free(connect_watcher);
+        }
+        connect_watcher_[fd] = NULL;
     }
     //ev_break(loop_, EVBREAK_ONE); // do not call the stoped event
 
@@ -692,10 +681,11 @@ void Channel::CloseConnection(int32_t fd)
             ::free(context);
             context = context->next_;
         }
+        context_[fd] = NULL;
     }
 }
 
-bool Channel::SetNonBlock(const int32_t fd)
+bool Channel::SetNonBlock(int32_t fd)
 {
     int32_t flags = ::fcntl(fd, F_GETFL);
     if(0 > flags){
@@ -711,13 +701,69 @@ bool Channel::SetNonBlock(const int32_t fd)
     return true;
 }
 
+int32_t Channel::NewConnection(int32_t fd)
+{
+    int32_t result = -1;
+    result = SetNonBlock(fd);
+    if(0 > result){
+        CloseConnection(fd);
+        return -1;
+    }
+
+    uint32_t io_watcher_max_size = 0;
+    io_watcher_max_size = io_watcher_max_size_;
+    result = Realloc((void**)&read_watcher_, &io_watcher_max_size,
+            fd, sizeof(struct ev_io));
+    if(0 > result){
+        perror("realloc:");
+        CloseConnection(fd);
+        return -1;
+    }
+    io_watcher_max_size = io_watcher_max_size_;
+    result = Realloc((void**)&write_watcher_, &io_watcher_max_size,
+            fd, sizeof(struct ev_io));
+    if(0 > result){
+        perror("realloc:");
+        CloseConnection(fd);
+        return -1;
+    }
+
+    io_watcher_max_size_ = io_watcher_max_size;
+
+    struct ev_io* read_watcher = (struct ev_io*)malloc(sizeof(struct ev_io));
+    if(NULL == read_watcher){
+        CloseConnection(fd);
+        return -1;
+    }
+
+    struct ev_io* write_watcher = (struct ev_io*)malloc(sizeof(struct ev_io));
+    if(NULL == write_watcher){
+        ::free(read_watcher);
+        CloseConnection(fd);
+        return -1;
+    }
+
+    read_watcher->data = this;
+    write_watcher->data = this;
+    read_watcher->fd = fd;
+    write_watcher->fd = fd;
+    read_watcher_[fd] = read_watcher;
+    write_watcher_[fd] = write_watcher;
+    ev_io_init(read_watcher, OnRead, fd, EV_READ);
+    ev_io_start(loop_, read_watcher);
+    ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
+    ev_io_start(loop_, write_watcher);
+    return 0;
+}
+
 google::protobuf::Service* Channel::GetServiceByName(const std::string& name) const
 {
-    for(int32_t i = 0; i < service_current_size_; ++i){
+    for(uint32_t i = 0; i < service_current_size_; ++i){
         if(NULL == service_[i] && name == service_[i]->GetDescriptor()->name()){
             return service_[i];
         }
     }
+    return NULL;
 }
 
 
@@ -733,18 +779,16 @@ google::protobuf::Service* Channel::GetServiceByName(const std::string& name) co
  * 0: SUCCESS.
  * -1: FAILED. (realloc failed).
  */
-int32_t Channel::Realloc(void** ptr, uint32_t* origin_size, const uint32_t expect_size, const size_t type_size)
+int32_t Channel::Realloc(void** ptr, uint32_t* origin_size,
+        uint32_t expect_size, size_t type_size)
 {
-    /*
-     *
-     */
     if(NULL == ptr || NULL == origin_size){
         ::puts("libmaid: ptr and origin_size can not be NULL in Realloc");
         return -1;
     }
 
     uint32_t size = *origin_size;
-    while(size  < expect_size){
+    while(size  <= expect_size){
         size += 1;
         size <<= 1;
         void* new_ptr = ::realloc(*ptr, size);
@@ -754,7 +798,7 @@ int32_t Channel::Realloc(void** ptr, uint32_t* origin_size, const uint32_t expec
         }
         *ptr = new_ptr;
     }
-    ::memset(*ptr + *origin_size, 0, size - *origin_size);
+    ::memset(*ptr + *origin_size, 0, size - *origin_size); //TODO:check
     *origin_size = size;
     return 0;
 }

@@ -1,9 +1,10 @@
-ACLOCAL_AMFLAGS= -I m4
+ACLOCAL_AMFLAGS=-I m4
 AUTOMAKE_OPTIONS=foreign
 lib_LTLIBRARIES=libmaid.la
 libmaid_la_LIBADD=-lprotobuf -lev
 #libmaid_la_LDFLAGS=-static-protobuf -static-ev
-libmaid_la_CFLAGS=-Wall
+libmaid_la_CFLAGS=-Wall -I../include
+libmaid_la_CXXFLAGS=-Wall -I../include
 libmaid_la_SOURCES=\
 src/controller.cpp \
 src/channel.h \
