@@ -152,24 +152,10 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline ::std::string* mutable_error_text();
   inline ::std::string* release_error_text();
   
-  // optional bool wide = 8;
-  inline bool has_wide() const;
-  inline void clear_wide();
-  static const int kWideFieldNumber = 8;
-  inline bool wide() const;
-  inline void set_wide(bool value);
-  
-  // optional int32 depth = 9;
-  inline bool has_depth() const;
-  inline void clear_depth();
-  static const int kDepthFieldNumber = 9;
-  inline ::google::protobuf::int32 depth() const;
-  inline void set_depth(::google::protobuf::int32 value);
-  
-  // optional int32 fd = 10;
+  // optional int32 fd = 8;
   inline bool has_fd() const;
   inline void clear_fd();
-  static const int kFdFieldNumber = 10;
+  static const int kFdFieldNumber = 8;
   inline ::google::protobuf::int32 fd() const;
   inline void set_fd(::google::protobuf::int32 value);
   
@@ -189,10 +175,6 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline void clear_has_failed();
   inline void set_has_error_text();
   inline void clear_has_error_text();
-  inline void set_has_wide();
-  inline void clear_has_wide();
-  inline void set_has_depth();
-  inline void clear_has_depth();
   inline void set_has_fd();
   inline void clear_has_fd();
   
@@ -204,13 +186,11 @@ class ControllerMeta : public ::google::protobuf::Message {
   bool stub_;
   bool is_canceled_;
   bool failed_;
-  bool wide_;
   ::std::string* error_text_;
-  ::google::protobuf::int32 depth_;
   ::google::protobuf::int32 fd_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
   
   friend void  protobuf_AddDesc_controller_2eproto();
   friend void protobuf_AssignDesc_controller_2eproto();
@@ -488,59 +468,15 @@ inline ::std::string* ControllerMeta::release_error_text() {
   }
 }
 
-// optional bool wide = 8;
-inline bool ControllerMeta::has_wide() const {
+// optional int32 fd = 8;
+inline bool ControllerMeta::has_fd() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
-inline void ControllerMeta::set_has_wide() {
+inline void ControllerMeta::set_has_fd() {
   _has_bits_[0] |= 0x00000080u;
 }
-inline void ControllerMeta::clear_has_wide() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void ControllerMeta::clear_wide() {
-  wide_ = false;
-  clear_has_wide();
-}
-inline bool ControllerMeta::wide() const {
-  return wide_;
-}
-inline void ControllerMeta::set_wide(bool value) {
-  set_has_wide();
-  wide_ = value;
-}
-
-// optional int32 depth = 9;
-inline bool ControllerMeta::has_depth() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void ControllerMeta::set_has_depth() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void ControllerMeta::clear_has_depth() {
-  _has_bits_[0] &= ~0x00000100u;
-}
-inline void ControllerMeta::clear_depth() {
-  depth_ = 0;
-  clear_has_depth();
-}
-inline ::google::protobuf::int32 ControllerMeta::depth() const {
-  return depth_;
-}
-inline void ControllerMeta::set_depth(::google::protobuf::int32 value) {
-  set_has_depth();
-  depth_ = value;
-}
-
-// optional int32 fd = 10;
-inline bool ControllerMeta::has_fd() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
-}
-inline void ControllerMeta::set_has_fd() {
-  _has_bits_[0] |= 0x00000200u;
-}
 inline void ControllerMeta::clear_has_fd() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void ControllerMeta::clear_fd() {
   fd_ = 0;

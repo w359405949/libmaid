@@ -25,8 +25,9 @@ private:
 int main()
 {
     Channel* channel = new Channel(EV_DEFAULT);
-    channel->Connect("127.0.0.1", 8888);
+    int32_t fd = channel->Connect("127.0.0.1", 8888);
     Controller* controller = new Controller();
+    controller->get_meta_data().set_fd(fd);
     HelloRequest* request = new HelloRequest();
     request->set_message("hello");
     HelloResponse* response = new HelloResponse();
@@ -35,5 +36,5 @@ int main()
     HelloService_Stub* stub = new HelloService_Stub(channel);
     stub->Hello(controller, request, response, closure);
 
-    ev_run(EV_DEFAULT, EVRUN_ONCE);
+    ev_run(EV_DEFAULT, 0);
 }

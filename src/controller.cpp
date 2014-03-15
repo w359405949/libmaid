@@ -4,7 +4,6 @@ using maid::controller::Controller;
 using maid::proto::ControllerMeta;
 
 Controller::Controller()
-    :ref_(0)
 {
 }
 
@@ -44,19 +43,4 @@ void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 ControllerMeta& Controller::get_meta_data()
 {
     return meta_data_;
-}
-
-void Controller::Ref()
-{
-    ++ref_;
-}
-
-void Controller::Unref()
-{
-    --ref_;
-}
-
-int32_t Controller::get_ref()
-{
-    return ref_;
 }

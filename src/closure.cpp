@@ -1,9 +1,11 @@
 #include "channel.h"
 #include "closure.h"
+#include "controller.h"
 
 using maid::channel::Channel;
 using maid::channel::Context;
 using maid::closure::RemoteClosure;
+using maid::controller::Controller;
 
 RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Context* context)
     :loop_(loop),
@@ -25,10 +27,11 @@ RemoteClosure::~RemoteClosure()
 
 void RemoteClosure::Run()
 {
+    Controller* controller = context_->controller_;
+    channel_->AppendContext(controller->get_meta_data().fd(), context_);
     /*
-     * logic
+     * TODO: check AppendContext return value. and retry if needed.
      */
-
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);
 }

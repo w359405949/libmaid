@@ -20,14 +20,24 @@ class Controller;
 namespace channel
 {
 
-struct Context
+class Context
 {
-    const google::protobuf::MethodDescriptor * method_;
-    maid::controller::Controller * controller_;
-    google::protobuf::Message * request_;
-    google::protobuf::Message * response_;
-    google::protobuf::Closure * done_;
-    struct Context * next_;
+public:
+    //google::protobuf::MethodDescriptor* method_;
+    maid::controller::Controller* controller_;
+    google::protobuf::Message* request_;
+    google::protobuf::Message* response_;
+    google::protobuf::Closure* done_;
+    struct Context* next_;
+
+    Context(struct ev_loop* loop);
+    void Destroy();
+    static void OnGC(struct ev_loop* loop, ev_check* w, int32_t revents);
+    void Ref();
+private:
+    struct ev_loop* loop_;
+    struct ev_check gc_;
+    int32_t ref_;
 };
 
 class Channel : public google::protobuf::RpcChannel
@@ -71,7 +81,7 @@ private:
     static void OnConnect(EV_P_ ev_io* w, int32_t revents);
 
 private:
-    static int32_t Realloc(void** ptr, uint32_t* origin_size, uint32_t new_size, size_t type_size);
+    static int32_t Realloc(void** ptr, uint32_t* origin_size, uint32_t new_size, uint32_t type_size);
 
     static bool SetNonBlock(int32_t fd);
 
@@ -86,7 +96,7 @@ private:
             const int8_t* message_start, int32_t message_length);
     bool IsEffictive(int32_t fd) const;
     bool IsConnected(int32_t fd) const;
-    google::protobuf::Service* GetServiceByName(const std::string& name) const;
+    google::protobuf::Service* GetServiceByName(const std::string& name);
     int32_t NewConnection(int32_t fd);
 
 private:
@@ -98,14 +108,14 @@ private:
 private:
     // libev
     struct ev_loop* loop_;
-    struct ev_io** read_watcher_; // realloc and reffer to libev
-    struct ev_io** write_watcher_; // realloc and reffer to libev
+    struct ev_io** read_watcher_; // level 1: fd; level 2: watcher point;
+    struct ev_io** write_watcher_; // level 1: fd; level 2: watcher_point;
     uint32_t io_watcher_max_size_;
 
-    struct ev_io** accept_watcher_; // realloc and reffer to libev
+    struct ev_io** accept_watcher_; // level 1: fd; level 2: watcher point;
     uint32_t accept_watcher_max_size_;
 
-    struct ev_io** connect_watcher_; // realloc and reffer to libev
+    struct ev_io** connect_watcher_; // level 1 fd; level 2: watcher point;
     uint32_t connect_watcher_max_size_;
 
 private:
@@ -113,14 +123,18 @@ private:
     const uint32_t header_length_;
 
     // read buffer
-    int8_t ** buffer_;
-    uint32_t * buffer_pending_index_;
-    uint32_t * buffer_max_length_; // expend double size
-    uint32_t buffer_list_max_size_; // expend double size
+    int8_t ** buffer_; // level 1: fd; level 2: buffer start
+    uint32_t * buffer_pending_index_; // level 1: fd
+    uint32_t * buffer_max_length_; // level 1: fd
+    uint32_t buffer_list_max_size_;
 
     //
-    Context ** context_;
+    Context** context_; // level 1: transmit id
     uint32_t context_list_max_size_;
+
+    //
+    Context** write_pending_; // level 1: fd;
+    uint32_t write_pending_list_max_size_; //
 
 };
 

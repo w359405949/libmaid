@@ -6,7 +6,7 @@ class HelloServiceImpl: public HelloService
 {
 public:
     void Hello(google::protobuf::RpcController* controller,
-            HelloRequest* request,
+            const HelloRequest* request,
             HelloResponse* response,
             google::protobuf::Closure* done)
     {
@@ -20,6 +20,8 @@ public:
 int main()
 {
     maid::channel::Channel* channel = new maid::channel::Channel(EV_DEFAULT);
+    HelloService* hello = new HelloServiceImpl();
+    channel->AppendService(hello);
     channel->Listen("0.0.0.0", 8888);
     ev_run(EV_DEFAULT, 0);
 }

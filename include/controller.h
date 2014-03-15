@@ -31,13 +31,8 @@ public:
 
     maid::proto::ControllerMeta& get_meta_data();
 
-    void Ref();
-    void Unref();
-    int32_t get_ref();
-
 private:
     maid::proto::ControllerMeta meta_data_;
-    int32_t ref_;
 };
 
 } /* controller */

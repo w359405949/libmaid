@@ -18,17 +18,33 @@ using maid::channel::Context;
 using maid::closure::RemoteClosure;
 
 Channel::Channel(struct ev_loop* loop)
-    :loop_(loop),
+    :service_(NULL),
+    service_current_size_(0),
+    service_max_size_(0),
+
+    loop_(loop),
     read_watcher_(NULL),
     write_watcher_(NULL),
     io_watcher_max_size_(0),
+
+    accept_watcher_(NULL),
+    accept_watcher_max_size_(0),
+
+    connect_watcher_(NULL),
+    connect_watcher_max_size_(0),
+
     header_length_(8),
+
     buffer_(NULL),
     buffer_pending_index_(NULL),
     buffer_max_length_(NULL),
     buffer_list_max_size_(0),
+
     context_(NULL),
-    context_list_max_size_(0)
+    context_list_max_size_(0),
+
+    write_pending_(NULL),
+    write_pending_list_max_size_(0)
 {
     assert(("libmaid: loop can not be none", NULL != loop));
 }
@@ -81,14 +97,13 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     assert(("libmaid: request must not be NULL", NULL != request));
     assert(("libmaid: done can not be NULL", NULL != done));
 
-    Context * context = (Context*)malloc(sizeof(Context));
+    Context * context = new Context(loop_);
     if(NULL == context){
         std::string error_text(strerror(errno));
         controller->SetFailed(error_text);
         done->Run();
         return;
     }
-    context->method_ = method;
     context->controller_ = (Controller*)controller;
     context->request_ = (google::protobuf::Message*)request;
     context->response_ = response;
@@ -106,12 +121,13 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
             break;
         }
     }
-    int32_t result = Realloc((void**)&context_, &context_list_max_size_, transmit_id, sizeof(struct Context));
+    int32_t result = Realloc((void**)&context_, &context_list_max_size_,
+            transmit_id, sizeof(Context*));
     if(0 > result){
         std::string error_text(strerror(errno));
         controller->SetFailed(error_text);
-        ::free(context);
         done->Run();
+        context->Destroy();
         return;
     }
 
@@ -122,71 +138,67 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
     meta.set_transmit_id(transmit_id);
     meta.set_stub(true);
 
-    context_[transmit_id] = context;
-
-    if(meta.wide()){
-        /*
-         * BroadCast to all connected fd
-         */
-        Controller * con = (Controller*)controller;
-        for(uint32_t fd = 0; fd < context_list_max_size_; ++fd) {
-
-            if(0 > AppendContext(fd, context)){
-                continue;
-            }
-            con->Ref();
-        }
-        if(con->get_ref() == 0){
-            controller->SetFailed("no effective connection");
-            done->Run();
-            ::free(context);
-        }
+    result = AppendContext(meta.fd(), context);
+    if(-1 == result){
+        controller->SetFailed("invalid fd");
+        done->Run();
+        context->Destroy();
         return;
-    }else{
-        if(!AppendContext(meta.fd(), context)){
-            controller->SetFailed("invalid fd");
-            done->Run();
-            return;
-        }
     }
+    if(-2 == result){
+        controller->SetFailed("channel busy");
+        done->Run();
+        context->Destroy();
+        return;
+    }
+    context->Ref();
+    context_[transmit_id] = context;
 }
 
 int32_t Channel::AppendContext(const int32_t fd, Context* context)
 {
+    context->Ref();
     if(!IsEffictive(fd)){
         return -1;
     }
-    Context * head = context_[fd];
+    int32_t result = Realloc((void**)&write_pending_,
+            &write_pending_list_max_size_, fd, sizeof(Context*));
+    if(0 > result){
+        return -2; // dealy if needed
+    }
+    Context * head = write_pending_[fd];
     if(NULL != head){
         for(; head->next_; head = head->next_);
         head->next_ = context;
     }else{
         head = context;
     }
-    context_[fd] = head;
+    write_pending_[fd] = head;
     return 0;
 }
 
 bool Channel::IsEffictive(int32_t fd) const
 {
-    return fd < io_watcher_max_size_ && 0 > fd && NULL != write_watcher_[fd] && NULL != read_watcher_[fd];
+    return 0 < fd && fd < io_watcher_max_size_ && NULL != write_watcher_[fd] && NULL != read_watcher_[fd];
 }
 
 void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 {
     Channel* self = (Channel*)(w->data);
-    Context* context = self->context_[w->fd];
-
+    if(w->fd > self->write_pending_list_max_size_){
+        return;
+    }
+    Context* context = self->write_pending_[w->fd];
     while(context){
         Controller * controller = context->controller_;
-        ControllerMeta meta = controller->get_meta_data();
+        ControllerMeta& meta = controller->get_meta_data();
 
         /*
          * serializer can be cached if neccessary
          */
         std::string controller_buffer;
-        uint32_t controller_nl = ::htonl(controller_buffer.length());
         meta.SerializeToString(&controller_buffer);
+        uint32_t controller_nl = ::htonl(controller_buffer.length());
 
         std::string message_buffer;
         if(meta.stub()){
@@ -194,10 +206,11 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         }else{
             context->response_->SerializeToString(&message_buffer);
         }
-
         uint32_t message_nl = ::htonl(message_buffer.length());
-        int32_t result = 0;
-        result += ::write(w->fd, &controller_nl, sizeof(controller_nl));
+
+        int32_t result = -1;
+        int32_t nwrite = 0;
+        result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -205,7 +218,9 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
-        result += ::write(w->fd, &message_nl, sizeof(message_nl));
+        nwrite += result;
+
+        result = ::write(w->fd, &message_nl, sizeof(message_nl));
         if(0 > result){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
@@ -213,9 +228,10 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
+        nwrite += result;
 
         //if(!meta.SerializeToFileDescriptor(w->fd)){}
-        result += ::write(w->fd, controller_buffer.c_str(),
+        result = ::write(w->fd, controller_buffer.c_str(),
                 controller_buffer.length());
         if(0 > result){
             std::string error_text(strerror(errno));
@@ -224,8 +240,9 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
+        nwrite += result;
 
-        result += ::write(w->fd, message_buffer.c_str(),
+        result = ::write(w->fd, message_buffer.c_str(),
                 message_buffer.length());
         if(0 > result){
             std::string error_text(strerror(errno));
@@ -234,15 +251,14 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
-        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + message_buffer.length() == result));
+        nwrite += result;
 
-        if(!meta.stub()){
-            Context* tmp = context;
-            context = context->next_;
-            ::free(tmp);
-        }else{
-            context = context->next_;
-        }
+        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + message_buffer.length() == nwrite));
+
+        Context* tmp = context;
+        context = context->next_;
+        self->write_pending_[w->fd] = context;
+        tmp->Destroy(); //Unref
     }
 }
 
@@ -257,40 +273,39 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
     int32_t result = -1;
 
     buffer_list_max_size = self->buffer_list_max_size_;
-    result = Realloc((void**)&(self->buffer_pending_index_),
+    result = Realloc((void**)&self->buffer_pending_index_,
             &buffer_list_max_size, w->fd, sizeof(uint32_t));
     if(0 > result){
         self->CloseConnection(w->fd);
         return;
     }
     buffer_list_max_size = self->buffer_list_max_size_;
-    result = Realloc((void**)&(self->buffer_pending_index_),
+    result = Realloc((void**)&self->buffer_max_length_,
             &buffer_list_max_size, w->fd, sizeof(uint32_t));
     if(0 > result){
         self->CloseConnection(w->fd);
         return;
     }
     buffer_list_max_size = self->buffer_list_max_size_;
-    result = Realloc((void**)&(self->buffer_),
-            &buffer_list_max_size, w->fd, sizeof(int8_t*));
+    result = Realloc((void**)&self->buffer_, &buffer_list_max_size, w->fd,
+            sizeof(int8_t*));
     if(0 > result){
         self->CloseConnection(w->fd);
         return;
     }
     self->buffer_list_max_size_ = buffer_list_max_size;
 
-    /*
-     * read
-     */
     result = Realloc((void**)&(self->buffer_[w->fd]),
             &(self->buffer_max_length_[w->fd]),
             self->buffer_pending_index_[w->fd], sizeof(int8_t));
     if(0 > result){
         self->CloseConnection(w->fd);
-        perror("realloc:");
         return;
     }
 
+    /*
+     * read
+     */
     int8_t* buffer_start = self->buffer_[w->fd] + self->buffer_pending_index_[w->fd];
     int32_t rest_space = self->buffer_max_length_[w->fd] - self->buffer_pending_index_[w->fd];
     int32_t nread = ::read(w->fd, buffer_start, rest_space);
@@ -324,15 +339,15 @@ void Channel::Handle(int32_t fd)
          */
         int32_t controller_length_nl = 0;
         int32_t message_length_nl = 0;
-        memcpy(buffer, &controller_length_nl, 4);
-        memcpy(buffer, &message_length_nl, 4);
+        memcpy(&controller_length_nl, buffer, 4);
+        memcpy(&message_length_nl, buffer + 4, 4);
         int32_t controller_length = ntohl(controller_length_nl);
         int32_t message_length = ntohl(message_length_nl);
         /*
          * TODO:check length valid and overflow
          */
         int32_t total_length = header_length_ + controller_length + message_length;
-        if(total_length < buffer_pending_index - handled_start){
+        if(buffer_pending_index - handled_start < total_length){
             break; // lack data
         }
         ControllerMeta meta;
@@ -342,20 +357,18 @@ void Channel::Handle(int32_t fd)
             return;
         }
         int8_t* message_start = buffer + handled_start + header_length_ + controller_length;
-        if(0 == message_length){
-            handled_start += header_length_ + controller_length;
-        }
+
         int32_t handled = -1;
         if(meta.stub()){
             handled = HandleRequest(fd, meta, message_start, message_length);
         }else{
             handled = HandleResponse(fd, meta, message_start, message_length);
         }
-        if(0 > handled){
+        if(-1 == handled){
             CloseConnection(fd);
             return;
         }
-        if(0 == handled){//delay
+        if(-2 == handled){//delay
             break;
         }
         handled_start += handled;
@@ -374,11 +387,8 @@ void Channel::Handle(int32_t fd)
 int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         const int8_t* message_start, int32_t message_length)
 {
-    if(meta.transmit_id() < connect_watcher_max_size_){
-        /*
-         * TODO: do something while context is lost, log?
-         */
-        return message_length;
+    if(meta.transmit_id() > io_watcher_max_size_){
+        return -1;
     }
     Context* context = context_[meta.transmit_id()];
     if(NULL == context){
@@ -388,28 +398,16 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         return message_length;
     }
     Controller* controller = context->controller_;
-    if(NULL == controller){
-        /*
-         * TODO: should not happend
-         */
-        return message_length;
+    ControllerMeta& stub_meta = controller->get_meta_data();
+    if(stub_meta.fd() != fd){
+        return -1;
     }
     google::protobuf::Message* response = context->response_;
-    if(NULL == response){
-        /*
-         * TODO: should not happen
-         */
-        return message_length;
-    }
 
-    ControllerMeta& stub_meta = controller->get_meta_data();
-    if(stub_meta.wide()){
-        controller->Unref();
-    }
     if(!controller->Failed()){
-        google::protobuf::Message * new_response = context->response_->New();
+        google::protobuf::Message* new_response = context->response_->New();
         if(NULL == new_response){
-            return 0; //delay
+            return -2; //delay
         }
         if(!new_response->ParseFromArray(message_start, message_length)){
             return -1;//can not recovered
@@ -418,11 +416,9 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         delete new_response;
     }
 
-    if(!stub_meta.wide() || !controller->get_ref()){
-        context->done_->Run();
-        ::free(context);
-        context_[stub_meta.transmit_id()] = NULL;
-    }
+    context->done_->Run();
+    context->Destroy(); // Unref
+    context_[stub_meta.transmit_id()] = NULL;
     return message_length;
 }
 
@@ -432,58 +428,59 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
 int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         const int8_t* message_start, int32_t message_length)
 {
-    Context* context = new Context();
+    Context* context = new Context(loop_);
     if(NULL == context){
-        return 0; // delay
+        return -2; // delay
     }
     context->controller_ = new Controller();
     if(NULL == context->controller_){
-        delete context;
-        return 0; // delay
+        context->Destroy();
+        return -2; // delay
     }
     context->done_ = new RemoteClosure(loop_, this, context);
     if(NULL == context->done_){
         delete context->controller_;
-        delete context;
-        return 0;
+        context->Destroy();
+        return -2;
     }
 
     ControllerMeta& meta = context->controller_->get_meta_data();
     meta.CopyFrom(stub_meta);
     meta.set_stub(false);
-    google::protobuf::Service* service = GetServiceByName(meta.method_name());
+    meta.set_fd(fd);
+    google::protobuf::Service* service = GetServiceByName(meta.service_name());
     if(NULL == service){
         delete context->done_;
         delete context->controller_;
-        delete context;
+        context->Destroy();
         return -1;
     }
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
-    context->method_ = service_descriptor->FindMethodByName(meta.method_name());
-    context->request_ = service->GetRequestPrototype(context->method_).New();
+    const google::protobuf::MethodDescriptor* method = service_descriptor->FindMethodByName(meta.method_name());
+    context->request_ = service->GetRequestPrototype(method).New();
     if(NULL == context->request_){
         delete context->done_;
         delete context->controller_;
         delete context->request_;
-        delete context;
-        return 0;
+        context->Destroy();
+        return -2; // delay
     }
     if(!context->request_->ParseFromArray(message_start, message_length)){
         delete context->done_;
         delete context->controller_;
         delete context->request_;
-        delete context;
+        context->Destroy();
         return -1;
     }
-    context->response_ = service->GetResponsePrototype(context->method_).New();
+    context->response_ = service->GetResponsePrototype(method).New();
     if(NULL == context->request_){
         delete context->done_;
         delete context->controller_;
         delete context->request_;
-        delete context;
-        return 0; // delay
+        context->Destroy();
+        return -2; // delay
     }
-    service->CallMethod(context->method_, context->controller_,
+    service->CallMethod(method, context->controller_,
             context->request_, context->response_, context->done_);
     return message_length;
 }
@@ -515,10 +512,9 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
         return result;
     }
 
-    result = Realloc((void**)&connect_watcher_, &connect_watcher_max_size_, fd,
-            sizeof(struct ev_io*));
+    result = Realloc((void**)&connect_watcher_, &connect_watcher_max_size_,
+            fd, sizeof(struct ev_io*));
     if(0 > result){
-        perror("realloc:");
         CloseConnection(fd);
         return -1;
     }
@@ -574,7 +570,7 @@ int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
     }
 
     result = Realloc((void**)&accept_watcher_, &accept_watcher_max_size_, fd,
-            sizeof(struct ev_io));
+            sizeof(struct ev_io*));
     if(0 > result){
         perror("realloc:");
         CloseConnection(fd);
@@ -625,9 +621,9 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
         }
 
         int32_t result = -1;
-        result = self->NewConnection(w->fd);
+        result = self->NewConnection(fd);
         if(0 > result){
-            self->CloseConnection(w->fd);
+            self->CloseConnection(fd);
         }
     }
 }
@@ -669,17 +665,21 @@ void Channel::CloseConnection(int32_t fd)
         }
         connect_watcher_[fd] = NULL;
     }
-    //ev_break(loop_, EVBREAK_ONE); // do not call the stoped event
 
     // read buffer
-    buffer_pending_index_[fd] = 0;
+    if(fd < buffer_list_max_size_){
+        buffer_pending_index_[fd] = 0;
+    }
 
     // write buffer
     if(fd < context_list_max_size_){
-        Context * context = context_[fd];
+        Context * context = write_pending_[fd];
         while(context){
-            ::free(context);
+            int32_t transmit_id = context->controller_->get_meta_data().transmit_id();
+            context_[transmit_id] = NULL;
+            Context* tmp = context;
             context = context->next_;
+            delete tmp;
         }
         context_[fd] = NULL;
     }
@@ -712,16 +712,16 @@ int32_t Channel::NewConnection(int32_t fd)
 
     uint32_t io_watcher_max_size = 0;
     io_watcher_max_size = io_watcher_max_size_;
-    result = Realloc((void**)&read_watcher_, &io_watcher_max_size,
-            fd, sizeof(struct ev_io));
+    result = Realloc((void**)&read_watcher_, &io_watcher_max_size, fd,
+            sizeof(struct ev_io*));
     if(0 > result){
         perror("realloc:");
         CloseConnection(fd);
         return -1;
     }
     io_watcher_max_size = io_watcher_max_size_;
-    result = Realloc((void**)&write_watcher_, &io_watcher_max_size,
-            fd, sizeof(struct ev_io));
+    result = Realloc((void**)&write_watcher_, &io_watcher_max_size, fd,
+            sizeof(struct ev_io*));
     if(0 > result){
         perror("realloc:");
         CloseConnection(fd);
@@ -756,10 +756,11 @@ int32_t Channel::NewConnection(int32_t fd)
     return 0;
 }
 
-google::protobuf::Service* Channel::GetServiceByName(const std::string& name) const
+google::protobuf::Service* Channel::GetServiceByName(const std::string& name)
 {
     for(uint32_t i = 0; i < service_current_size_; ++i){
-        if(NULL == service_[i] && name == service_[i]->GetDescriptor()->name()){
+        std::string _name = service_[i]->GetDescriptor()->name();
+        if(NULL != service_[i] && name == service_[i]->GetDescriptor()->name()){
             return service_[i];
         }
     }
@@ -779,8 +780,7 @@ google::protobuf::Service* Channel::GetServiceByName(const std::string& name) co
  * 0: SUCCESS.
  * -1: FAILED. (realloc failed).
  */
-int32_t Channel::Realloc(void** ptr, uint32_t* origin_size,
-        uint32_t expect_size, size_t type_size)
+int32_t Channel::Realloc(void** ptr, uint32_t* origin_size, uint32_t expect_size, uint32_t type_size)
 {
     if(NULL == ptr || NULL == origin_size){
         ::puts("libmaid: ptr and origin_size can not be NULL in Realloc");
@@ -791,14 +791,42 @@ int32_t Channel::Realloc(void** ptr, uint32_t* origin_size,
     while(size  <= expect_size){
         size += 1;
         size <<= 1;
-        void* new_ptr = ::realloc(*ptr, size);
+        void* new_ptr = ::realloc(*ptr, size * type_size);
         if(NULL == new_ptr){
             ::perror("Realloc:");
             return -1;
         }
         *ptr = new_ptr;
     }
-    ::memset(*ptr + *origin_size, 0, size - *origin_size); //TODO:check
+    ::memset(*ptr + *origin_size, 0, (size - *origin_size) * type_size);
     *origin_size = size;
     return 0;
+}
+
+Context::Context(struct ev_loop* loop)
+    :loop_(loop),
+    next_(NULL)
+{
+    gc_.data = this;
+}
+
+void Context::Ref()
+{
+    ++ref_;
+}
+
+void Context::Destroy()
+{
+    --ref_;
+    if(0 >= ref_){
+        ev_check_init(&gc_, OnGC);
+        ev_check_start(loop_, &gc_);
+    }
+}
+
+void Context::OnGC(struct ev_loop* loop, ev_check* w, int32_t revents)
+{
+    Context* self = (Context*)(w->data);
+    ev_check_stop(self->loop_, &(self->gc_));
+    delete self;
 }
