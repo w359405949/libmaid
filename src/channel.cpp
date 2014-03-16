@@ -358,26 +358,26 @@ void Channel::Handle(int32_t fd)
         }
         int8_t* message_start = buffer + handled_start + header_length_ + controller_length;
 
-        int32_t handled = -1;
+        int32_t result = -1;
         if(meta.stub()){
-            handled = HandleRequest(fd, meta, message_start, message_length);
+            result = HandleRequest(fd, meta, message_start, message_length);
         }else{
-            handled = HandleResponse(fd, meta, message_start, message_length);
+            result = HandleResponse(fd, meta, message_start, message_length);
         }
-        if(-1 == handled){
+        if(-1 == result){
             CloseConnection(fd);
             return;
         }
-        if(-2 == handled){//delay
+        if(-2 == result){//delay
             break;
         }
-        handled_start += handled;
+        handled_start += header_length_ + controller_length + message_length;
     }
 
     // move
     assert(("overflowed", handled_start <= buffer_pending_index));
     buffer_pending_index -= handled_start;
-    ::memmove(buffer + handled_start, buffer, buffer_pending_index);
+    ::memmove(buffer, buffer + handled_start, buffer_pending_index);
 
     buffer_pending_index_[fd] = buffer_pending_index;
     buffer_max_length_[fd] = buffer_max_length;
@@ -388,6 +388,7 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         const int8_t* message_start, int32_t message_length)
 {
     if(meta.transmit_id() > io_watcher_max_size_){
+        printf("invalid transmit id\n");
         return -1;
     }
     Context* context = context_[meta.transmit_id()];
@@ -395,11 +396,12 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         /*
          * TODO: do something while context is lost, log?
          */
-        return message_length;
+        return 0;
     }
     Controller* controller = context->controller_;
     ControllerMeta& stub_meta = controller->get_meta_data();
     if(stub_meta.fd() != fd){
+        printf("invalid fd\n");
         return -1;
     }
     google::protobuf::Message* response = context->response_;
@@ -410,6 +412,7 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
             return -2; //delay
         }
         if(!new_response->ParseFromArray(message_start, message_length)){
+            printf("parse response error\n");
             return -1;//can not recovered
         }
         response->MergeFrom(*new_response);
@@ -419,7 +422,7 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
     context->done_->Run();
     context->Destroy(); // Unref
     context_[stub_meta.transmit_id()] = NULL;
-    return message_length;
+    return 0;
 }
 
 /*
@@ -453,6 +456,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         delete context->done_;
         delete context->controller_;
         context->Destroy();
+        printf("service not exist\n");
         return -1;
     }
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
@@ -470,6 +474,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         delete context->controller_;
         delete context->request_;
         context->Destroy();
+        printf("parse request error\n");
         return -1;
     }
     context->response_ = service->GetResponsePrototype(method).New();
@@ -482,7 +487,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
     }
     service->CallMethod(method, context->controller_,
             context->request_, context->response_, context->done_);
-    return message_length;
+    return 0;
 }
 
 int32_t Channel::Connect(const std::string& host, int32_t port)
@@ -630,6 +635,7 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
 
 void Channel::CloseConnection(int32_t fd)
 {
+    printf("close connection:%d\n", fd);
     //
     ::close(fd);
 
@@ -743,6 +749,7 @@ int32_t Channel::NewConnection(int32_t fd)
         return -1;
     }
 
+    printf("new connection:%d\n", fd);
     read_watcher->data = this;
     write_watcher->data = this;
     read_watcher->fd = fd;
