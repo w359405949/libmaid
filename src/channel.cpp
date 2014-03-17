@@ -116,7 +116,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
      */
     uint32_t transmit_id = context_list_max_size_;
     for(uint32_t i = 0; i < context_list_max_size_; ++i) {
-        if(NULL != context_[i]){
+        if(NULL == context_[i]){
             transmit_id = i;
             break;
         }
@@ -167,13 +167,12 @@ int32_t Channel::AppendContext(const int32_t fd, Context* context)
         return -2; // dealy if needed
     }
     Context * head = write_pending_[fd];
-    if(NULL != head){
-        for(; head->next_; head = head->next_);
-        head->next_ = context;
-    }else{
-        head = context;
+    if(NULL == head){
+        write_pending_[fd] = context;
+        return 0;
     }
-    write_pending_[fd] = head;
+    for(; head->next_; head = head->next_);
+    head->next_ = context;
     return 0;
 }
 
@@ -350,8 +349,8 @@ void Channel::Handle(int32_t fd)
         if(buffer_pending_index - handled_start < total_length){
             break; // lack data
         }
-        ControllerMeta meta;
 
+        ControllerMeta meta;
         if(!meta.ParseFromArray(buffer + handled_start + header_length_, controller_length)){
             CloseConnection(fd); // unknown meta, can not recovered
             return;
@@ -387,7 +386,7 @@ void Channel::Handle(int32_t fd)
 int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         const int8_t* message_start, int32_t message_length)
 {
-    if(meta.transmit_id() > io_watcher_max_size_){
+    if(meta.transmit_id() > context_list_max_size_){
         printf("invalid transmit id\n");
         return -1;
     }
@@ -485,6 +484,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         context->Destroy();
         return -2; // delay
     }
+    printf("meta: %s\n", context->controller_->get_meta_data().DebugString().c_str());
     service->CallMethod(method, context->controller_,
             context->request_, context->response_, context->done_);
     return 0;
@@ -787,26 +787,26 @@ google::protobuf::Service* Channel::GetServiceByName(const std::string& name)
  * 0: SUCCESS.
  * -1: FAILED. (realloc failed).
  */
-int32_t Channel::Realloc(void** ptr, uint32_t* origin_size, uint32_t expect_size, uint32_t type_size)
+int32_t Channel::Realloc(void** ptr, uint32_t* origin_length, uint32_t expect_length, uint32_t type_size)
 {
-    if(NULL == ptr || NULL == origin_size){
+    if(NULL == ptr || NULL == origin_length){
         ::puts("libmaid: ptr and origin_size can not be NULL in Realloc");
         return -1;
     }
 
-    uint32_t size = *origin_size;
-    while(size  <= expect_size){
-        size += 1;
-        size <<= 1;
-        void* new_ptr = ::realloc(*ptr, size * type_size);
+    uint32_t new_length = *origin_length;
+    while(new_length <= expect_length){
+        new_length += 1;
+        new_length <<= 1;
+        void* new_ptr = ::realloc(*ptr, new_length * type_size);
         if(NULL == new_ptr){
             ::perror("Realloc:");
             return -1;
         }
         *ptr = new_ptr;
     }
-    ::memset(*ptr + *origin_size, 0, (size - *origin_size) * type_size);
-    *origin_size = size;
+    ::memset(*ptr + (*origin_length * type_size), 0, (new_length - *origin_length) * type_size);
+    *origin_length = new_length;
     return 0;
 }
 

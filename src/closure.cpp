@@ -10,7 +10,8 @@ using maid::controller::Controller;
 RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Context* context)
     :loop_(loop),
     channel_(channel),
-    context_(context)
+    context_(context),
+    in_gc_(false)
 {
     assert(("channel can not be NULL", NULL != channel));
     assert(("loop can not be NULL", NULL != loop));
@@ -32,8 +33,12 @@ void RemoteClosure::Run()
     /*
      * TODO: check AppendContext return value. and retry if needed.
      */
+    if(in_gc_){
+        return;
+    }
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);
+    in_gc_ = true;
 }
 
 void RemoteClosure::OnGC(EV_P_ ev_check* w, int32_t revents)
