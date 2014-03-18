@@ -26,7 +26,7 @@ int main()
 {
     Channel* channel = new Channel(EV_DEFAULT);
     int32_t fd = channel->Connect("127.0.0.1", 8888);
-    Controller* controller = new Controller();
+    Controller* controller = new Controller(EV_DEFAULT);
     controller->get_meta_data().set_fd(fd);
     HelloRequest* request = new HelloRequest();
     request->set_message("hello");

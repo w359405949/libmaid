@@ -248,10 +248,14 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     int32_t message_nl = 0;
     int32_t nwrite = 0;
 
-    if(meta.stub()){
-        message_nl = ::htonl(controller->get_request()->ByteSize());
+    if(controller->Failed()){
+        message_nl = ::htonl(0);
     }else{
-        message_nl = ::htonl(controller->get_response()->ByteSize());
+        if(meta.stub()){
+            message_nl = ::htonl(controller->get_request()->ByteSize());
+        }else{
+            message_nl = ::htonl(controller->get_response()->ByteSize());
+        }
     }
 
     result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
@@ -288,22 +292,23 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         return;
     }
 
-    bool serialize = false;
-    if(meta.stub()){
-        serialize = controller->get_request()->SerializeToFileDescriptor(w->fd);
-    }else{
-        serialize = controller->get_response()->SerializeToFileDescriptor(w->fd);
-    }
-    if(!serialize){
+    if(!controller->Failed()){
+        bool serialize = false;
         if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->get_done()->Run();
+            serialize = controller->get_request()->SerializeToFileDescriptor(w->fd);
+        }else{
+            serialize = controller->get_response()->SerializeToFileDescriptor(w->fd);
         }
-        self->CloseConnection(w->fd);
-        return;
+        if(!serialize){
+            if(meta.stub()){
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->get_done()->Run();
+            }
+            self->CloseConnection(w->fd);
+            return;
+        }
     }
-
 }
 
 void Channel::OnRead(EV_P_ ev_io *w, int revents)
