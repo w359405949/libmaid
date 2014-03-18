@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <ev.h>
 #include "channel.h"
 #include "controller.h"
@@ -46,6 +47,7 @@ Channel::Channel(struct ev_loop* loop)
     write_pending_list_max_size_(0)
 {
     assert(("libmaid: loop can not be none", NULL != loop));
+    signal(SIGPIPE, SIG_IGN);
 }
 
 Channel::~Channel()
@@ -209,6 +211,9 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
 
 Controller* Channel::FrontController(int32_t fd)
 {
+    if(fd >= write_pending_list_max_size_){
+        return NULL;
+    }
     Controller* head = write_pending_[fd];
     if(NULL == head){
         return head;
@@ -251,9 +256,11 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 
     result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
     if(0 > result){
-        std::string error_text(strerror(errno));
-        controller->SetFailed(error_text);
-        controller->get_done()->Run();
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->get_done()->Run();
+        }
         self->CloseConnection(w->fd);
         return;
     }
@@ -261,18 +268,22 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 
     result = ::write(w->fd, &message_nl, sizeof(message_nl));
     if(0 > result){
-        std::string error_text(strerror(errno));
-        controller->SetFailed(error_text);
-        controller->get_done()->Run();
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->get_done()->Run();
+        }
         self->CloseConnection(w->fd);
         return;
     }
     nwrite += result;
 
     if(!meta.SerializeToFileDescriptor(w->fd)){
-        std::string error_text(strerror(errno));
-        controller->SetFailed(error_text);
-        controller->get_done()->Run();
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->get_done()->Run();
+        }
         self->CloseConnection(w->fd);
         return;
     }
@@ -284,9 +295,11 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         serialize = controller->get_response()->SerializeToFileDescriptor(w->fd);
     }
     if(!serialize){
-        std::string error_text(strerror(errno));
-        controller->SetFailed(error_text);
-        controller->get_done()->Run();
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->get_done()->Run();
+        }
         self->CloseConnection(w->fd);
         return;
     }
@@ -698,9 +711,9 @@ void Channel::CloseConnection(int32_t fd)
         if(controller->get_meta_data().stub()){
             controller->SetFailed("connection closed");
             controller->get_done()->Run();
-
             UnregistController(controller->get_meta_data());
         }
+        controller->Destroy();
     }while(1);
 }
 

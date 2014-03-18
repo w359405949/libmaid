@@ -35,7 +35,6 @@ private:
 
     struct ev_check gc_;
     struct ev_loop* loop_;
-    bool in_gc_;
 };
 
 } /* closure */

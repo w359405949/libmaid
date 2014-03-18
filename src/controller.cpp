@@ -20,10 +20,10 @@ Controller::Controller(struct ev_loop* loop)
 Controller::~Controller()
 {
     assert(("normal delete", 0 >= ref_));
-    if(NULL != request_){
+    if(!meta_data_.stub() && NULL != request_){
         delete request_;
     }
-    if(NULL != response_){
+    if(!meta_data_.stub() && NULL != response_){
         delete response_;
     }
     done_ = NULL;
@@ -122,7 +122,7 @@ void Controller::Destroy()
 void Controller::Ref()
 {
     ++ref_;
-    if(1 >= ref_ && in_gc_){
+    if(1 <= ref_ && in_gc_){
         ev_check_stop(loop_, &gc_);
         in_gc_ = false;
     }
