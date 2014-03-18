@@ -163,7 +163,6 @@ int32_t Channel::RegistController(Controller* controller)
 
 Controller* Channel::UnregistController(ControllerMeta& meta)
 {
-
     Controller* r_controller = controller_[meta.transmit_id()];
     if(NULL == r_controller){
         assert(("libmaid: controller not regist", false));
@@ -215,7 +214,7 @@ Controller* Channel::FrontController(int32_t fd)
         return head;
     }
     write_pending_[fd] = head->get_next();
-
+    head->Destroy();
     return head;
 }
 

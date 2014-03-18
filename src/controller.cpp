@@ -5,7 +5,13 @@ using maid::controller::Controller;
 using maid::proto::ControllerMeta;
 
 Controller::Controller(struct ev_loop* loop)
-    :loop_(loop),
+    :request_(NULL),
+    response_(NULL),
+    done_(NULL),
+    next_(NULL),
+
+    loop_(loop),
+    ref_(0),
     in_gc_(false)
 {
     gc_.data = this;
@@ -14,6 +20,15 @@ Controller::Controller(struct ev_loop* loop)
 Controller::~Controller()
 {
     assert(("normal delete", 0 >= ref_));
+    if(NULL != request_){
+        delete request_;
+    }
+    if(NULL != response_){
+        delete response_;
+    }
+    done_ = NULL;
+    next_ = NULL;
+    loop_ = NULL;
 }
 
 void Controller::Reset()
@@ -117,7 +132,6 @@ void Controller::Ref()
 void Controller::OnGC(EV_P_ ev_check* w, int32_t revents)
 {
     Controller* self = (Controller*)w->data;
-    printf("libmaid: GC, %d, %d\n", self->meta_data_.fd(), self->meta_data_.transmit_id());
     ev_check_stop(EV_A_ w);
     delete self;
 }

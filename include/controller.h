@@ -52,12 +52,11 @@ public:
     void Ref();
 private:
     static void OnGC(EV_P_ ev_check* w, int32_t revents);
-    ~Controller(); // diable delete except GC;
+    virtual ~Controller(); // diable delete except GC;
 
 private:
     maid::proto::ControllerMeta meta_data_;
 
-    maid::controller::Controller* controller_;
     google::protobuf::Message* request_;
     google::protobuf::Message* response_;
     google::protobuf::Closure* done_;

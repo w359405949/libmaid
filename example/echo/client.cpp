@@ -15,7 +15,7 @@ public:
     }
     void Run()
     {
-        printf("%s\n", response_->DebugString().c_str());
+        //printf("%s\n", response_->DebugString().c_str());
     }
 
 private:
