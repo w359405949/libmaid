@@ -185,7 +185,6 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
         return -1;
     }
 
-    controller->Ref();
     if(!IsEffictive(fd)){
         return -1;
     }
@@ -199,11 +198,12 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
     Controller* head = controller;
     head->set_next(write_pending_[fd]);
 
-    for(; head->get_next(); controller = controller->get_next());
+    for(; head->get_next(); head = head->get_next());
 
     head->set_next(controller);
     controller->set_next(NULL);
     write_pending_[fd] = head;
+    controller->Ref();
     return 0;
 }
 
