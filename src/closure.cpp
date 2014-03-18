@@ -3,19 +3,17 @@
 #include "controller.h"
 
 using maid::channel::Channel;
-using maid::channel::Context;
 using maid::closure::RemoteClosure;
 using maid::controller::Controller;
 
-RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Context* context)
+RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Controller* controller)
     :loop_(loop),
     channel_(channel),
-    context_(context),
-    in_gc_(false)
+    controller_(controller)
 {
     assert(("channel can not be NULL", NULL != channel));
     assert(("loop can not be NULL", NULL != loop));
-    assert(("context can not be NULL", NULL != context));
+    assert(("controller can not be NULL", NULL != controller));
     gc_.data = this;
 }
 
@@ -23,22 +21,17 @@ RemoteClosure::~RemoteClosure()
 {
     loop_ = NULL;
     channel_ = NULL;
-    context_ = NULL;
+    controller_ = NULL;
 }
 
 void RemoteClosure::Run()
 {
-    Controller* controller = context_->controller_;
-    channel_->AppendContext(controller->get_meta_data().fd(), context_);
+    channel_->PushController(controller_->get_meta_data().fd(), controller_);
     /*
-     * TODO: check AppendContext return value. and retry if needed.
+     * TODO: check PushController return value. and retry if needed.
      */
-    if(in_gc_){
-        return;
-    }
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);
-    in_gc_ = true;
 }
 
 void RemoteClosure::OnGC(EV_P_ ev_check* w, int32_t revents)

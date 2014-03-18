@@ -14,7 +14,6 @@
 using maid::channel::Channel;
 using maid::controller::Controller;
 using maid::proto::ControllerMeta;
-using maid::channel::Context;
 using maid::closure::RemoteClosure;
 
 Channel::Channel(struct ev_loop* loop)
@@ -40,8 +39,8 @@ Channel::Channel(struct ev_loop* loop)
     buffer_max_length_(NULL),
     buffer_list_max_size_(0),
 
-    context_(NULL),
-    context_list_max_size_(0),
+    controller_(NULL),
+    controller_list_max_size_(0),
 
     write_pending_(NULL),
     write_pending_list_max_size_(0)
@@ -77,7 +76,11 @@ Channel::~Channel()
 
 int32_t Channel::AppendService(google::protobuf::Service* service)
 {
-    assert(("service can not be NULL", NULL != service));
+    if(NULL == service){
+        assert(("libmaid: service can not be NULL", NULL != service));
+        return -1;
+    }
+
     int32_t result = Realloc((void**)&service_, &service_max_size_,
             service_current_size_, sizeof(google::protobuf::Service*));
     if(0 > result){
@@ -87,93 +90,133 @@ int32_t Channel::AppendService(google::protobuf::Service* service)
     return 0;
 }
 
-void Channel::CallMethod(const google::protobuf::MethodDescriptor * method,
-        google::protobuf::RpcController * controller,
-        const google::protobuf::Message * request,
-        google::protobuf::Message * response,
-        google::protobuf::Closure * done)
+void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
+        google::protobuf::RpcController* _controller,
+        const google::protobuf::Message* request,
+        google::protobuf::Message* response,
+        google::protobuf::Closure* done)
 {
-    assert(("libmaid: controller must have type Controller", NULL != dynamic_cast<Controller *>(controller)));
+    assert(("libmaid: controller must have type maid::controller::Controller", NULL != dynamic_cast<Controller *>(_controller)));
     assert(("libmaid: request must not be NULL", NULL != request));
     assert(("libmaid: done can not be NULL", NULL != done));
 
-    Context * context = new Context(loop_);
-    if(NULL == context){
+    Controller* controller = (Controller*)_controller;
+    controller->Ref();
+
+    controller->set_request((google::protobuf::Message*)request);
+    controller->set_response(response);
+    controller->set_done(done);
+
+    int32_t result = RegistController(controller);
+    if(0 > result){
         std::string error_text(strerror(errno));
         controller->SetFailed(error_text);
         done->Run();
         return;
     }
-    context->controller_ = (Controller*)controller;
-    context->request_ = (google::protobuf::Message*)request;
-    context->response_ = response;
-    context->done_ = done;
 
+    ControllerMeta& meta = controller->get_meta_data();
+    meta.set_service_name(method->service()->full_name());
+    meta.set_method_name(method->name());
+    meta.set_stub(true);
+
+    result = PushController(meta.fd(), controller);
+    if(-1 == result){
+        controller->SetFailed("invalid fd");
+        done->Run();
+        UnregistController(meta);
+        return;
+    }else if(-2 == result){
+        /* retry if needed */
+        controller->SetFailed("channel busy");
+        done->Run();
+        UnregistController(meta);
+        return;
+    }
+}
+
+int32_t Channel::RegistController(Controller* controller)
+{
     /*
      *  assume the oldest id always handled first.
      *  so simple transmit_id search WOULD NOT ALWAYS BAD as O(n).
      *  TODO: more test and benchmark.
      */
-    uint32_t transmit_id = context_list_max_size_;
-    for(uint32_t i = 0; i < context_list_max_size_; ++i) {
-        if(NULL == context_[i]){
+    uint32_t transmit_id = controller_list_max_size_;
+    for(uint32_t i = 0; i < controller_list_max_size_; ++i) {
+        if(NULL == controller_[i]){
             transmit_id = i;
             break;
         }
     }
-    int32_t result = Realloc((void**)&context_, &context_list_max_size_,
-            transmit_id, sizeof(Context*));
+    int32_t result = Realloc((void**)&controller_, &controller_list_max_size_,
+            transmit_id, sizeof(Controller*));
     if(0 > result){
-        std::string error_text(strerror(errno));
-        controller->SetFailed(error_text);
-        done->Run();
-        context->Destroy();
-        return;
+        return -1;
     }
+    controller->get_meta_data().set_transmit_id(transmit_id);
 
-    ControllerMeta& meta = ((Controller*)controller)->get_meta_data();
-
-    meta.set_service_name(method->service()->full_name());
-    meta.set_method_name(method->name());
-    meta.set_transmit_id(transmit_id);
-    meta.set_stub(true);
-
-    result = AppendContext(meta.fd(), context);
-    if(-1 == result){
-        controller->SetFailed("invalid fd");
-        done->Run();
-        context->Destroy();
-        return;
-    }
-    if(-2 == result){
-        controller->SetFailed("channel busy");
-        done->Run();
-        context->Destroy();
-        return;
-    }
-    context->Ref();
-    context_[transmit_id] = context;
+    controller->Ref();
+    controller_[transmit_id] = controller;
+    return 0;
 }
 
-int32_t Channel::AppendContext(const int32_t fd, Context* context)
+Controller* Channel::UnregistController(ControllerMeta& meta)
 {
-    context->Ref();
+
+    Controller* r_controller = controller_[meta.transmit_id()];
+    if(NULL == r_controller){
+        assert(("libmaid: controller not regist", false));
+        return NULL;
+    }
+    if(r_controller->get_meta_data().fd() != meta.fd()){
+        assert(("libmaid: not the same controller", false));
+        return NULL;
+    }
+
+    controller_[meta.transmit_id()] = NULL;
+    r_controller->Destroy();
+    return r_controller;
+}
+
+int32_t Channel::PushController(int32_t fd, Controller* controller)
+{
+    if(NULL == controller){
+        assert(("libmaid: controller should not be NULL", false));
+        return -1;
+    }
+
+    controller->Ref();
     if(!IsEffictive(fd)){
         return -1;
     }
     int32_t result = Realloc((void**)&write_pending_,
-            &write_pending_list_max_size_, fd, sizeof(Context*));
+            &write_pending_list_max_size_, fd, sizeof(Controller*));
     if(0 > result){
         return -2; // dealy if needed
     }
-    Context * head = write_pending_[fd];
-    if(NULL == head){
-        write_pending_[fd] = context;
-        return 0;
-    }
-    for(; head->next_; head = head->next_);
-    head->next_ = context;
+
+    // Do not need to check head.
+    Controller* head = controller;
+    head->set_next(write_pending_[fd]);
+
+    for(; head->get_next(); controller = controller->get_next());
+
+    head->set_next(controller);
+    controller->set_next(NULL);
+    write_pending_[fd] = head;
     return 0;
+}
+
+Controller* Channel::FrontController(int32_t fd)
+{
+    Controller* head = write_pending_[fd];
+    if(NULL == head){
+        return head;
+    }
+    write_pending_[fd] = head->get_next();
+
+    return head;
 }
 
 bool Channel::IsEffictive(int32_t fd) const
@@ -187,78 +230,68 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     if(w->fd > self->write_pending_list_max_size_){
         return;
     }
-    Context* context = self->write_pending_[w->fd];
-    while(context){
-        Controller * controller = context->controller_;
-        ControllerMeta& meta = controller->get_meta_data();
-
-        /*
-         * serializer can be cached if neccessary
-         */
-        std::string controller_buffer;
-        meta.SerializeToString(&controller_buffer);
-        uint32_t controller_nl = ::htonl(controller_buffer.length());
-
-        std::string message_buffer;
-        if(meta.stub()){
-            context->request_->SerializeToString(&message_buffer);
-        }else{
-            context->response_->SerializeToString(&message_buffer);
-        }
-        uint32_t message_nl = ::htonl(message_buffer.length());
-
-        int32_t result = -1;
-        int32_t nwrite = 0;
-        result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
-        if(0 > result){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            context->done_->Run();
-            self->CloseConnection(w->fd);
-            return;
-        }
-        nwrite += result;
-
-        result = ::write(w->fd, &message_nl, sizeof(message_nl));
-        if(0 > result){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            context->done_->Run();
-            self->CloseConnection(w->fd);
-            return;
-        }
-        nwrite += result;
-
-        //if(!meta.SerializeToFileDescriptor(w->fd)){}
-        result = ::write(w->fd, controller_buffer.c_str(),
-                controller_buffer.length());
-        if(0 > result){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            context->done_->Run();
-            self->CloseConnection(w->fd);
-            return;
-        }
-        nwrite += result;
-
-        result = ::write(w->fd, message_buffer.c_str(),
-                message_buffer.length());
-        if(0 > result){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            context->done_->Run();
-            self->CloseConnection(w->fd);
-            return;
-        }
-        nwrite += result;
-
-        assert(("libmaid: lose data", self->header_length_ + controller_buffer.length() + message_buffer.length() == nwrite));
-
-        Context* tmp = context;
-        context = context->next_;
-        self->write_pending_[w->fd] = context;
-        tmp->Destroy(); //Unref
+    Controller* controller = self->FrontController(w->fd);
+    if(NULL == controller){
+        return;
     }
+
+    /*
+     * serializer can be cached if neccessary
+     */
+    ControllerMeta& meta = controller->get_meta_data();
+    uint32_t controller_nl = ::htonl(meta.ByteSize());
+    int32_t result = -1;
+    int32_t message_nl = 0;
+    int32_t nwrite = 0;
+
+    if(meta.stub()){
+        message_nl = ::htonl(controller->get_request()->ByteSize());
+    }else{
+        message_nl = ::htonl(controller->get_response()->ByteSize());
+    }
+
+    result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
+    if(0 > result){
+        std::string error_text(strerror(errno));
+        controller->SetFailed(error_text);
+        controller->get_done()->Run();
+        self->CloseConnection(w->fd);
+        return;
+    }
+    nwrite += result;
+
+    result = ::write(w->fd, &message_nl, sizeof(message_nl));
+    if(0 > result){
+        std::string error_text(strerror(errno));
+        controller->SetFailed(error_text);
+        controller->get_done()->Run();
+        self->CloseConnection(w->fd);
+        return;
+    }
+    nwrite += result;
+
+    if(!meta.SerializeToFileDescriptor(w->fd)){
+        std::string error_text(strerror(errno));
+        controller->SetFailed(error_text);
+        controller->get_done()->Run();
+        self->CloseConnection(w->fd);
+        return;
+    }
+
+    bool serialize = false;
+    if(meta.stub()){
+        serialize = controller->get_request()->SerializeToFileDescriptor(w->fd);
+    }else{
+        serialize = controller->get_response()->SerializeToFileDescriptor(w->fd);
+    }
+    if(!serialize){
+        std::string error_text(strerror(errno));
+        controller->SetFailed(error_text);
+        controller->get_done()->Run();
+        self->CloseConnection(w->fd);
+        return;
+    }
+
 }
 
 void Channel::OnRead(EV_P_ ev_io *w, int revents)
@@ -374,7 +407,7 @@ void Channel::Handle(int32_t fd)
     }
 
     // move
-    assert(("overflowed", handled_start <= buffer_pending_index));
+    assert(("libmaid: overflowed", handled_start <= buffer_pending_index));
     buffer_pending_index -= handled_start;
     ::memmove(buffer, buffer + handled_start, buffer_pending_index);
 
@@ -386,107 +419,87 @@ void Channel::Handle(int32_t fd)
 int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         const int8_t* message_start, int32_t message_length)
 {
-    if(meta.transmit_id() > context_list_max_size_){
-        printf("invalid transmit id\n");
-        return -1;
-    }
-    Context* context = context_[meta.transmit_id()];
-    if(NULL == context){
+    meta.set_fd(fd);
+    Controller* controller = UnregistController(meta);
+    if(NULL == controller){
         /*
-         * TODO: do something while context is lost, log?
+         * TODO: do something while controller is lost, log?
          */
-        return 0;
-    }
-    Controller* controller = context->controller_;
-    ControllerMeta& stub_meta = controller->get_meta_data();
-    if(stub_meta.fd() != fd){
-        printf("invalid fd\n");
         return -1;
     }
-    google::protobuf::Message* response = context->response_;
 
     if(!controller->Failed()){
-        google::protobuf::Message* new_response = context->response_->New();
+        google::protobuf::Message* response = controller->get_response();
+        google::protobuf::Message* new_response = response->New();
         if(NULL == new_response){
             return -2; //delay
         }
         if(!new_response->ParseFromArray(message_start, message_length)){
-            printf("parse response error\n");
             return -1;//can not recovered
         }
         response->MergeFrom(*new_response);
         delete new_response;
     }
 
-    context->done_->Run();
-    context->Destroy(); // Unref
-    context_[stub_meta.transmit_id()] = NULL;
+    controller->get_done()->Run();
+    controller->Destroy(); // Unref
     return 0;
 }
 
-/*
- * TODO: wide == true
- */
 int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         const int8_t* message_start, int32_t message_length)
 {
-    Context* context = new Context(loop_);
-    if(NULL == context){
+    Controller* controller= new Controller(loop_);
+    if(NULL == controller){
         return -2; // delay
-    }
-    context->controller_ = new Controller();
-    if(NULL == context->controller_){
-        context->Destroy();
-        return -2; // delay
-    }
-    context->done_ = new RemoteClosure(loop_, this, context);
-    if(NULL == context->done_){
-        delete context->controller_;
-        context->Destroy();
-        return -2;
     }
 
-    ControllerMeta& meta = context->controller_->get_meta_data();
+    google::protobuf::Closure* done = new RemoteClosure(loop_, this, controller);
+    if(NULL == done){
+        controller->Destroy();
+        return -2;
+    }
+    controller->set_done(done);
+
+    ControllerMeta& meta = controller->get_meta_data();
     meta.CopyFrom(stub_meta);
     meta.set_stub(false);
     meta.set_fd(fd);
     google::protobuf::Service* service = GetServiceByName(meta.service_name());
     if(NULL == service){
-        delete context->done_;
-        delete context->controller_;
-        context->Destroy();
-        printf("service not exist\n");
-        return -1;
+        controller->SetFailed("service not exist");
+        done->Run();
+        controller->Destroy();
+        return 0;
     }
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
     const google::protobuf::MethodDescriptor* method = service_descriptor->FindMethodByName(meta.method_name());
-    context->request_ = service->GetRequestPrototype(method).New();
-    if(NULL == context->request_){
-        delete context->done_;
-        delete context->controller_;
-        delete context->request_;
-        context->Destroy();
+    if(NULL == method){
+        controller->SetFailed("method not exist");
+        done->Run();
+        controller->Destroy();
+        return 0;
+    }
+
+    google::protobuf::Message* request = service->GetRequestPrototype(method).New();
+    if(NULL == request){
+        controller->Destroy();
         return -2; // delay
     }
-    if(!context->request_->ParseFromArray(message_start, message_length)){
-        delete context->done_;
-        delete context->controller_;
-        delete context->request_;
-        context->Destroy();
-        printf("parse request error\n");
+    controller->set_request(request);
+
+    if(!request->ParseFromArray(message_start, message_length)){
+        controller->Destroy();
         return -1;
     }
-    context->response_ = service->GetResponsePrototype(method).New();
-    if(NULL == context->request_){
-        delete context->done_;
-        delete context->controller_;
-        delete context->request_;
-        context->Destroy();
+    google::protobuf::Message* response = service->GetResponsePrototype(method).New();
+    if(NULL == response){
+        controller->Destroy();
         return -2; // delay
     }
-    printf("meta: %s\n", context->controller_->get_meta_data().DebugString().c_str());
-    service->CallMethod(method, context->controller_,
-            context->request_, context->response_, context->done_);
+    controller->set_response(response);
+
+    service->CallMethod(method, controller, request, response, done);
     return 0;
 }
 
@@ -678,17 +691,18 @@ void Channel::CloseConnection(int32_t fd)
     }
 
     // write buffer
-    if(fd < context_list_max_size_){
-        Context * context = write_pending_[fd];
-        while(context){
-            int32_t transmit_id = context->controller_->get_meta_data().transmit_id();
-            context_[transmit_id] = NULL;
-            Context* tmp = context;
-            context = context->next_;
-            delete tmp;
+    do{
+        Controller* controller = FrontController(fd);
+        if(NULL == controller){
+            break;
         }
-        context_[fd] = NULL;
-    }
+        if(controller->get_meta_data().stub()){
+            controller->SetFailed("connection closed");
+            controller->get_done()->Run();
+
+            UnregistController(controller->get_meta_data());
+        }
+    }while(1);
 }
 
 bool Channel::SetNonBlock(int32_t fd)
@@ -808,32 +822,4 @@ int32_t Channel::Realloc(void** ptr, uint32_t* origin_length, uint32_t expect_le
     ::memset(*ptr + (*origin_length * type_size), 0, (new_length - *origin_length) * type_size);
     *origin_length = new_length;
     return 0;
-}
-
-Context::Context(struct ev_loop* loop)
-    :loop_(loop),
-    next_(NULL)
-{
-    gc_.data = this;
-}
-
-void Context::Ref()
-{
-    ++ref_;
-}
-
-void Context::Destroy()
-{
-    --ref_;
-    if(0 >= ref_){
-        ev_check_init(&gc_, OnGC);
-        ev_check_start(loop_, &gc_);
-    }
-}
-
-void Context::OnGC(struct ev_loop* loop, ev_check* w, int32_t revents)
-{
-    Context* self = (Context*)(w->data);
-    ev_check_stop(self->loop_, &(self->gc_));
-    delete self;
 }

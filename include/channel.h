@@ -20,26 +20,6 @@ class Controller;
 namespace channel
 {
 
-class Context
-{
-public:
-    //google::protobuf::MethodDescriptor* method_;
-    maid::controller::Controller* controller_;
-    google::protobuf::Message* request_;
-    google::protobuf::Message* response_;
-    google::protobuf::Closure* done_;
-    struct Context* next_;
-
-    Context(struct ev_loop* loop);
-    void Destroy();
-    static void OnGC(struct ev_loop* loop, ev_check* w, int32_t revents);
-    void Ref();
-private:
-    struct ev_loop* loop_;
-    struct ev_check gc_;
-    int32_t ref_;
-};
-
 class Channel : public google::protobuf::RpcChannel
 {
 public:
@@ -66,13 +46,8 @@ public:
      */
     int32_t AppendService(google::protobuf::Service* service);
 
-    /*
-     * context for send.
-     * return
-     * 0: success.
-     * -1: failed. invalid fd.
-     */
-    int32_t AppendContext(int32_t fd, Context* context); // send
+    controller::Controller* FrontController(int32_t fd); // send queue.
+    int32_t PushController(int32_t fd, controller::Controller* controller); // send queue
 
 private:
     static void OnRead(EV_P_ ev_io* w, int32_t revents);
@@ -88,16 +63,23 @@ private:
 private:
     void CloseConnection(int32_t fd);
     void Handle(int32_t fd);
-    int32_t HandleRequest(int32_t fd,
-            maid::proto::ControllerMeta& stub_meta,
+    int32_t HandleRequest(int32_t fd, proto::ControllerMeta& stub_meta,
             const int8_t* message_start, int32_t message_length);
-    int32_t HandleResponse(int32_t fd,
-            maid::proto::ControllerMeta& meta,
+    int32_t HandleResponse(int32_t fd, proto::ControllerMeta& meta,
             const int8_t* message_start, int32_t message_length);
     bool IsEffictive(int32_t fd) const;
     bool IsConnected(int32_t fd) const;
     google::protobuf::Service* GetServiceByName(const std::string& name);
     int32_t NewConnection(int32_t fd);
+
+    /*
+     * return
+     * 0: success.
+     * -1: failed. invalid fd.
+     */
+    int32_t RegistController(controller::Controller* controller); // transmit.
+    controller::Controller* UnregistController(proto::ControllerMeta& meta); // transmit.
+
 
 private:
     // service
@@ -129,11 +111,11 @@ private:
     uint32_t buffer_list_max_size_;
 
     //
-    Context** context_; // level 1: transmit id
-    uint32_t context_list_max_size_;
+    controller::Controller** controller_; // level 1: transmit id
+    uint32_t controller_list_max_size_;
 
     //
-    Context** write_pending_; // level 1: fd;
+    controller::Controller** write_pending_; // level 1: fd;
     uint32_t write_pending_list_max_size_; //
 
 };
