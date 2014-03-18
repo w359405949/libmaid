@@ -438,6 +438,8 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
 {
     meta.set_fd(fd);
     Controller* controller = UnregistController(meta);
+    controller->get_meta_data().CopyFrom(meta);
+    controller->get_meta_data().set_stub(true);
     if(NULL == controller){
         /*
          * TODO: do something while controller is lost, log?

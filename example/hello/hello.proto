@@ -1,4 +1,6 @@
 option cc_generic_services = true;
+option py_generic_services = true;
+
 message HelloRequest
 {
     optional string message = 1;
