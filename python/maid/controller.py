@@ -5,6 +5,7 @@ class Controller(RpcController):
     def __init__(self):
         self.meta_data = ControllerMeta()
         self.fd = 0
+        self.sock = None
 
     def Reset(self):
         pass

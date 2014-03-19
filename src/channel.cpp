@@ -799,8 +799,8 @@ int32_t Channel::NewConnection(int32_t fd)
 google::protobuf::Service* Channel::GetServiceByName(const std::string& name)
 {
     for(uint32_t i = 0; i < service_current_size_; ++i){
-        std::string _name = service_[i]->GetDescriptor()->name();
-        if(NULL != service_[i] && name == service_[i]->GetDescriptor()->name()){
+        std::string _name = service_[i]->GetDescriptor()->full_name();
+        if(NULL != service_[i] && name == service_[i]->GetDescriptor()->full_name()){
             return service_[i];
         }
     }

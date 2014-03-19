@@ -1,9 +1,13 @@
+import struct
+
 from google.protobuf.service import RpcChannel
+from google.protobuf.message import DecodeError
 from gevent.hub import get_hub
 from gevent.pool import Pool
 from gevent.event import AsyncResult
-from gevent import socket
 from gevent.queue import Queue
+from gevent.greenlet import Greenlet
+from gevent import socket
 
 from controller_pb2 import ControllerMeta
 
@@ -12,12 +16,11 @@ from controller import Controller
 class Channel(RpcChannel):
 
     def __init__(self, loop=None):
-        self._header = "!HH"
+        self._header = "!II"
         self._loop = loop or get_hub().loop
         self._services = {}
-        self._socket = None
-        self._pending_request = []
-        self._tranmit_id = 0
+        self._pending_request = {}
+        self._transmit_id = 0
         self._listen_watchers = {}
 
         self._send_queue = {}
@@ -26,19 +29,24 @@ class Channel(RpcChannel):
         self._services[service.DESCRIPTOR.full_name] = service
 
     def CallMethod(self, method, controller, request, response_class, done):
-        if not instance(controller, Controller):
+        if not isinstance(controller, Controller):
             raise Exception("controller should has type Controller")
 
-        controller.meta_data.transmit_id = self._transmit_id
         controller.meta_data.stub = True
+        controller.meta_data.service_name = method.containing_service.full_name
+        controller.meta_data.method_name = method.name
 
-        # assume
-        if self._transmit_id >= (1 << 63) -1:
-            self._transmit_id = 0
-        else:
-            self._tranmit_id += 1
-        controller.response_class = response_class
-        controller.async_result = AsyncResult()
+        while True:
+            if self._transmit_id >= (1 << 63) -1:
+                self._transmit_id = 0
+            else:
+                self._transmit_id += 1
+            controller.response_class = response_class
+            controller.async_result = AsyncResult()
+            if self._pending_request.get(self._transmit_id, None) is None:
+                controller.meta_data.transmit_id = self._transmit_id
+                self._pending_request[self._transmit_id] = controller
+                break
 
         if not self._send_queue.has_key(controller.sock):
             controller.SetFailed("did not connect")
@@ -57,7 +65,7 @@ class Channel(RpcChannel):
                 continue
             else:
                 raise Exception('%d: connection failed' % result)
-        Greenlet.spawn(self._handle, sock)
+        self.new_connection(sock)
         return sock
 
     def listen(self, host, port):
@@ -67,19 +75,17 @@ class Channel(RpcChannel):
         #sock.bind((host, port))
         accept_watcher = self._loop.io(sock.fileno(), EV_READ)
         aceept_watcher.start(sock, self._do_accept, sock)
-        self._accept_watchers[sock] = accept_watcher
 
     def new_connection(self, sock):
         self._send_queue[sock] = Queue()
+        Greenlet.spawn(self._handle, sock)
+        Greenlet.spawn(self._write, sock)
 
     def close_connection(self, sock):
         if not self._send_queue.has_key(sock):
             return
         sock.close()
-        for controller in self._send_queue:
-            if controller.meta_data.stub:
-                controller.async_result.set(None)
-        del self._send_queue[sock]
+        self._send_queue[sock].put(None)
 
     def _do_accept(self, sock):
         try:
@@ -88,46 +94,30 @@ class Channel(RpcChannel):
             if err.args[0] == EWOULDBLOCK:
                 return
             raise
-        Greenlet.spawn(self._handle, client_socket)
-
-    def _handle(self, client_socket):
         self.new_connection(client_socket)
+
+    def _handle(self, sock):
         while True:
             header_length = struct.calcsize(self._header)
-            header_buffer = client_socket.read(header_length)
+            header_buffer = sock.recv(header_length)
             controller_length, message_length = struct.unpack(self._header, header_buffer)
-            controller_buffer = client_socket.read(controller_length)
-            message_buffer = client_socket.read(message_length)
 
+            controller_buffer = sock.recv(controller_length)
             controller = Controller()
-            controller.sock = client_socket
+            controller.sock = sock
             try:
                 controller.meta_data.ParseFromString(controller_buffer)
             except DecodeError:
                 break
+            message_buffer = ""
+            if not controller.Failed:
+                message_buffer = sock.recv(message_length)
             if controller.meta_data.stub: # request
                 self._handle_request(controller, message_buffer)
             else:
                 self._handle_response(controller, message_buffer)
 
-            # TODO:
-            controller = self._send_queue[client_socket].get()
-            controller.meta_data.SerializeToString(controller_buffer)
-            message_buffer = ""
-            if not controller.Failed():
-                if controller.meta_data.stub:
-                    message = getattr(controller, "request", None)
-                else:
-                    message = getattr(controller, "response", None)
-
-                if message is not None:
-                    message.SerializeToString(message_buffer)
-
-            header_buffer = struct.pack(self._header, len(controller_buffer), len(message_buffer))
-            client_socket.sendall(header_buffer)
-            client_socket.sendall(message_buffer)
-
-        self.close_connection(client_socket)
+        self.close_connection(sock)
 
     def _handle_request(self, controller, message_buffer):
         service = self._services.get(controller.meta_data.service_name, None)
@@ -156,10 +146,12 @@ class Channel(RpcChannel):
         controller.response = response
         send_queue.put(controller)
 
-    def _handle_response(self, controller, message_buffer):
-        controller = self._pending_request.get(controller.meta_data.transmit_id, None)
+    def _handle_response(self, controller_, message_buffer):
+        controller = self._pending_request.get(controller_.meta_data.transmit_id, None)
         if controller is None:
             return
+
+        controller.meta_data.MergeFrom(controller_.meta_data)
 
         if controller.Failed:
             controller.async_result.set(None)
@@ -172,3 +164,27 @@ class Channel(RpcChannel):
             controller.async_result.set(None)
             return
         controller.async_result.set(response)
+
+    def _write(self, sock):
+        header_buffer = ""
+        controller_buffer = ""
+        for controller in self._send_queue[sock]:
+            if controller is None:
+                break
+            controller_buffer = controller.meta_data.SerializeToString()
+            message_buffer = ""
+            if not controller.Failed():
+                if controller.meta_data.stub:
+                    message = getattr(controller, "request", None)
+                else:
+                    message = getattr(controller, "response", None)
+
+                if message is not None:
+                    message_buffer = message.SerializeToString()
+
+            header_buffer = struct.pack(self._header, len(controller_buffer), len(message_buffer))
+            sock.sendall(header_buffer)
+            sock.sendall(controller_buffer)
+            sock.sendall(message_buffer)
+
+        del self._send_queue[sock]
