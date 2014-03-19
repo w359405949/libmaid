@@ -32,7 +32,7 @@ void protobuf_AssignDesc_controller_2eproto() {
       "controller.proto");
   GOOGLE_CHECK(file != NULL);
   ControllerMeta_descriptor_ = file->message_type(0);
-  static const int ControllerMeta_offsets_[8] = {
+  static const int ControllerMeta_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, service_name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, method_name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, transmit_id_),
@@ -40,7 +40,6 @@ void protobuf_AssignDesc_controller_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, is_canceled_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, failed_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, error_text_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerMeta, fd_),
   };
   ControllerMeta_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -83,11 +82,11 @@ void protobuf_AddDesc_controller_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\020controller.proto\022\nmaid.proto\"\243\001\n\016Contr"
+    "\n\020controller.proto\022\nmaid.proto\"\227\001\n\016Contr"
     "ollerMeta\022\024\n\014service_name\030\001 \001(\t\022\023\n\013metho"
     "d_name\030\002 \001(\t\022\023\n\013transmit_id\030\003 \001(\r\022\014\n\004stu"
     "b\030\004 \001(\010\022\023\n\013is_canceled\030\005 \001(\010\022\016\n\006failed\030\006"
-    " \001(\010\022\022\n\nerror_text\030\007 \001(\t\022\n\n\002fd\030\010 \001(\005", 196);
+    " \001(\010\022\022\n\nerror_text\030\007 \001(\t", 184);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "controller.proto", &protobuf_RegisterTypes);
   ControllerMeta::default_instance_ = new ControllerMeta();
@@ -113,7 +112,6 @@ const int ControllerMeta::kStubFieldNumber;
 const int ControllerMeta::kIsCanceledFieldNumber;
 const int ControllerMeta::kFailedFieldNumber;
 const int ControllerMeta::kErrorTextFieldNumber;
-const int ControllerMeta::kFdFieldNumber;
 #endif  // !_MSC_VER
 
 ControllerMeta::ControllerMeta()
@@ -139,7 +137,6 @@ void ControllerMeta::SharedCtor() {
   is_canceled_ = false;
   failed_ = false;
   error_text_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  fd_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -202,7 +199,6 @@ void ControllerMeta::Clear() {
         error_text_->clear();
       }
     }
-    fd_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -324,22 +320,6 @@ bool ControllerMeta::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(64)) goto parse_fd;
-        break;
-      }
-      
-      // optional int32 fd = 8;
-      case 8: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_fd:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 input, &fd_)));
-          set_has_fd();
-        } else {
-          goto handle_uninterpreted;
-        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -409,11 +389,6 @@ void ControllerMeta::SerializeWithCachedSizes(
       7, this->error_text(), output);
   }
   
-  // optional int32 fd = 8;
-  if (has_fd()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(8, this->fd(), output);
-  }
-  
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -472,11 +447,6 @@ void ControllerMeta::SerializeWithCachedSizes(
         7, this->error_text(), target);
   }
   
-  // optional int32 fd = 8;
-  if (has_fd()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(8, this->fd(), target);
-  }
-  
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -531,13 +501,6 @@ int ControllerMeta::ByteSize() const {
           this->error_text());
     }
     
-    // optional int32 fd = 8;
-    if (has_fd()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::Int32Size(
-          this->fd());
-    }
-    
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -586,9 +549,6 @@ void ControllerMeta::MergeFrom(const ControllerMeta& from) {
     if (from.has_error_text()) {
       set_error_text(from.error_text());
     }
-    if (from.has_fd()) {
-      set_fd(from.fd());
-    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -619,7 +579,6 @@ void ControllerMeta::Swap(ControllerMeta* other) {
     std::swap(is_canceled_, other->is_canceled_);
     std::swap(failed_, other->failed_);
     std::swap(error_text_, other->error_text_);
-    std::swap(fd_, other->fd_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

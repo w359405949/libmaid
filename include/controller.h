@@ -8,10 +8,6 @@
 
 namespace maid
 {
-namespace channel
-{
-class Channel;
-}
 
 namespace controller
 {
@@ -35,18 +31,21 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    maid::proto::ControllerMeta& get_meta_data();
+    maid::proto::ControllerMeta& meta_data();
 
     void set_request(google::protobuf::Message* request);
     void set_response(google::protobuf::Message* response);
     void set_done(google::protobuf::Closure* done);
 
-    google::protobuf::Message* get_request();
-    google::protobuf::Message* get_response();
-    google::protobuf::Closure* get_done();
+    google::protobuf::Message* request();
+    google::protobuf::Message* response();
+    google::protobuf::Closure* done();
 
     void set_next(Controller* next);
-    Controller* get_next();
+    Controller* next();
+
+    void set_fd(int32_t fd);
+    int32_t fd();
 
     void Destroy();
     void Ref();
@@ -62,11 +61,13 @@ private:
     google::protobuf::Closure* done_;
     Controller* next_;
 
+    int32_t fd_;
+
 private:
     struct ev_loop* loop_;
     struct ev_check gc_;
     int32_t ref_;
-    int32_t in_gc_;
+    bool in_gc_;
 };
 
 } /* controller */

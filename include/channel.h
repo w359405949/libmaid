@@ -78,7 +78,7 @@ private:
      * -1: failed. invalid fd.
      */
     int32_t RegistController(controller::Controller* controller); // transmit.
-    controller::Controller* UnregistController(proto::ControllerMeta& meta); // transmit.
+    controller::Controller* UnregistController(int32_t fd, proto::ControllerMeta& meta); // transmit.
 
 
 private:

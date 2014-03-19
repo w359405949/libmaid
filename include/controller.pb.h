@@ -152,13 +152,6 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline ::std::string* mutable_error_text();
   inline ::std::string* release_error_text();
   
-  // optional int32 fd = 8;
-  inline bool has_fd() const;
-  inline void clear_fd();
-  static const int kFdFieldNumber = 8;
-  inline ::google::protobuf::int32 fd() const;
-  inline void set_fd(::google::protobuf::int32 value);
-  
   // @@protoc_insertion_point(class_scope:maid.proto.ControllerMeta)
  private:
   inline void set_has_service_name();
@@ -175,8 +168,6 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline void clear_has_failed();
   inline void set_has_error_text();
   inline void clear_has_error_text();
-  inline void set_has_fd();
-  inline void clear_has_fd();
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
@@ -187,10 +178,9 @@ class ControllerMeta : public ::google::protobuf::Message {
   bool is_canceled_;
   bool failed_;
   ::std::string* error_text_;
-  ::google::protobuf::int32 fd_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
   
   friend void  protobuf_AddDesc_controller_2eproto();
   friend void protobuf_AssignDesc_controller_2eproto();
@@ -466,28 +456,6 @@ inline ::std::string* ControllerMeta::release_error_text() {
     error_text_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
-}
-
-// optional int32 fd = 8;
-inline bool ControllerMeta::has_fd() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void ControllerMeta::set_has_fd() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void ControllerMeta::clear_has_fd() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void ControllerMeta::clear_fd() {
-  fd_ = 0;
-  clear_has_fd();
-}
-inline ::google::protobuf::int32 ControllerMeta::fd() const {
-  return fd_;
-}
-inline void ControllerMeta::set_fd(::google::protobuf::int32 value) {
-  set_has_fd();
-  fd_ = value;
 }
 
 

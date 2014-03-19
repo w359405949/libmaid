@@ -27,7 +27,7 @@ RemoteClosure::~RemoteClosure()
 
 void RemoteClosure::Run()
 {
-    channel_->PushController(controller_->get_meta_data().fd(), controller_);
+    channel_->PushController(controller_->fd(), controller_);
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);
     /*

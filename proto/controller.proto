@@ -9,7 +9,7 @@ message ControllerMeta
     optional bool is_canceled = 5;
     optional bool failed = 6;
     optional string error_text = 7;
-    optional int32 fd = 8;
+    //optional int32 fd = 8;
     //optional int32 wide = 8; broadcast
     //optional int32 depth = 9; broadcast deep
 }

@@ -94,8 +94,8 @@ class Channel(RpcChannel):
         self.new_connection(client_socket)
         while True:
             header_length = struct.calcsize(self._header)
-            buffer = client_socket.read(header_length)
-            controller_length, message_length = struct.unpack(self._header, buffer)
+            header_buffer = client_socket.read(header_length)
+            controller_length, message_length = struct.unpack(self._header, header_buffer)
             controller_buffer = client_socket.read(controller_length)
             message_buffer = client_socket.read(message_length)
 
@@ -109,6 +109,24 @@ class Channel(RpcChannel):
                 self._handle_request(controller, message_buffer)
             else:
                 self._handle_response(controller, message_buffer)
+
+            # TODO:
+            controller = self._send_queue[client_socket].get()
+            controller.meta_data.SerializeToString(controller_buffer)
+            message_buffer = ""
+            if not controller.Failed():
+                if controller.meta_data.stub:
+                    message = getattr(controller, "request", None)
+                else:
+                    message = getattr(controller, "response", None)
+
+                if message is not None:
+                    message.SerializeToString(message_buffer)
+
+            header_buffer = struct.pack(self._header, len(controller_buffer), len(message_buffer))
+            client_socket.sendall(header_buffer)
+            client_socket.sendall(message_buffer)
+
         self.close_connection(client_socket)
 
     def _handle_request(self, controller, message_buffer):

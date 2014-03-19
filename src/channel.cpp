@@ -117,22 +117,22 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
         return;
     }
 
-    ControllerMeta& meta = controller->get_meta_data();
+    ControllerMeta& meta = controller->meta_data();
     meta.set_service_name(method->service()->full_name());
     meta.set_method_name(method->name());
     meta.set_stub(true);
 
-    result = PushController(meta.fd(), controller);
+    result = PushController(controller->fd(), controller);
     if(-1 == result){
         controller->SetFailed("invalid fd");
         done->Run();
-        UnregistController(meta);
+        UnregistController(controller->fd(), meta);
         return;
     }else if(-2 == result){
         /* retry if needed */
         controller->SetFailed("channel busy");
         done->Run();
-        UnregistController(meta);
+        UnregistController(controller->fd(), meta);
         return;
     }
 }
@@ -156,21 +156,21 @@ int32_t Channel::RegistController(Controller* controller)
     if(0 > result){
         return -1;
     }
-    controller->get_meta_data().set_transmit_id(transmit_id);
+    controller->meta_data().set_transmit_id(transmit_id);
 
     controller->Ref();
     controller_[transmit_id] = controller;
     return 0;
 }
 
-Controller* Channel::UnregistController(ControllerMeta& meta)
+Controller* Channel::UnregistController(int32_t fd, ControllerMeta& meta)
 {
     Controller* r_controller = controller_[meta.transmit_id()];
     if(NULL == r_controller){
         assert(("libmaid: controller not regist", false));
         return NULL;
     }
-    if(r_controller->get_meta_data().fd() != meta.fd()){
+    if(r_controller->fd() != fd){
         assert(("libmaid: not the same controller", false));
         return NULL;
     }
@@ -200,7 +200,7 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
     Controller* head = controller;
     head->set_next(write_pending_[fd]);
 
-    for(; head->get_next(); head = head->get_next());
+    for(; head->next(); head = head->next());
 
     head->set_next(controller);
     controller->set_next(NULL);
@@ -218,7 +218,7 @@ Controller* Channel::FrontController(int32_t fd)
     if(NULL == head){
         return head;
     }
-    write_pending_[fd] = head->get_next();
+    write_pending_[fd] = head->next();
     head->Destroy();
     return head;
 }
@@ -242,7 +242,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     /*
      * serializer can be cached if neccessary
      */
-    ControllerMeta& meta = controller->get_meta_data();
+    ControllerMeta& meta = controller->meta_data();
     uint32_t controller_nl = ::htonl(meta.ByteSize());
     int32_t result = -1;
     int32_t message_nl = 0;
@@ -252,9 +252,9 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         message_nl = ::htonl(0);
     }else{
         if(meta.stub()){
-            message_nl = ::htonl(controller->get_request()->ByteSize());
+            message_nl = ::htonl(controller->request()->ByteSize());
         }else{
-            message_nl = ::htonl(controller->get_response()->ByteSize());
+            message_nl = ::htonl(controller->response()->ByteSize());
         }
     }
 
@@ -263,7 +263,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         if(meta.stub()){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
-            controller->get_done()->Run();
+            controller->done()->Run();
         }
         self->CloseConnection(w->fd);
         return;
@@ -275,7 +275,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         if(meta.stub()){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
-            controller->get_done()->Run();
+            controller->done()->Run();
         }
         self->CloseConnection(w->fd);
         return;
@@ -286,7 +286,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         if(meta.stub()){
             std::string error_text(strerror(errno));
             controller->SetFailed(error_text);
-            controller->get_done()->Run();
+            controller->done()->Run();
         }
         self->CloseConnection(w->fd);
         return;
@@ -295,15 +295,15 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     if(!controller->Failed()){
         bool serialize = false;
         if(meta.stub()){
-            serialize = controller->get_request()->SerializeToFileDescriptor(w->fd);
+            serialize = controller->request()->SerializeToFileDescriptor(w->fd);
         }else{
-            serialize = controller->get_response()->SerializeToFileDescriptor(w->fd);
+            serialize = controller->response()->SerializeToFileDescriptor(w->fd);
         }
         if(!serialize){
             if(meta.stub()){
                 std::string error_text(strerror(errno));
                 controller->SetFailed(error_text);
-                controller->get_done()->Run();
+                controller->done()->Run();
             }
             self->CloseConnection(w->fd);
             return;
@@ -436,19 +436,19 @@ void Channel::Handle(int32_t fd)
 int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         const int8_t* message_start, int32_t message_length)
 {
-    meta.set_fd(fd);
-    Controller* controller = UnregistController(meta);
-    controller->get_meta_data().CopyFrom(meta);
-    controller->get_meta_data().set_stub(true);
+    Controller* controller = UnregistController(fd, meta);
     if(NULL == controller){
         /*
          * TODO: do something while controller is lost, log?
          */
         return -1;
     }
+    controller->set_fd(fd);
+    controller->meta_data().CopyFrom(meta);
+    controller->meta_data().set_stub(true);
 
     if(!controller->Failed()){
-        google::protobuf::Message* response = controller->get_response();
+        google::protobuf::Message* response = controller->response();
         google::protobuf::Message* new_response = response->New();
         if(NULL == new_response){
             return -2; //delay
@@ -460,7 +460,7 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
         delete new_response;
     }
 
-    controller->get_done()->Run();
+    controller->done()->Run();
     controller->Destroy(); // Unref
     return 0;
 }
@@ -479,11 +479,11 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
         return -2;
     }
     controller->set_done(done);
+    controller->set_fd(fd);
 
-    ControllerMeta& meta = controller->get_meta_data();
+    ControllerMeta& meta = controller->meta_data();
     meta.CopyFrom(stub_meta);
     meta.set_stub(false);
-    meta.set_fd(fd);
     google::protobuf::Service* service = GetServiceByName(meta.service_name());
     if(NULL == service){
         controller->SetFailed("service not exist");
@@ -715,10 +715,10 @@ void Channel::CloseConnection(int32_t fd)
         if(NULL == controller){
             break;
         }
-        if(controller->get_meta_data().stub()){
+        if(controller->meta_data().stub()){
             controller->SetFailed("connection closed");
-            controller->get_done()->Run();
-            UnregistController(controller->get_meta_data());
+            controller->done()->Run();
+            UnregistController(fd, controller->meta_data());
         }
         controller->Destroy();
     }while(1);

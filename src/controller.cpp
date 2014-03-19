@@ -64,7 +64,7 @@ void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 {
 }
 
-ControllerMeta& Controller::get_meta_data()
+ControllerMeta& Controller::meta_data()
 {
     return meta_data_;
 }
@@ -89,24 +89,34 @@ void Controller::set_next(Controller* next)
     next_ = next;
 }
 
-google::protobuf::Message* Controller::get_request()
+google::protobuf::Message* Controller::request()
 {
     return request_;
 }
 
-google::protobuf::Message* Controller::get_response()
+google::protobuf::Message* Controller::response()
 {
     return response_;
 }
 
-google::protobuf::Closure* Controller::get_done()
+google::protobuf::Closure* Controller::done()
 {
     return done_;
 }
 
-Controller* Controller::get_next()
+Controller* Controller::next()
 {
     return next_;
+}
+
+void Controller::set_fd(int32_t fd)
+{
+    fd_ = fd;
+}
+
+int32_t Controller::fd()
+{
+    return fd_;
 }
 
 void Controller::Destroy()
