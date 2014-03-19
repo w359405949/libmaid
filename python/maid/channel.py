@@ -8,6 +8,7 @@ from gevent.event import AsyncResult
 from gevent.queue import Queue
 from gevent.greenlet import Greenlet
 from gevent import socket
+from gevent import core
 
 from controller_pb2 import ControllerMeta
 
@@ -68,13 +69,13 @@ class Channel(RpcChannel):
         self.new_connection(sock)
         return sock
 
-    def listen(self, host, port):
+    def listen(self, host, port, backlog=1):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-
-        # TODO:
-        #sock.bind((host, port))
-        accept_watcher = self._loop.io(sock.fileno(), EV_READ)
-        aceept_watcher.start(sock, self._do_accept, sock)
+        sock.bind((host, port))
+        sock.listen(backlog)
+        sock.setblocking(0)
+        accept_watcher = self._loop.io(sock.fileno(), core.READ)
+        accept_watcher.start(self._do_accept, sock)
 
     def new_connection(self, sock):
         self._send_queue[sock] = Queue()
@@ -90,13 +91,14 @@ class Channel(RpcChannel):
     def _do_accept(self, sock):
         try:
             client_socket, address = sock.accept()
-        except _socket.error as err:
-            if err.args[0] == EWOULDBLOCK:
+        except socket.error as err:
+            if err.args[0] == socket.EWOULDBLOCK:
                 return
             raise
         self.new_connection(client_socket)
 
     def _handle(self, sock):
+        sock.setblocking(1)
         while True:
             header_length = struct.calcsize(self._header)
             header_buffer = sock.recv(header_length)
@@ -110,13 +112,12 @@ class Channel(RpcChannel):
             except DecodeError:
                 break
             message_buffer = ""
-            if not controller.Failed:
+            if message_length > 0:
                 message_buffer = sock.recv(message_length)
             if controller.meta_data.stub: # request
                 self._handle_request(controller, message_buffer)
             else:
                 self._handle_response(controller, message_buffer)
-
         self.close_connection(sock)
 
     def _handle_request(self, controller, message_buffer):
@@ -136,11 +137,9 @@ class Channel(RpcChannel):
             send_queue.put(controller)
             return
 
-        request_class = service.GetRequestClass(m)
+        request_class = service.GetRequestClass(method)
         request = request_class()
-        result = request.ParseFromString(message_buffer)
-        if not result:
-            return # can not resolved
+        request.ParseFromString(message_buffer)
 
         response = service.CallMethod(method, controller, request, None)
         controller.response = response
