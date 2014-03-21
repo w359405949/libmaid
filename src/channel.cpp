@@ -756,9 +756,9 @@ bool Channel::SetNonBlock(int32_t fd)
 
 int32_t Channel::NewConnection(int32_t fd)
 {
-    int32_t result = -1;
-    result = SetNonBlock(fd);
-    if(0 > result){
+    bool non_block = false;
+    non_block = SetNonBlock(fd);
+    if(!non_block){
         CloseConnection(fd);
         return -1;
     }

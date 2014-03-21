@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "maid.h"
 #include "hello.pb.h"
-#define MAX_CONNECTION 7000
+#define MAX_CONNECTION 10000
 
 using maid::channel::Channel;
 using maid::controller::Controller;
@@ -20,8 +20,8 @@ public:
     void Run()
     {
         ++count;
-        printf("count:%d\n", count);
-        if(count >= MAX_CONNECTION){
+        //printf("count:%d\n", count);
+        if(count + 1 >= MAX_CONNECTION){
             ev_break(EV_DEFAULT, EVBREAK_ALL);
         }
         //printf("%s\n", response_->DebugString().c_str());
@@ -36,7 +36,7 @@ int main()
 {
     Channel* channel = new Channel(EV_DEFAULT);
     for(int32_t i = 0; i < MAX_CONNECTION; i++){
-        printf("connection:%d\n", i);
+        //printf("connection:%d\n", i);
         int32_t fd = channel->Connect("127.0.0.1", 8888);
         Controller* controller = new Controller(EV_DEFAULT);
         controller->set_fd(fd);
