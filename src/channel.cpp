@@ -206,6 +206,11 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
     controller->set_next(NULL);
     write_pending_[fd] = head;
     controller->Ref();
+    if(controller == head){
+        struct ev_io* write_watcher = write_watcher_[fd];
+        ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
+        ev_io_start(loop_, write_watcher);
+    }
     return 0;
 }
 
@@ -234,72 +239,35 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     if(w->fd > self->write_pending_list_max_size_){
         return;
     }
-    Controller* controller = self->FrontController(w->fd);
-    if(NULL == controller){
-        return;
-    }
+    Controller* controller = NULL;
+    while(1){
+        controller = self->FrontController(w->fd);
+        if(NULL == controller){
+            ev_io_stop(EV_A_ w);
+            return;
+        }
 
-    /*
-     * serializer can be cached if neccessary
-     */
-    ControllerMeta& meta = controller->meta_data();
-    uint32_t controller_nl = ::htonl(meta.ByteSize());
-    int32_t result = -1;
-    int32_t message_nl = 0;
-    int32_t nwrite = 0;
+        /*
+         * serializer can be cached if neccessary
+         */
+        ControllerMeta& meta = controller->meta_data();
+        uint32_t controller_nl = ::htonl(meta.ByteSize());
+        int32_t result = -1;
+        int32_t message_nl = 0;
+        int32_t nwrite = 0;
 
-    if(controller->Failed()){
-        message_nl = ::htonl(0);
-    }else{
-        if(meta.stub()){
-            message_nl = ::htonl(controller->request()->ByteSize());
+        if(controller->Failed()){
+            message_nl = ::htonl(0);
         }else{
-            message_nl = ::htonl(controller->response()->ByteSize());
+            if(meta.stub()){
+                message_nl = ::htonl(controller->request()->ByteSize());
+            }else{
+                message_nl = ::htonl(controller->response()->ByteSize());
+            }
         }
-    }
 
-    result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
-    if(0 > result){
-        if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->done()->Run();
-        }
-        self->CloseConnection(w->fd);
-        return;
-    }
-    nwrite += result;
-
-    result = ::write(w->fd, &message_nl, sizeof(message_nl));
-    if(0 > result){
-        if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->done()->Run();
-        }
-        self->CloseConnection(w->fd);
-        return;
-    }
-    nwrite += result;
-
-    if(!meta.SerializeToFileDescriptor(w->fd)){
-        if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->done()->Run();
-        }
-        self->CloseConnection(w->fd);
-        return;
-    }
-
-    if(!controller->Failed()){
-        bool serialize = false;
-        if(meta.stub()){
-            serialize = controller->request()->SerializeToFileDescriptor(w->fd);
-        }else{
-            serialize = controller->response()->SerializeToFileDescriptor(w->fd);
-        }
-        if(!serialize){
+        result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
+        if(0 > result){
             if(meta.stub()){
                 std::string error_text(strerror(errno));
                 controller->SetFailed(error_text);
@@ -307,6 +275,47 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             }
             self->CloseConnection(w->fd);
             return;
+        }
+        nwrite += result;
+
+        result = ::write(w->fd, &message_nl, sizeof(message_nl));
+        if(0 > result){
+            if(meta.stub()){
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->done()->Run();
+            }
+            self->CloseConnection(w->fd);
+            return;
+        }
+        nwrite += result;
+
+        if(!meta.SerializeToFileDescriptor(w->fd)){
+            if(meta.stub()){
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->done()->Run();
+            }
+            self->CloseConnection(w->fd);
+            return;
+        }
+
+        if(!controller->Failed()){
+            bool serialize = false;
+            if(meta.stub()){
+                serialize = controller->request()->SerializeToFileDescriptor(w->fd);
+            }else{
+                serialize = controller->response()->SerializeToFileDescriptor(w->fd);
+            }
+            if(!serialize){
+                if(meta.stub()){
+                    std::string error_text(strerror(errno));
+                    controller->SetFailed(error_text);
+                    controller->done()->Run();
+                }
+                self->CloseConnection(w->fd);
+                return;
+            }
         }
     }
 }
@@ -667,9 +676,30 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
 
 void Channel::CloseConnection(int32_t fd)
 {
-    printf("close connection:%d\n", fd);
+    //printf("close connection:%d\n", fd);
     //
     ::close(fd);
+
+    // read buffer
+    if(fd < buffer_list_max_size_){
+        buffer_pending_index_[fd] = 0;
+    }
+
+    // write buffer
+    bool empty = true;
+    do{
+        Controller* controller = FrontController(fd);
+        if(NULL == controller){
+            break;
+        }
+        empty = false;
+        if(controller->meta_data().stub()){
+            controller->SetFailed("connection closed");
+            controller->done()->Run();
+            UnregistController(fd, controller->meta_data());
+        }
+        controller->Destroy();
+    }while(1);
 
     // libev
     if(fd < io_watcher_max_size_){
@@ -682,7 +712,9 @@ void Channel::CloseConnection(int32_t fd)
 
         struct ev_io* write_watcher = write_watcher_[fd];
         if(NULL != write_watcher){
-            ev_io_stop(loop_, write_watcher);
+            if(!empty){
+                ev_io_stop(loop_, write_watcher);
+            }
             ::free(write_watcher);
         }
         write_watcher_[fd] = NULL;
@@ -704,24 +736,6 @@ void Channel::CloseConnection(int32_t fd)
         connect_watcher_[fd] = NULL;
     }
 
-    // read buffer
-    if(fd < buffer_list_max_size_){
-        buffer_pending_index_[fd] = 0;
-    }
-
-    // write buffer
-    do{
-        Controller* controller = FrontController(fd);
-        if(NULL == controller){
-            break;
-        }
-        if(controller->meta_data().stub()){
-            controller->SetFailed("connection closed");
-            controller->done()->Run();
-            UnregistController(fd, controller->meta_data());
-        }
-        controller->Destroy();
-    }while(1);
 }
 
 bool Channel::SetNonBlock(int32_t fd)
@@ -782,7 +796,7 @@ int32_t Channel::NewConnection(int32_t fd)
         return -1;
     }
 
-    printf("new connection:%d\n", fd);
+    //printf("new connection:%d\n", fd);
     read_watcher->data = this;
     write_watcher->data = this;
     read_watcher->fd = fd;
@@ -791,8 +805,6 @@ int32_t Channel::NewConnection(int32_t fd)
     write_watcher_[fd] = write_watcher;
     ev_io_init(read_watcher, OnRead, fd, EV_READ);
     ev_io_start(loop_, read_watcher);
-    ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
-    ev_io_start(loop_, write_watcher);
     return 0;
 }
 

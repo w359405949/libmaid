@@ -10,7 +10,7 @@ public:
             HelloResponse* response,
             google::protobuf::Closure* done)
     {
-        printf("%s\n", request->message().c_str());
+        //printf("%s\n", request->message().c_str());
         response->set_message("welcome to libmaid");
         done->Run();
     }
