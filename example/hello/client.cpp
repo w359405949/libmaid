@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "maid.h"
 #include "hello.pb.h"
-#define MAX_CONNECTION 10000
+#define MAX_CONNECTION 1000
 
 using maid::channel::Channel;
 using maid::controller::Controller;
