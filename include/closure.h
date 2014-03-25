@@ -28,8 +28,8 @@ public:
 
 protected:
     virtual void DoRun();
-    maid::channel::Channel* get_channel();
-    maid::controller::Controller* get_controller();
+    maid::channel::Channel* channel();
+    maid::controller::Controller* controller();
     virtual ~SmartClosure();
 
 private:

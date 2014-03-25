@@ -44,12 +44,12 @@ void SmartClosure::OnGC(EV_P_ ev_check* w, int32_t revents)
     delete self;
 }
 
-maid::channel::Channel* SmartClosure::get_channel()
+maid::channel::Channel* SmartClosure::channel()
 {
     return channel_;
 }
 
-maid::controller::Controller* SmartClosure::get_controller()
+maid::controller::Controller* SmartClosure::controller()
 {
     return controller_;
 }
@@ -61,7 +61,7 @@ RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Controller*
 
 void RemoteClosure::DoRun()
 {
-    get_channel()->PushController(get_controller()->fd(), get_controller());
+    channel()->PushController(controller()->fd(), controller());
     /*
      * TODO: check PushController return value. and retry if needed.
      */
