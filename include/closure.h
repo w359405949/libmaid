@@ -5,6 +5,7 @@
 
 namespace maid
 {
+
 namespace channel
 {
 class Channel;
@@ -18,16 +19,24 @@ class Controller;
 namespace closure
 {
 
-class RemoteClosure : public google::protobuf::Closure
+class SmartClosure: public google::protobuf::Closure
 {
 public:
-    RemoteClosure(struct ev_loop* loop_, maid::channel::Channel* channel,
+    SmartClosure(struct ev_loop* loop, maid::channel::Channel* channel,
             maid::controller::Controller* controller);
-    ~RemoteClosure();
     void Run();
+
+protected:
+    virtual void DoRun();
+    maid::channel::Channel* get_channel();
+    maid::controller::Controller* get_controller();
+    virtual ~SmartClosure();
 
 private:
     static void OnGC(EV_P_ ev_check* w, int32_t revents);
+
+    SmartClosure& operator=(SmartClosure& other); // disable evil constructor
+    SmartClosure(SmartClosure& other); // disable evil constructor
 
 private:
     maid::channel::Channel* channel_;
@@ -35,6 +44,17 @@ private:
 
     struct ev_check gc_;
     struct ev_loop* loop_;
+};
+
+
+
+class RemoteClosure : public SmartClosure
+{
+public:
+    RemoteClosure(struct ev_loop* loop, maid::channel::Channel* channel,
+            maid::controller::Controller* controller);
+protected:
+    void DoRun();
 };
 
 } /* closure */

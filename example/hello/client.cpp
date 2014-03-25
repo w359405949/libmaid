@@ -20,7 +20,7 @@ public:
     void Run()
     {
         ++count;
-        //printf("count:%d\n", count);
+        printf("count:%d\n", count);
         if(count + 1 >= MAX_CONNECTION){
             ev_break(EV_DEFAULT, EVBREAK_ALL);
         }
