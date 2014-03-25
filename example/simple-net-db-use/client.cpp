@@ -72,7 +72,6 @@ public:
         player.ParseFromString(response->value());
         printf("get: %s \n", request->key().c_str());
         player.PrintDebugString();
-        ::fflush(stdout);
     }
 
 };
@@ -116,6 +115,7 @@ public:
             return;
         }
         printf("close: success\n");
+        ev_break(loop(), EVBREAK_ALL);
     }
 
 };

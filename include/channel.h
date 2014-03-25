@@ -104,6 +104,8 @@ private:
 private:
     // packet
     const uint32_t header_length_;
+    const uint32_t controller_max_length_;
+    const uint32_t message_max_length_;
 
     // read buffer
     int8_t ** buffer_; // level 1: fd; level 2: buffer start

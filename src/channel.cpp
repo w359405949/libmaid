@@ -34,6 +34,8 @@ Channel::Channel(struct ev_loop* loop)
     connect_watcher_max_size_(0),
 
     header_length_(8),
+    controller_max_length_(100),
+    message_max_length_(102400),
 
     buffer_(NULL),
     buffer_pending_index_(NULL),
@@ -406,32 +408,39 @@ void Channel::Handle(int32_t fd)
          * in use of protobuf, this block can be fixed.
          *
          */
+        int8_t* buffer_start = buffer + handled_start;
+
         int32_t controller_length_nl = 0;
         int32_t message_length_nl = 0;
-        memcpy(&controller_length_nl, buffer, 4);
-        memcpy(&message_length_nl, buffer + 4, 4);
-        int32_t controller_length = ntohl(controller_length_nl);
-        int32_t message_length = ntohl(message_length_nl);
-        /*
-         * TODO:check length valid and overflow
-         */
+        memcpy(&controller_length_nl, buffer_start, sizeof(controller_length_nl));
+        buffer_start += sizeof(controller_length_nl);
+        memcpy(&message_length_nl, buffer_start, sizeof(message_length_nl));
+        buffer_start += sizeof(message_length_nl);
+
+        int32_t controller_length = ::ntohl(controller_length_nl);
+        int32_t message_length = ::ntohl(message_length_nl);
+        if(controller_length > controller_max_length_ || message_length > message_max_length_){
+            CloseConnection(fd); //
+            return;
+        }
+
         int32_t total_length = header_length_ + controller_length + message_length;
         if(buffer_pending_index - handled_start < total_length){
             break; // lack data
         }
 
         ControllerMeta meta;
-        if(!meta.ParseFromArray(buffer + handled_start + header_length_, controller_length)){
+        if(!meta.ParseFromArray(buffer_start, controller_length)){
             CloseConnection(fd); // unknown meta, can not recovered
             return;
         }
-        int8_t* message_start = buffer + handled_start + header_length_ + controller_length;
+        buffer_start += controller_length;
 
         int32_t result = -1;
         if(meta.stub()){
-            result = HandleRequest(fd, meta, message_start, message_length);
+            result = HandleRequest(fd, meta, buffer_start, message_length);
         }else{
-            result = HandleResponse(fd, meta, message_start, message_length);
+            result = HandleResponse(fd, meta, buffer_start, message_length);
         }
         if(-1 == result){
             CloseConnection(fd);
@@ -440,7 +449,10 @@ void Channel::Handle(int32_t fd)
         if(-2 == result){//delay
             break;
         }
+        buffer_start += message_length;
         handled_start += header_length_ + controller_length + message_length;
+
+        assert(("handle success", buffer + handled_start == buffer_start));
     }
 
     // move
