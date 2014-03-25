@@ -54,6 +54,7 @@ private:
     static void OnWrite(EV_P_ ev_io* w, int32_t revents);
     static void OnAccept(EV_P_ ev_io* w, int32_t revents);
     static void OnConnect(EV_P_ ev_io* w, int32_t revents);
+    static void OnCheck(EV_P_ ev_check* w, int32_t revents);
 
 private:
     static int32_t Realloc(void** ptr, uint32_t* origin_size, uint32_t new_size, uint32_t type_size);

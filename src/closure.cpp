@@ -17,6 +17,7 @@ SmartClosure::SmartClosure(struct ev_loop* loop, Channel* channel, Controller* c
     assert(("loop can not be NULL", NULL != loop));
     assert(("controller can not be NULL", NULL != controller));
     gc_.data = this;
+    count_ = 0;
 }
 
 SmartClosure::~SmartClosure()
@@ -28,6 +29,8 @@ SmartClosure::~SmartClosure()
 
 void SmartClosure::Run()
 {
+    ++count_;
+    assert(("done->Run() can not be called twice.", count_ == 1));
     DoRun();
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);

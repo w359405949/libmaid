@@ -44,6 +44,7 @@ private:
 
     struct ev_check gc_;
     struct ev_loop* loop_;
+    int32_t count_;
 };
 
 

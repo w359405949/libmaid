@@ -124,14 +124,14 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
 
     result = PushController(controller->fd(), controller);
     if(-1 == result){
-        done->Run();
         UnregistController(controller->fd(), meta);
+        done->Run();
         return;
     }else if(-2 == result){
         /* retry if needed */
-        controller->SetFailed("channel busy");
-        done->Run();
+        controller->SetFailed("libmaid: channel busy");
         UnregistController(controller->fd(), meta);
+        done->Run();
         return;
     }
 }
@@ -187,7 +187,7 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
     }
 
     if(!IsEffictive(fd)){
-        controller->SetFailed("is not a valid fd");
+        controller->SetFailed("libmaid: is not a valid fd");
         return -1;
     }
     int32_t result = Realloc((void**)&write_pending_,
@@ -239,87 +239,97 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 {
     Channel* self = (Channel*)(w->data);
     if(w->fd > self->write_pending_list_max_size_){
+        assert(("libmaid: fd overflowed", true));
         return;
     }
-    Controller* controller = NULL;
-    while(1){
-        controller = self->FrontController(w->fd);
-        if(NULL == controller){
-            ev_io_stop(EV_A_ w);
-            return;
+    Controller* controller = self->FrontController(w->fd);
+    if(NULL == controller){
+        ev_io_stop(EV_A_ w);
+        return;
+    }
+
+    /*
+     * serializer can be cached if neccessary
+     */
+    ControllerMeta& meta = controller->meta_data();
+
+    int32_t result = -1;
+    std::string controller_meta;
+    std::string message;
+    int32_t nwrite = 0;
+
+    meta.SerializeToString(&controller_meta);
+
+    if(meta.stub()){
+        controller->request()->SerializeToString(&message);
+    }else{
+        if(!controller->Failed()){
+            controller->response()->SerializeToString(&message);
         }
+    }
 
-        /*
-         * serializer can be cached if neccessary
-         */
-        ControllerMeta& meta = controller->meta_data();
-
-        int32_t result = -1;
-        std::string controller_meta;
-        std::string message;
-        int32_t nwrite = 0;
-
-        meta.SerializeToString(&controller_meta);
-
+    uint32_t controller_nl = ::htonl(controller_meta.length());
+    result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
+    if(0 > result){
         if(meta.stub()){
-            controller->request()->SerializeToString(&message);
-        }else{
-            if(controller->Failed()){
-                controller->response()->SerializeToString(&message);
-            }
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->done()->Run();
         }
+        self->CloseConnection(w->fd);
+        return;
+    }
+    printf("expect: %d, send: %d\n", 4, result);
+    nwrite += result;
 
-        uint32_t controller_nl = ::htonl(controller_meta.length());
-        result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
-        if(0 > result){
-            if(meta.stub()){
-                std::string error_text(strerror(errno));
-                controller->SetFailed(error_text);
-                controller->done()->Run();
-            }
-            self->CloseConnection(w->fd);
-            return;
+    int32_t message_nl = ::htonl(message.length());
+    result = ::write(w->fd, &message_nl, sizeof(message_nl));
+    if(0 > result){
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->done()->Run();
         }
-        nwrite += result;
+        self->CloseConnection(w->fd);
+        return;
+    }
+    printf("expect: %d, send: %d\n", 4, result);
+    nwrite += result;
 
-        int32_t message_nl = ::htonl(message.length());
-        result = ::write(w->fd, &message_nl, sizeof(message_nl));
-        if(0 > result){
-            if(meta.stub()){
-                std::string error_text(strerror(errno));
-                controller->SetFailed(error_text);
-                controller->done()->Run();
-            }
-            self->CloseConnection(w->fd);
-            return;
+    result = ::write(w->fd, controller_meta.c_str(), controller_meta.length());
+    if(0 > result){
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->done()->Run();
         }
-        nwrite += result;
+        self->CloseConnection(w->fd);
+        return;
+    }
+    printf("expect: %d, send: %d\n", controller_meta.length(), result);
+    nwrite += result;
 
-        result = ::write(w->fd, controller_meta.c_str(), controller_meta.length());
-        if(0 > result){
-            if(meta.stub()){
-                std::string error_text(strerror(errno));
-                controller->SetFailed(error_text);
-                controller->done()->Run();
-            }
-            self->CloseConnection(w->fd);
-            return;
+    result = ::write(w->fd, message.c_str(), message.length());
+    if(0 > result){
+        if(meta.stub()){
+            std::string error_text(strerror(errno));
+            controller->SetFailed(error_text);
+            controller->done()->Run();
         }
-        nwrite += result;
+        self->CloseConnection(w->fd);
+        return;
+    }
+    printf("expect: %d, send: %d\n", message.length(), result);
+    nwrite += result;
 
-        result = ::write(w->fd, message.c_str(), message.length());
-        if(0 > result){
-            if(meta.stub()){
-                std::string error_text(strerror(errno));
-                controller->SetFailed(error_text);
-                controller->done()->Run();
-            }
-            self->CloseConnection(w->fd);
-            return;
-        }
-        nwrite += result;
-
+    if(self->header_length_ + controller_meta.length() + message.length() != nwrite){
         assert(("libmaid: lose data:", self->header_length_ + controller_meta.length() + message.length() == nwrite));
+        if(meta.stub()){
+            controller->SetFailed("libmaid: lose data");
+            controller->done()->Run();
+        }
+        self->CloseConnection(w->fd);
+        return;
     }
 }
 
@@ -375,7 +385,11 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
+    }else if(nread == rest_space){
+        ev_io_stop(EV_A_ w);
+        ev_io_start(EV_A_ w);
     }
+    printf("fd: %d, read: %d\n", w->fd, nread);
     self->buffer_pending_index_[w->fd] += nread;
     /*
      * handle
@@ -498,21 +512,21 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
     meta.set_stub(false);
     google::protobuf::Service* service = GetServiceByName(meta.service_name());
     if(NULL == service){
-        controller->SetFailed("service not exist");
+        controller->SetFailed("libmaid: service not exist");
         done->Run();
         controller->Destroy();
         return 0;
     }
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
-    const google::protobuf::MethodDescriptor* method = service_descriptor->FindMethodByName(meta.method_name());
-    if(NULL == method){
-        controller->SetFailed("method not exist");
+    const google::protobuf::MethodDescriptor* method_descriptor = service_descriptor->FindMethodByName(meta.method_name());
+    if(NULL == method_descriptor){
+        controller->SetFailed("libmaid: method not exist");
         done->Run();
         controller->Destroy();
         return 0;
     }
 
-    google::protobuf::Message* request = service->GetRequestPrototype(method).New();
+    google::protobuf::Message* request = service->GetRequestPrototype(method_descriptor).New();
     if(NULL == request){
         controller->Destroy();
         return -2; // delay
@@ -520,17 +534,18 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
     controller->set_request(request);
 
     if(!request->ParseFromArray(message_start, message_length)){
+        done->Run();
         controller->Destroy();
         return -1;
     }
-    google::protobuf::Message* response = service->GetResponsePrototype(method).New();
+    google::protobuf::Message* response = service->GetResponsePrototype(method_descriptor).New();
     if(NULL == response){
         controller->Destroy();
         return -2; // delay
     }
     controller->set_response(response);
 
-    service->CallMethod(method, controller, request, response, done);
+    service->CallMethod(method_descriptor, controller, request, response, done);
     return 0;
 }
 
@@ -538,7 +553,7 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
 {
     int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if(0 > fd){
-        perror("socket:");
+        perror("libmaid: socket ");
         return fd;
     }
     struct sockaddr_in addr;
@@ -547,7 +562,7 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
     int32_t result = -1;
     result = ::inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
     if(0 > result){
-        perror("inet_pton:");
+        perror("libmaid: inet_pton ");
         return result;
     }
 
@@ -557,7 +572,7 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
         return fd;
     }
     if(errno != EINPROGRESS){
-        perror("connect:");
+        perror("libmaid: connect ");
         return result;
     }
 
@@ -569,7 +584,7 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
     }
     struct ev_io* connect_watcher = (struct ev_io*)malloc(sizeof(struct ev_io));
     if(NULL == connect_watcher){
-        perror("malloc:");
+        perror("libmaid: malloc ");
         CloseConnection(fd);
         return -1;
     }
@@ -586,12 +601,12 @@ int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
     int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if(fd <= 0){
-        perror("socket:");
+        perror("libmaid: socket ");
         return fd;
     }
     bool non_block = SetNonBlock(fd); // no care
     if(!non_block){
-        perror("realloc:");
+        perror("libmaid: realloc ");
         CloseConnection(fd);
         return -1;
     }
@@ -602,18 +617,18 @@ int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
     int32_t result = -1;
     result = ::inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
     if(0 > result){
-        perror("inet_pton:");
+        perror("libmaid: inet_pton ");
         return result;
     }
     result = ::bind(fd, (struct sockaddr *)&addr, sizeof(addr));
     if(0 > result){
-        perror("bind:");
+        perror("libmaid: bind ");
         CloseConnection(fd);
         return result;
     }
     result = ::listen(fd, backlog);
     if(0 > result){
-        perror("listen:");
+        perror("libmaid: listen ");
         CloseConnection(fd);
         return result;
     }
@@ -621,7 +636,6 @@ int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
     result = Realloc((void**)&accept_watcher_, &accept_watcher_max_size_, fd,
             sizeof(struct ev_io*));
     if(0 > result){
-        perror("realloc:");
         CloseConnection(fd);
         return -1;
     }
@@ -682,6 +696,7 @@ void Channel::CloseConnection(int32_t fd)
     //printf("close connection:%d\n", fd);
     //
     ::close(fd);
+    printf("close connection: %d\n", fd);
 
     // read buffer
     if(fd < buffer_list_max_size_){
@@ -697,7 +712,7 @@ void Channel::CloseConnection(int32_t fd)
         }
         empty = false;
         if(controller->meta_data().stub()){
-            controller->SetFailed("connection closed");
+            controller->SetFailed("libmaid: connection closed");
             controller->done()->Run();
             UnregistController(fd, controller->meta_data());
         }
@@ -745,12 +760,12 @@ bool Channel::SetNonBlock(int32_t fd)
 {
     int32_t flags = ::fcntl(fd, F_GETFL);
     if(0 > flags){
-        perror("fcntl:");
+        perror("libmaid: fcntl ");
         return false;
     }else{
         flags |= O_NONBLOCK;
         if(0 > ::fcntl(fd, F_SETFL, flags)){
-            perror("fcntl:");
+            perror("libmaid: fcntl ");
             return false;
         }
     }
@@ -759,6 +774,7 @@ bool Channel::SetNonBlock(int32_t fd)
 
 int32_t Channel::NewConnection(int32_t fd)
 {
+    printf("new connection: %d\n", fd);
     bool non_block = false;
     int32_t result = -1;
     non_block = SetNonBlock(fd);
@@ -772,7 +788,6 @@ int32_t Channel::NewConnection(int32_t fd)
     result = Realloc((void**)&read_watcher_, &io_watcher_max_size, fd,
             sizeof(struct ev_io*));
     if(0 > result){
-        perror("realloc:");
         CloseConnection(fd);
         return -1;
     }
@@ -780,7 +795,6 @@ int32_t Channel::NewConnection(int32_t fd)
     result = Realloc((void**)&write_watcher_, &io_watcher_max_size, fd,
             sizeof(struct ev_io*));
     if(0 > result){
-        perror("realloc:");
         CloseConnection(fd);
         return -1;
     }
@@ -800,7 +814,6 @@ int32_t Channel::NewConnection(int32_t fd)
         return -1;
     }
 
-    //printf("new connection:%d\n", fd);
     read_watcher->data = this;
     write_watcher->data = this;
     read_watcher->fd = fd;
@@ -849,7 +862,7 @@ int32_t Channel::Realloc(void** ptr, uint32_t* origin_length, uint32_t expect_le
         new_length <<= 1;
         void* new_ptr = ::realloc(*ptr, new_length * type_size);
         if(NULL == new_ptr){
-            ::perror("Realloc:");
+            ::perror("libmaid: Realloc ");
             return -1;
         }
         *ptr = new_ptr;

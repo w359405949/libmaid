@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS=foreign
 lib_LTLIBRARIES=libmaid.la
 libmaid_la_LDFLAGS=-static -static-protobuf -static-ev
 libmaid_la_CFLAGS=-I../include
-libmaid_la_CXXFLAGS=-I../include
+libmaid_la_CXXFLAGS=-I../include -ggdb
 libmaid_la_SOURCES=\
 src/controller.cpp \
 src/channel.h \
