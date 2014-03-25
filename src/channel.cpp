@@ -379,9 +379,6 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
-    }else if(nread == rest_space){
-        ev_io_stop(EV_A_ w);
-        ev_io_start(EV_A_ w);
     }else if(0 == nread){
         self->CloseConnection(w->fd);
         return;

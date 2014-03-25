@@ -1,0 +1,6 @@
+[submodule "libev"]
+	path = libev
+	url = https://github.com/michaelmior/libev.git
+[submodule "leveldb"]
+	path = leveldb
+	url = https://code.google.com/p/leveldb/
