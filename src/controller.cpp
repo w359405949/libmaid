@@ -15,6 +15,7 @@ Controller::Controller(struct ev_loop* loop)
     in_gc_(false)
 {
     gc_.data = this;
+    meta_data_.set_failed(false);
 }
 
 Controller::~Controller()

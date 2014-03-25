@@ -179,8 +179,7 @@ Controller* Channel::UnregistController(int32_t fd, ControllerMeta& meta)
     return r_controller;
 }
 
-int32_t Channel::PushController(int32_t fd, Controller* controller)
-{
+int32_t Channel::PushController(int32_t fd, Controller* controller) {
     if(NULL == controller){
         assert(("libmaid: controller should not be NULL", false));
         return -1;
@@ -196,22 +195,17 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
         return -2; // dealy if needed
     }
 
-    Controller* head = write_pending_[fd];
-    if(NULL == head){
-        head = controller;
-    }else{
-        Controller* cur = head;
-        for(; cur->next(); cur = cur->next());
-        cur->set_next(controller);
-    }
+    Controller* head = controller;
+    Controller* tail = controller;
+    head->set_next(write_pending_[fd]);
+    for(; NULL != tail->next(); tail = tail->next());
+    tail->set_next(controller);
+    write_pending_[fd] = head->next();
     controller->set_next(NULL);
-    write_pending_[fd] = head;
     controller->Ref();
 
-    if(controller == head){
-        struct ev_io* write_watcher = write_watcher_[fd];
-        ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
-        ev_io_start(loop_, write_watcher);
+    if(tail == head){
+        ev_io_start(loop_, write_watcher_[fd]);
     }
     return 0;
 }
@@ -263,12 +257,10 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     if(meta.stub()){
         controller->request()->SerializeToString(&message);
     }else{
-        if(!controller->Failed()){
-            controller->response()->SerializeToString(&message);
-        }
+        controller->response()->SerializeToString(&message);
     }
 
-    uint32_t controller_nl = ::htonl(controller_meta.length());
+    int32_t controller_nl = ::htonl(controller_meta.length());
     result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
     if(0 > result){
         if(meta.stub()){
@@ -279,7 +271,6 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         self->CloseConnection(w->fd);
         return;
     }
-    printf("expect: %d, send: %d\n", 4, result);
     nwrite += result;
 
     int32_t message_nl = ::htonl(message.length());
@@ -293,34 +284,35 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         self->CloseConnection(w->fd);
         return;
     }
-    printf("expect: %d, send: %d\n", 4, result);
     nwrite += result;
 
-    result = ::write(w->fd, controller_meta.c_str(), controller_meta.length());
-    if(0 > result){
-        if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->done()->Run();
+    if(0 != controller_meta.length()){
+        result = ::write(w->fd, controller_meta.c_str(), controller_meta.length());
+        if(0 > result){
+            if(meta.stub()){
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->done()->Run();
+            }
+            self->CloseConnection(w->fd);
+            return;
         }
-        self->CloseConnection(w->fd);
-        return;
+        nwrite += result;
     }
-    printf("expect: %d, send: %d\n", controller_meta.length(), result);
-    nwrite += result;
 
-    result = ::write(w->fd, message.c_str(), message.length());
-    if(0 > result){
-        if(meta.stub()){
-            std::string error_text(strerror(errno));
-            controller->SetFailed(error_text);
-            controller->done()->Run();
+    if(0 != message.length()){
+        result = ::write(w->fd, message.c_str(), message.length());
+        if(0 > result){
+            if(meta.stub()){
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->done()->Run();
+            }
+            self->CloseConnection(w->fd);
+            return;
         }
-        self->CloseConnection(w->fd);
-        return;
+        nwrite += result;
     }
-    printf("expect: %d, send: %d\n", message.length(), result);
-    nwrite += result;
 
     if(self->header_length_ + controller_meta.length() + message.length() != nwrite){
         assert(("libmaid: lose data:", self->header_length_ + controller_meta.length() + message.length() == nwrite));
@@ -388,8 +380,10 @@ void Channel::OnRead(EV_P_ ev_io *w, int revents)
     }else if(nread == rest_space){
         ev_io_stop(EV_A_ w);
         ev_io_start(EV_A_ w);
+    }else if(0 == nread){
+        self->CloseConnection(w->fd);
+        return;
     }
-    printf("fd: %d, read: %d\n", w->fd, nread);
     self->buffer_pending_index_[w->fd] += nread;
     /*
      * handle
@@ -464,9 +458,6 @@ int32_t Channel::HandleResponse(int32_t fd, ControllerMeta& meta,
 {
     Controller* controller = UnregistController(fd, meta);
     if(NULL == controller){
-        /*
-         * TODO: do something while controller is lost, log?
-         */
         return -1;
     }
     controller->set_fd(fd);
@@ -815,13 +806,16 @@ int32_t Channel::NewConnection(int32_t fd)
     }
 
     read_watcher->data = this;
-    write_watcher->data = this;
     read_watcher->fd = fd;
-    write_watcher->fd = fd;
     read_watcher_[fd] = read_watcher;
-    write_watcher_[fd] = write_watcher;
     ev_io_init(read_watcher, OnRead, fd, EV_READ);
     ev_io_start(loop_, read_watcher);
+
+    write_watcher->data = this;
+    write_watcher->fd = fd;
+    write_watcher_[fd] = write_watcher;
+    ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
+
     return 0;
 }
 

@@ -111,6 +111,7 @@ public:
             return;
         }
         printf("close: success\n");
+        ev_break(loop(), EVBREAK_ALL);
     }
 
 };

@@ -30,6 +30,7 @@ protected:
     virtual void DoRun();
     maid::channel::Channel* channel();
     maid::controller::Controller* controller();
+    struct ev_loop* loop();
     virtual ~SmartClosure();
 
 private:

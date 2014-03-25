@@ -57,6 +57,11 @@ maid::controller::Controller* SmartClosure::controller()
     return controller_;
 }
 
+struct ev_loop* SmartClosure::loop()
+{
+    return loop_;
+}
+
 RemoteClosure::RemoteClosure(struct ev_loop* loop, Channel* channel, Controller* controller)
     :SmartClosure(loop, channel, controller)
 {
