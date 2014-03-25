@@ -124,7 +124,6 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
 
     result = PushController(controller->fd(), controller);
     if(-1 == result){
-        controller->SetFailed("invalid fd");
         done->Run();
         UnregistController(controller->fd(), meta);
         return;
@@ -188,6 +187,7 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
     }
 
     if(!IsEffictive(fd)){
+        controller->SetFailed("is not a valid fd");
         return -1;
     }
     int32_t result = Realloc((void**)&write_pending_,
@@ -196,16 +196,18 @@ int32_t Channel::PushController(int32_t fd, Controller* controller)
         return -2; // dealy if needed
     }
 
-    // Do not need to check head.
-    Controller* head = controller;
-    head->set_next(write_pending_[fd]);
-
-    for(; head->next(); head = head->next());
-
-    head->set_next(controller);
+    Controller* head = write_pending_[fd];
+    if(NULL == head){
+        head = controller;
+    }else{
+        Controller* cur = head;
+        for(; cur->next(); cur = cur->next());
+        cur->set_next(controller);
+    }
     controller->set_next(NULL);
     write_pending_[fd] = head;
     controller->Ref();
+
     if(controller == head){
         struct ev_io* write_watcher = write_watcher_[fd];
         ev_io_init(write_watcher, OnWrite, fd, EV_WRITE);
@@ -230,7 +232,7 @@ Controller* Channel::FrontController(int32_t fd)
 
 bool Channel::IsEffictive(int32_t fd) const
 {
-    return 0 < fd && fd < io_watcher_max_size_ && NULL != write_watcher_[fd] && NULL != read_watcher_[fd];
+    return 0 < fd && fd < io_watcher_max_size_ && ((NULL != write_watcher_[fd] && NULL != read_watcher_[fd]) || NULL != connect_watcher_[fd]);
 }
 
 void Channel::OnWrite(EV_P_ ev_io * w, int revents)
@@ -251,21 +253,23 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
          * serializer can be cached if neccessary
          */
         ControllerMeta& meta = controller->meta_data();
-        uint32_t controller_nl = ::htonl(meta.ByteSize());
+
         int32_t result = -1;
-        int32_t message_nl = 0;
+        std::string controller_meta;
+        std::string message;
         int32_t nwrite = 0;
 
-        if(controller->Failed()){
-            message_nl = ::htonl(0);
+        meta.SerializeToString(&controller_meta);
+
+        if(meta.stub()){
+            controller->request()->SerializeToString(&message);
         }else{
-            if(meta.stub()){
-                message_nl = ::htonl(controller->request()->ByteSize());
-            }else{
-                message_nl = ::htonl(controller->response()->ByteSize());
+            if(controller->Failed()){
+                controller->response()->SerializeToString(&message);
             }
         }
 
+        uint32_t controller_nl = ::htonl(controller_meta.length());
         result = ::write(w->fd, &controller_nl, sizeof(controller_nl));
         if(0 > result){
             if(meta.stub()){
@@ -278,6 +282,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         }
         nwrite += result;
 
+        int32_t message_nl = ::htonl(message.length());
         result = ::write(w->fd, &message_nl, sizeof(message_nl));
         if(0 > result){
             if(meta.stub()){
@@ -290,7 +295,8 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
         }
         nwrite += result;
 
-        if(!meta.SerializeToFileDescriptor(w->fd)){
+        result = ::write(w->fd, controller_meta.c_str(), controller_meta.length());
+        if(0 > result){
             if(meta.stub()){
                 std::string error_text(strerror(errno));
                 controller->SetFailed(error_text);
@@ -299,24 +305,21 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
             self->CloseConnection(w->fd);
             return;
         }
+        nwrite += result;
 
-        if(!controller->Failed()){
-            bool serialize = false;
+        result = ::write(w->fd, message.c_str(), message.length());
+        if(0 > result){
             if(meta.stub()){
-                serialize = controller->request()->SerializeToFileDescriptor(w->fd);
-            }else{
-                serialize = controller->response()->SerializeToFileDescriptor(w->fd);
+                std::string error_text(strerror(errno));
+                controller->SetFailed(error_text);
+                controller->done()->Run();
             }
-            if(!serialize){
-                if(meta.stub()){
-                    std::string error_text(strerror(errno));
-                    controller->SetFailed(error_text);
-                    controller->done()->Run();
-                }
-                self->CloseConnection(w->fd);
-                return;
-            }
+            self->CloseConnection(w->fd);
+            return;
         }
+        nwrite += result;
+
+        assert(("libmaid: lose data:", self->header_length_ + controller_meta.length() + message.length() == nwrite));
     }
 }
 

@@ -53,6 +53,9 @@ private:
     static void OnGC(EV_P_ ev_check* w, int32_t revents);
     virtual ~Controller(); // diable delete except GC;
 
+    Controller& operator=(Controller& other); // disable evil constructor
+    Controller(Controller& controller); // diable evil constructor
+
 private:
     maid::proto::ControllerMeta meta_data_;
 
