@@ -43,7 +43,8 @@ public:
 
 private:
     std::string base_path_;
-    std::map<int32_t, leveldb::DB*> dbs_;
+    std::map<int32_t, std::string> dbs_;
+    std::map<std::string, leveldb::DB*> opened_dbs_;
 };
 
 #endif /* NETDB_H */

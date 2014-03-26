@@ -15,23 +15,22 @@ void LevelDBImpl::Open(google::protobuf::RpcController* _controller,
         OpenResponse* response,
         google::protobuf::Closure* done)
 {
-    //assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>_controller));
+    assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>(_controller)));
 
     maid::controller::Controller* controller = (maid::controller::Controller*)_controller;
-    leveldb::DB* db;
-    leveldb::Options option;
-    option.create_if_missing = true;
-    leveldb::Status status = leveldb::DB::Open(option, base_path_ + request->db_name(), &db);
-    if(!status.ok()){
-        controller->SetFailed(status.ToString());
-        done->Run();
-        return;
+    leveldb::DB* db = opened_dbs_[request->db_name()];
+    if(NULL == db){
+        leveldb::Options option;
+        option.create_if_missing = true;
+        leveldb::Status status = leveldb::DB::Open(option, base_path_ + request->db_name(), &db);
+        if(!status.ok()){
+            controller->SetFailed(status.ToString());
+            done->Run();
+            return;
+        }
     }
-    if(NULL != dbs_[controller->fd()]){
-        leveldb::DB* old_db = dbs_[controller->fd()];
-        delete old_db;
-    }
-    dbs_[controller->fd()] = db;
+    opened_dbs_[request->db_name()] = db;
+    dbs_[controller->fd()] = request->db_name();
     done->Run();
 }
 
@@ -41,10 +40,10 @@ void LevelDBImpl::Get(google::protobuf::RpcController* _controller,
         GetResponse* response,
         google::protobuf::Closure* done)
 {
-    //assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*> _controller));
+    assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>(_controller)));
 
     maid::controller::Controller* controller = (maid::controller::Controller*)_controller;
-    leveldb::DB* db = dbs_[controller->fd()];
+    leveldb::DB* db = opened_dbs_[dbs_[controller->fd()]];
     if(NULL == db){
         controller->SetFailed("do not open any db");
         done->Run();
@@ -67,11 +66,11 @@ void LevelDBImpl::Put(google::protobuf::RpcController* _controller,
         PutResponse* response,
         google::protobuf::Closure* done)
 {
-    //assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*> _controller));
+    assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>(_controller)));
 
     maid::controller::Controller* controller = (maid::controller::Controller*)_controller;
 
-    leveldb::DB* db = dbs_[controller->fd()];
+    leveldb::DB* db = opened_dbs_[dbs_[controller->fd()]];
     if(NULL == db){
         controller->SetFailed("do not open any db");
         done->Run();
@@ -93,11 +92,11 @@ void LevelDBImpl::Delete(google::protobuf::RpcController* _controller,
         DeleteResponse* response,
         google::protobuf::Closure* done)
 {
-    //assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*> _controller));
+    assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>(_controller)));
 
     maid::controller::Controller* controller = (maid::controller::Controller*)_controller;
 
-    leveldb::DB* db = dbs_[controller->fd()];
+    leveldb::DB* db = opened_dbs_[dbs_[controller->fd()]];
     if(NULL == db){
         controller->SetFailed("do not open any db");
         done->Run();
@@ -119,14 +118,9 @@ void LevelDBImpl::Close(google::protobuf::RpcController* _controller,
         CloseResponse* response,
         google::protobuf::Closure* done)
 {
-    //assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*> _controller));
+    assert(("based libmaid, controller should use maid::controller::Controller", NULL != dynamic_cast<maid::controller::Controller*>(_controller)));
 
     maid::controller::Controller* controller = (maid::controller::Controller*)_controller;
-    if(NULL != dbs_[controller->fd()]){
-        leveldb::DB* old_db = dbs_[controller->fd()];
-        delete old_db;
-    }
-
-    dbs_[controller->fd()] = NULL;
+    dbs_[controller->fd()] = "";
     done->Run();
 }
