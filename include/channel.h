@@ -59,8 +59,6 @@ private:
 private:
     static int32_t Realloc(void** ptr, uint32_t* origin_size, uint32_t new_size, uint32_t type_size);
 
-    static bool SetNonBlock(int32_t fd);
-
 private:
     void CloseConnection(int32_t fd);
     void Handle(int32_t fd);

@@ -551,7 +551,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
 
 int32_t Channel::Connect(const std::string& host, int32_t port)
 {
-    int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    int32_t fd = ::socket(AF_INET, SOCK_STREAM, SOCK_NONBLOCK);
     if(0 > fd){
         perror("libmaid: socket ");
         return fd;
@@ -599,16 +599,10 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
 
 int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
-    int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    int32_t fd = ::socket(AF_INET, SOCK_STREAM, SOCK_NONBLOCK);
     if(fd <= 0){
         perror("libmaid: socket ");
         return fd;
-    }
-    bool non_block = SetNonBlock(fd); // no care
-    if(!non_block){
-        perror("libmaid: realloc ");
-        CloseConnection(fd);
-        return -1;
     }
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -678,7 +672,7 @@ void Channel::OnAccept(EV_P_ ev_io* w, int revents)
     while(1){
         struct sockaddr_in addr;
         socklen_t len;
-        int32_t fd = ::accept(w->fd, (struct sockaddr *)&addr, &len);
+        int32_t fd = ::accept4(w->fd, (struct sockaddr *)&addr, &len, SOCK_NONBLOCK);
         if(0 > fd && (EAGAIN == errno|| EWOULDBLOCK == errno)){
             break;
         }
@@ -756,33 +750,10 @@ void Channel::CloseConnection(int32_t fd)
 
 }
 
-bool Channel::SetNonBlock(int32_t fd)
-{
-    int32_t flags = ::fcntl(fd, F_GETFL);
-    if(0 > flags){
-        perror("libmaid: fcntl ");
-        return false;
-    }else{
-        flags |= O_NONBLOCK;
-        if(0 > ::fcntl(fd, F_SETFL, flags)){
-            perror("libmaid: fcntl ");
-            return false;
-        }
-    }
-    return true;
-}
-
 int32_t Channel::NewConnection(int32_t fd)
 {
     printf("new connection: %d\n", fd);
-    bool non_block = false;
     int32_t result = -1;
-    non_block = SetNonBlock(fd);
-    if(!non_block){
-        CloseConnection(fd);
-        return -1;
-    }
-
     uint32_t io_watcher_max_size = 0;
     io_watcher_max_size = io_watcher_max_size_;
     result = Realloc((void**)&read_watcher_, &io_watcher_max_size, fd,

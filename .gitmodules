@@ -4,3 +4,6 @@
 [submodule "leveldb"]
 	path = leveldb
 	url = https://code.google.com/p/leveldb/
+[submodule "pymaid"]
+	path = pymaid
+	url = https://github.com/Catstyle/pymaid.git
