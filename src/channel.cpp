@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -551,7 +552,7 @@ int32_t Channel::HandleRequest(int32_t fd, ControllerMeta& stub_meta,
 
 int32_t Channel::Connect(const std::string& host, int32_t port)
 {
-    int32_t fd = ::socket(AF_INET, SOCK_STREAM, SOCK_NONBLOCK);
+    int32_t fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if(0 > fd){
         perror("libmaid: socket ");
         return fd;
@@ -599,7 +600,7 @@ int32_t Channel::Connect(const std::string& host, int32_t port)
 
 int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
-    int32_t fd = ::socket(AF_INET, SOCK_STREAM, SOCK_NONBLOCK);
+    int32_t fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if(fd <= 0){
         perror("libmaid: socket ");
         return fd;
@@ -651,16 +652,17 @@ int32_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
 void Channel::OnConnect(EV_P_ ev_io* w, int revents)
 {
     Channel* self = (Channel*)(w->data);
-    struct sockaddr_in addr;
-    socklen_t len;
-    ::getpeername(w->fd, (struct sockaddr*)&addr, &len);
-    int32_t result = ::connect(w->fd, (struct sockaddr*)&addr, sizeof(addr));
-    if(0 > result && EINPROGRESS == errno){
+    int32_t ret = 0;
+    socklen_t ret_len = sizeof(ret);
+    ::getsockopt(w->fd, SOL_SOCKET, SO_ERROR, &ret, &ret_len);
+    if (0 > ret && EINPROGRESS == errno){
         return;
     }
     ev_io_stop(EV_A_ w);
-    result = self->NewConnection(w->fd);
-    if(0 > result){
+    if (0 == ret){
+        ret = self->NewConnection(w->fd);
+    }
+    if(0 > ret){
         self->CloseConnection(w->fd);
     }
     ::free(w);
@@ -785,6 +787,11 @@ int32_t Channel::NewConnection(int32_t fd)
         return -1;
     }
 
+    int32_t flag = 1;
+    int32_t ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag) );
+    if (0 > ret) {
+        perror("libmaid: no delay"); //做为警告即可
+    }
     read_watcher->data = this;
     read_watcher->fd = fd;
     read_watcher_[fd] = read_watcher;
