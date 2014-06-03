@@ -9,10 +9,12 @@ from gevent.queue import Queue
 from gevent.greenlet import Greenlet
 from gevent import socket
 from gevent import core
+from gevent import sleep
 
 from controller_pb2 import ControllerMeta
 
 from controller import Controller
+
 
 class Channel(RpcChannel):
 
@@ -60,7 +62,7 @@ class Channel(RpcChannel):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         while True:
             result = sock.connect_ex((host, port))
-            if result == 0: # connected
+            if result == socket.EISCONN: # connected
                 break
             elif result == socket.EINPROGRESS: # connection in progress
                 continue
@@ -71,6 +73,7 @@ class Channel(RpcChannel):
 
     def listen(self, host, port, backlog=1):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((host, port))
         sock.listen(backlog)
         sock.setblocking(0)
@@ -78,15 +81,22 @@ class Channel(RpcChannel):
         accept_watcher.start(self._do_accept, sock)
 
     def new_connection(self, sock):
-        self._send_queue[sock] = Queue()
-        Greenlet.spawn(self._handle, sock)
-        Greenlet.spawn(self._write, sock)
+        send_queue = Queue()
+        greenlet_recv = Greenlet.spawn(self._handle, sock)
+        greenlet_send = Greenlet.spawn(self._write, sock)
 
-    def close_connection(self, sock):
-        if not self._send_queue.has_key(sock):
-            return
-        sock.close()
-        self._send_queue[sock].put(None)
+        # closure
+        def close(gr):
+            greenlet_recv.kill()
+            greenlet_send.kill()
+            if not self._send_queue.has_key(sock):
+                return
+            sock.close()
+            del self._send_queue[sock]
+
+        greenlet_recv.link(close)
+        greenlet_send.link(close)
+        self._send_queue[sock] = send_queue
 
     def _do_accept(self, sock):
         try:
@@ -97,14 +107,31 @@ class Channel(RpcChannel):
             raise
         self.new_connection(client_socket)
 
+    def _recv_n(self, sock, length):
+        buf = ""
+        try:
+            while True:
+                if len(buf) >= length:
+                    return buf
+                tmp = sock.recv(length - len(buf))
+                if tmp is None or len(tmp) == 0:
+                    return None
+                buf += tmp
+        except socket.error as e:
+            return None
+
     def _handle(self, sock):
-        sock.setblocking(1)
         while True:
             header_length = struct.calcsize(self._header)
-            header_buffer = sock.recv(header_length)
-            controller_length, message_length = struct.unpack(self._header, header_buffer)
+            header_buffer = self._recv_n(sock, header_length)
+            if header_buffer is None:
+                break
 
-            controller_buffer = sock.recv(controller_length)
+            controller_length, message_length = struct.unpack(self._header, header_buffer)
+            controller_buffer = self._recv_n(sock, controller_length)
+            if controller_buffer is None:
+                break
+
             controller = Controller()
             controller.sock = sock
             try:
@@ -118,7 +145,6 @@ class Channel(RpcChannel):
                 self._handle_request(controller, message_buffer)
             else:
                 self._handle_response(controller, message_buffer)
-        self.close_connection(sock)
 
     def _handle_request(self, controller, message_buffer):
         service = self._services.get(controller.meta_data.service_name, None)
@@ -150,7 +176,7 @@ class Channel(RpcChannel):
         if controller is None:
             return
 
-        controller.meta_data.MergeFrom(controller_.meta_data)
+        controller.meta_data = controller_.meta_data
 
         if controller.Failed:
             controller.async_result.set(None)
@@ -182,8 +208,7 @@ class Channel(RpcChannel):
                     message_buffer = message.SerializeToString()
 
             header_buffer = struct.pack(self._header, len(controller_buffer), len(message_buffer))
+
             sock.sendall(header_buffer)
             sock.sendall(controller_buffer)
             sock.sendall(message_buffer)
-
-        del self._send_queue[sock]

@@ -1,5 +1,5 @@
-from channel import Channel
-from controller import Controller
+from maid.channel import Channel
+from maid.controller import Controller
 from hello_pb2 import HelloService_Stub
 from hello_pb2 import HelloResponse
 from hello_pb2 import HelloService
