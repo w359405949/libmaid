@@ -1,0 +1,3 @@
+recursive-include maid *
+recursive-include example *
+include MANIFEST.in
