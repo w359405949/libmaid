@@ -25,8 +25,11 @@ class Channel(RpcChannel):
         self._pending_request = {}
         self._transmit_id = 0
         self._listen_watchers = {}
-
         self._send_queue = {}
+        self._default_sock = None
+
+    def set_default_sock(self, sock):
+        self._default_sock = sock
 
     def append_service(self, service):
         self._services[service.DESCRIPTOR.full_name] = service
@@ -38,6 +41,9 @@ class Channel(RpcChannel):
         controller.meta_data.stub = True
         controller.meta_data.service_name = method.containing_service.full_name
         controller.meta_data.method_name = method.name
+
+        if controller.sock is None:
+            controller.sock = self._default_sock
 
         while True:
             if self._transmit_id >= (1 << 63) -1:
