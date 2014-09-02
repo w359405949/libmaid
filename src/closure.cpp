@@ -9,15 +9,15 @@ using maid::closure::RemoteClosure;
 using maid::controller::Controller;
 
 SmartClosure::SmartClosure(struct ev_loop* loop, Channel* channel, Controller* controller)
-    :loop_(loop),
-    channel_(channel),
-    controller_(controller)
+    :channel_(channel),
+    controller_(controller),
+    loop_(loop),
+    count_(0)
 {
-    assert(("channel can not be NULL", NULL != channel));
-    assert(("loop can not be NULL", NULL != loop));
-    assert(("controller can not be NULL", NULL != controller));
+    assert(NULL != channel && "channel can not be NULL");
+    assert(NULL != loop && "loop can not be NULL");
+    assert(NULL != controller && "controller can not be NULL");
     gc_.data = this;
-    count_ = 0;
 }
 
 SmartClosure::~SmartClosure()
@@ -30,7 +30,7 @@ SmartClosure::~SmartClosure()
 void SmartClosure::Run()
 {
     ++count_;
-    assert(("done->Run() can not be called twice.", count_ == 1));
+    assert(1 == count_ && "done->Run() can not be called twice.");
     DoRun();
     ev_check_init(&gc_, OnGC);
     ev_check_start(loop_, &gc_);

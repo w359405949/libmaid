@@ -13,7 +13,8 @@ libev, protobuf
 Build
 =======
 
-./autogen.sh
+cmake .
+make
 
 Build Example
 =======

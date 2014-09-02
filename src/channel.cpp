@@ -49,7 +49,7 @@ Channel::Channel(struct ev_loop* loop)
     write_pending_(NULL),
     write_pending_list_max_size_(0)
 {
-    assert(("libmaid: loop can not be none", NULL != loop));
+    assert(NULL != loop && "libmaid: loop can not be none");
     signal(SIGPIPE, SIG_IGN);
 }
 
@@ -82,7 +82,7 @@ Channel::~Channel()
 int32_t Channel::AppendService(google::protobuf::Service* service)
 {
     if(NULL == service){
-        assert(("libmaid: service can not be NULL", NULL != service));
+        assert(NULL != service && "libmaid: service can not be NULL");
         return -1;
     }
 
@@ -101,9 +101,9 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    assert(("libmaid: controller must have type maid::controller::Controller", NULL != dynamic_cast<Controller *>(_controller)));
-    assert(("libmaid: request must not be NULL", NULL != request));
-    assert(("libmaid: done can not be NULL", NULL != done));
+    assert(NULL != dynamic_cast<Controller *>(_controller) && "libmaid: controller must have type maid::controller::Controller");
+    assert(NULL != request && "libmaid: request must not be NULL");
+    assert(NULL != done && "libmaid: done can not be NULL");
 
     Controller* controller = (Controller*)_controller;
     controller->Ref();
@@ -169,11 +169,11 @@ Controller* Channel::UnregistController(int32_t fd, ControllerMeta& meta)
 {
     Controller* r_controller = controller_[meta.transmit_id()];
     if(NULL == r_controller){
-        assert(("libmaid: controller not regist", false));
+        assert(false && "libmaid: controller not regist");
         return NULL;
     }
     if(r_controller->fd() != fd){
-        assert(("libmaid: not the same controller", false));
+        assert(false && "libmaid: not the same controller");
         return NULL;
     }
 
@@ -184,7 +184,7 @@ Controller* Channel::UnregistController(int32_t fd, ControllerMeta& meta)
 
 int32_t Channel::PushController(int32_t fd, Controller* controller) {
     if(NULL == controller){
-        assert(("libmaid: controller should not be NULL", false));
+        assert(false && "libmaid: controller should not be NULL");
         return -1;
     }
 
@@ -236,7 +236,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
 {
     Channel* self = (Channel*)(w->data);
     if(w->fd > self->write_pending_list_max_size_){
-        assert(("libmaid: fd overflowed", true));
+        assert(false && "libmaid: fd overflowed");
         return;
     }
     Controller* controller = self->FrontController(w->fd);
@@ -318,7 +318,7 @@ void Channel::OnWrite(EV_P_ ev_io * w, int revents)
     }
 
     if(self->header_length_ + controller_meta.length() + message.length() != nwrite){
-        assert(("libmaid: lose data:", self->header_length_ + controller_meta.length() + message.length() == nwrite));
+        assert(self->header_length_ + controller_meta.length() + message.length() == nwrite && "libmaid: lose data:");
         if(meta.stub()){
             controller->SetFailed("libmaid: lose data");
             controller->done()->Run();
@@ -450,11 +450,11 @@ void Channel::Handle(int32_t fd)
         buffer_start += message_length;
         handled_start += header_length_ + controller_length + message_length;
 
-        assert(("handle success", buffer + handled_start == buffer_start));
+        assert(buffer + handled_start == buffer_start && "handle success");
     }
 
     // move
-    assert(("libmaid: overflowed", handled_start <= buffer_pending_index));
+    assert(handled_start <= buffer_pending_index && "libmaid: overflowed");
     buffer_pending_index -= handled_start;
     ::memmove(buffer, buffer + handled_start, buffer_pending_index);
 

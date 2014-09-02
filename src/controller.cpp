@@ -20,7 +20,7 @@ Controller::Controller(struct ev_loop* loop)
 
 Controller::~Controller()
 {
-    assert(("normal delete", 0 >= ref_));
+    assert(0 >= ref_ && "normal delete");
     if(!meta_data_.stub() && NULL != request_){
         delete request_;
     }
