@@ -1,0 +1,16 @@
+option py_generic_services = true;
+
+message HelloRequest
+{
+    optional string message = 1;
+}
+
+message HelloResponse
+{
+    optional string message = 1;
+}
+
+service HelloService
+{
+    rpc Hello(HelloRequest) returns(HelloResponse);
+}
