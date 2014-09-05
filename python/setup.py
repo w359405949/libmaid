@@ -1,12 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
 
 from maid import __version__
 
-def protoc():
-    pass
-
 def run_setup():
-    protoc()
     setup(
             name="maid",
             version=__version__,
