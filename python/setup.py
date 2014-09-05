@@ -12,7 +12,12 @@ def run_setup():
 
             author="w359405949",
             author_email="w359405949@gmail.com",
-            packages=["maid"]
+            packages=["maid"],
+
+            install_requires=[
+                "gevent>=1.0",
+                "protobuf>=2.4",
+                ]
             )
 
 if __name__ == "__main__":

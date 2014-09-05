@@ -1,2 +1,0 @@
-gevent>=1.0
-protobuf>=2.5
