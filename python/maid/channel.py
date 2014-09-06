@@ -29,6 +29,8 @@ class Channel(RpcChannel):
         self._default_sock = None
 
     def set_default_sock(self, sock):
+        if self._default_sock is not None:
+            self._default_sock.close()
         self._default_sock = sock
 
     def append_service(self, service):
@@ -67,7 +69,7 @@ class Channel(RpcChannel):
             return None
         return controller.async_result.get()
 
-    def connect(self, host, port):
+    def connect(self, host, port, as_default=False):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         while True:
             try:
@@ -77,6 +79,8 @@ class Channel(RpcChannel):
             else:
                 break
         self.new_connection(sock)
+        if as_default:
+            self.set_default_sock(sock)
         return sock
 
     def listen(self, host, port, backlog=1):

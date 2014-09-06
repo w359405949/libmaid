@@ -5,8 +5,7 @@ from hello_pb2 import HelloRequest
 
 def main():
     channel = Channel()
-    sock = channel.connect("127.0.0.1", 8888)
-    channel.set_default_sock(sock)
+    channel.connect("127.0.0.1", 8888)
 
     stub = HelloService_Stub(channel)
     controller = Controller()
