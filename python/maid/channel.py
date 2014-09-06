@@ -24,9 +24,9 @@ class Channel(RpcChannel):
         self._services = {}
         self._pending_request = {}
         self._transmit_id = 0
-        self._listen_watchers = {}
         self._send_queue = {}
         self._default_sock = None
+        self._greenlet_accept = {}
 
     def set_default_sock(self, sock):
         if self._default_sock is not None:
@@ -88,9 +88,8 @@ class Channel(RpcChannel):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((host, port))
         sock.listen(backlog)
-        sock.setblocking(0)
-        accept_watcher = self._loop.io(sock.fileno(), core.READ)
-        accept_watcher.start(self._do_accept, sock)
+        greenlet_accept = Greenlet.spawn(self._do_accept, sock)
+        self._greenlet_accept[sock] = greenlet_accept
 
     def new_connection(self, sock):
         greenlet_recv = Greenlet.spawn(self._handle, sock)
@@ -110,24 +109,26 @@ class Channel(RpcChannel):
         self._send_queue[sock] = Queue()
 
     def _do_accept(self, sock):
-        try:
-            client_socket, address = sock.accept()
-        except socket.error as err:
-            if err.args[0] == socket.EWOULDBLOCK:
-                return
-            raise
-        self.new_connection(client_socket)
+        while True:
+            try:
+                client_socket, address = sock.accept()
+                self.new_connection(client_socket)
+            except socket.error as err:
+                if err.args[0] != socket.EWOULDBLOCK:
+                    raise
 
     def _recv_n(self, sock, length):
-        buf = ""
+        data = ""
         try:
-            while True:
-                buf += sock.recv(length - len(buf))
-                if len(buf) >= length:
-                    assert(len(buf) == length)
-                    return buf
+            while len(data) < length:
+                buf = sock.recv(length - len(data))
+                if len(buf) == 0:
+                    return None
+                data += buf
         except socket.error as e:
             return None
+        assert(len(data) == length)
+        return data
 
     def _handle(self, sock):
         while True:
@@ -143,13 +144,13 @@ class Channel(RpcChannel):
 
             controller = Controller()
             controller.sock = sock
+
             try:
                 controller.meta_data.ParseFromString(controller_buffer)
             except DecodeError:
                 break
-            message_buffer = ""
-            if message_length > 0:
-                message_buffer = sock.recv(message_length)
+
+            message_buffer = self._recv_n(sock, message_length)
             if controller.meta_data.stub: # request
                 self._handle_request(controller, message_buffer)
             else:

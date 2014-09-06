@@ -5,14 +5,14 @@ from hello_pb2 import HelloRequest
 
 def main():
     channel = Channel()
-    channel.connect("127.0.0.1", 8888)
+    channel.connect("127.0.0.1", 8888, as_default=True)
 
     stub = HelloService_Stub(channel)
     controller = Controller()
     request = HelloRequest()
+    print "meta:", controller.meta_data
     response = stub.Hello(controller, request, None)
     print "response:", response
-    print "meta:", controller.meta_data
 
 if __name__ == "__main__":
     main()
