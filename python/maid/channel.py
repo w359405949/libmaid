@@ -63,7 +63,7 @@ class Channel(RpcChannel):
         else:
             self._send_queue[controller.sock].put(controller)
 
-        return controller.async_result
+        return controller.async_result.get()
 
     def connect(self, host, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)

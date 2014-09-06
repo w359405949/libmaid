@@ -11,7 +11,7 @@ def main():
     stub = HelloService_Stub(channel)
     controller = Controller()
     request = HelloRequest()
-    response = stub.Hello(controller, request, None).get()
+    response = stub.Hello(controller, request, None)
     print "response:", response
     print "meta:", controller.meta_data
 
