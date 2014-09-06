@@ -46,6 +46,10 @@ class Channel(RpcChannel):
         if controller.sock is None:
             controller.sock = self._default_sock
 
+        if not self._send_queue.has_key(controller.sock):
+            controller.SetFailed("did not connect")
+            return None
+
         while not controller.meta_data.notify:
             if self._transmit_id >= (1 << 63) -1:
                 self._transmit_id = 0
@@ -57,12 +61,10 @@ class Channel(RpcChannel):
                 self._pending_request[self._transmit_id] = controller
                 break
 
-        if not self._send_queue.has_key(controller.sock):
-            controller.SetFailed("did not connect")
-            controller.async_result.set(None)
-        else:
-            self._send_queue[controller.sock].put(controller)
+        self._send_queue[controller.sock].put(controller)
 
+        if controller.meta_data.notify:
+            return None
         return controller.async_result.get()
 
     def connect(self, host, port):
