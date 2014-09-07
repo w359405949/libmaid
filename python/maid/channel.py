@@ -74,7 +74,7 @@ class Channel(RpcChannel):
         while True:
             try:
                 result = sock.connect((host, port))
-            except socket.err as err:
+            except socket.error as err:
                 raise
             else:
                 break
