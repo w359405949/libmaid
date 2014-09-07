@@ -3,6 +3,11 @@ libmaid
 
 a general use of rpc service, implement by libev &amp; protobuf
 
+proto format
+======
+basic format:|    4 bytes          |  4 bytes     |  n bytes     |n bytes|
+description :|ControllerMeta length|Message length|ControllerMeta|Message|
+
 
 Dependency
 =======

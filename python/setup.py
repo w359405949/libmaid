@@ -4,11 +4,11 @@ from maid import __version__
 
 def run_setup():
     setup(
-            name="maid",
+            name="pymaid",
             version=__version__,
             url="https://github.com/w359405949/libmaid",
-            description="gevent & protobuf based rpc framework",
-            keywords = ("rpc", "protobuf", "gevent", "example"),
+            description="gevent(libev) & google protobuf based rpc framework",
+            keywords = ("rpc", "protobuf", "gevent"),
 
             author="w359405949",
             author_email="w359405949@gmail.com",
