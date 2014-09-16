@@ -169,6 +169,18 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline bool notify() const;
   inline void set_notify(bool value);
 
+  // optional bytes message = 10;
+  inline bool has_message() const;
+  inline void clear_message();
+  static const int kMessageFieldNumber = 10;
+  inline const ::std::string& message() const;
+  inline void set_message(const ::std::string& value);
+  inline void set_message(const char* value);
+  inline void set_message(const void* value, size_t size);
+  inline ::std::string* mutable_message();
+  inline ::std::string* release_message();
+  inline void set_allocated_message(::std::string* message);
+
   // @@protoc_insertion_point(class_scope:maid.proto.ControllerMeta)
  private:
   inline void set_has_service_name();
@@ -189,6 +201,8 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline void clear_has_status();
   inline void set_has_notify();
   inline void clear_has_notify();
+  inline void set_has_message();
+  inline void clear_has_message();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -202,6 +216,7 @@ class ControllerMeta : public ::google::protobuf::Message {
   bool failed_;
   bool notify_;
   ::std::string* error_text_;
+  ::std::string* message_;
   ::google::protobuf::int32 status_;
   friend void  protobuf_AddDesc_controller_2eproto();
   friend void protobuf_AssignDesc_controller_2eproto();
@@ -587,6 +602,82 @@ inline void ControllerMeta::set_notify(bool value) {
   set_has_notify();
   notify_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.notify)
+}
+
+// optional bytes message = 10;
+inline bool ControllerMeta::has_message() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void ControllerMeta::set_has_message() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void ControllerMeta::clear_has_message() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void ControllerMeta::clear_message() {
+  if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    message_->clear();
+  }
+  clear_has_message();
+}
+inline const ::std::string& ControllerMeta::message() const {
+  // @@protoc_insertion_point(field_get:maid.proto.ControllerMeta.message)
+  return *message_;
+}
+inline void ControllerMeta::set_message(const ::std::string& value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+  // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.message)
+}
+inline void ControllerMeta::set_message(const char* value) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    message_ = new ::std::string;
+  }
+  message_->assign(value);
+  // @@protoc_insertion_point(field_set_char:maid.proto.ControllerMeta.message)
+}
+inline void ControllerMeta::set_message(const void* value, size_t size) {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    message_ = new ::std::string;
+  }
+  message_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerMeta.message)
+}
+inline ::std::string* ControllerMeta::mutable_message() {
+  set_has_message();
+  if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    message_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:maid.proto.ControllerMeta.message)
+  return message_;
+}
+inline ::std::string* ControllerMeta::release_message() {
+  clear_has_message();
+  if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = message_;
+    message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void ControllerMeta::set_allocated_message(::std::string* message) {
+  if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete message_;
+  }
+  if (message) {
+    set_has_message();
+    message_ = message;
+  } else {
+    clear_has_message();
+    message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerMeta.message)
 }
 
 

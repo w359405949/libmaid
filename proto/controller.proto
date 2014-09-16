@@ -5,10 +5,10 @@ message ControllerMeta
     optional string service_name = 1;
     optional string method_name = 2;
     optional uint32 transmit_id = 3;
-    optional bool stub = 4 [default = true]; // which side this message send
+    optional bool stub = 4; // which side this message send
     optional bool is_canceled = 5; // not used currently
     optional bool failed = 6;
     optional string error_text = 7; // or error message
-    optional int32 status = 8; // error ocuured
     optional bool notify = 9; // will not get an response
+    optional bytes message = 10; // message
 }

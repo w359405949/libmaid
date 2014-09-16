@@ -1,8 +1,12 @@
 #ifndef MAID_CHANNEL_H
 #define MAID_CHANNEL_H
+#include <map>
+#include <set>
+#include <stack>
+
 #include <google/protobuf/service.h>
 #include <google/protobuf/descriptor.h>
-#include <ev.h>
+#include <uv.h>
 
 namespace maid
 {
@@ -17,108 +21,119 @@ namespace controller
 class Controller;
 }
 
+namespace closure
+{
+class Closure;
+class RemoteClosure;
+}
+
 namespace channel
 {
+
+struct Buffer
+{
+    void* base;
+    size_t len;
+    size_t total;
+
+
+    Buffer()
+        :base(NULL),
+        len(0),
+        total(0)
+    {
+    }
+
+    ~Buffer()
+    {
+        free(base);
+    }
+
+    void Expend(size_t expect_length);
+};
 
 class Channel : public google::protobuf::RpcChannel
 {
 public:
-    Channel(struct ev_loop* loop);
-    virtual void CallMethod(const google::protobuf::MethodDescriptor * method,
-                            google::protobuf::RpcController *controller,
-                            const google::protobuf::Message *request,
-                            google::protobuf::Message *response,
-                            google::protobuf::Closure *done);
+    Channel(uv_loop_t* loop);
+    virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
+                            google::protobuf::RpcController* controller,
+                            const google::protobuf::Message* request,
+                            google::protobuf::Message* response,
+                            google::protobuf::Closure* done);
 
     virtual ~Channel();
 
     /*
      * add a Listen/Connect Address
      * return
-     * < 0: error happend, may be errno(will perror), may be -1.
-     * > 0: fd. check only, NEVER do any operation(read/write/close .etc) on it.
+     * < 0: error happend
+     * > 0: fd.
      */
-    int32_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
-    int32_t Connect(const std::string& host, int32_t port);
+    int64_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
+    int64_t Connect(const std::string& host, int32_t port, bool as_default=false);
 
     /*
      * service for remote request
      */
-    int32_t AppendService(google::protobuf::Service* service);
+    void AppendService(google::protobuf::Service* service);
 
-    controller::Controller* FrontController(int32_t fd); // send queue.
-    int32_t PushController(int32_t fd, controller::Controller* controller); // send queue
+    void SendRequest(maid::controller::Controller* controller, const google::protobuf::Message* request, maid::closure::Closure* done);
+    void SendResponse(maid::controller::Controller* controller, const google::protobuf::Message* response);
+    void SendNotify(maid::controller::Controller* controller, const google::protobuf::Message* request);
 
-private:
-    static void OnRead(EV_P_ ev_io* w, int32_t revents);
-    static void OnWrite(EV_P_ ev_io* w, int32_t revents);
-    static void OnAccept(EV_P_ ev_io* w, int32_t revents);
-    static void OnConnect(EV_P_ ev_io* w, int32_t revents);
-    static void OnCheck(EV_P_ ev_check* w, int32_t revents);
+    inline void set_default_fd(int64_t fd)
+    {
+        default_fd_ = fd;
+    }
 
-private:
-    static int32_t Realloc(void** ptr, uint32_t* origin_size, uint32_t new_size, uint32_t type_size);
+    int64_t default_fd()
+    {
+        return default_fd_;
+    }
 
-private:
-    void CloseConnection(int32_t fd);
-    void Handle(int32_t fd);
-    int32_t HandleRequest(int32_t fd, proto::ControllerMeta& stub_meta,
-            const int8_t* message_start, int32_t message_length);
-    int32_t HandleResponse(int32_t fd, proto::ControllerMeta& meta,
-            const int8_t* message_start, int32_t message_length);
-    bool IsEffictive(int32_t fd) const;
-    bool IsConnected(int32_t fd) const;
-    google::protobuf::Service* GetServiceByName(const std::string& name);
-    int32_t NewConnection(int32_t fd);
-
-    /*
-     * return
-     * 0: success.
-     * -1: failed. invalid fd.
-     */
-    int32_t RegistController(controller::Controller* controller); // transmit.
-    controller::Controller* UnregistController(int32_t fd, proto::ControllerMeta& meta); // transmit.
-
+    maid::closure::RemoteClosure* NewRemoteClosure();
+    void DestroyRemoteClosure(maid::closure::RemoteClosure* done);
 
 private:
-    // service
-    google::protobuf::Service ** service_;
-    uint32_t service_current_size_;
-    uint32_t service_max_size_;
+    static void OnRead(uv_stream_t* w, ssize_t nread, const uv_buf_t* buf);
+    static void OnAccept(uv_stream_t* handle, int32_t status);
+    static void OnConnect(uv_connect_t* handle, int32_t status);
+    static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+    static void AfterSendRequest(uv_write_t* req, int32_t status);
+    static void AfterSendResponse(uv_write_t* req, int32_t status);
+    static void AfterSendNotify(uv_write_t* req, int32_t status);
+    static void OnClose(uv_handle_t* handle);
+    static void OnRemoteClosureGC(uv_idle_t* handle);
 
 private:
-    // libev
-    struct ev_loop* loop_;
-    struct ev_io** read_watcher_; // level 1: fd; level 2: watcher point;
-    struct ev_io** write_watcher_; // level 1: fd; level 2: watcher_point;
-    uint32_t io_watcher_max_size_;
+    void Handle(uv_stream_t* handle, ssize_t nread);
+    int32_t HandleRequest(maid::controller::Controller* controller);
+    int32_t HandleResponse(maid::controller::Controller* controller);
+    int32_t HandleNotify(maid::controller::Controller* controller);
 
-    struct ev_io** accept_watcher_; // level 1: fd; level 2: watcher point;
-    uint32_t accept_watcher_max_size_;
-
-    struct ev_io** connect_watcher_; // level 1 fd; level 2: watcher point;
-    uint32_t connect_watcher_max_size_;
+    void NewConnection(uv_stream_t* handle);
+    void CloseConnection(uv_stream_t* handle);
 
 private:
+    std::map<std::string, google::protobuf::Service*> service_; //<service_name, service>
+    std::map<int64_t, maid::closure::Closure*> async_result_; //<transmit_id, controller>
+    std::map<int64_t, uv_stream_t*> connected_handle_; //<fd, stream>
+    std::map<int64_t, uv_stream_t*> listen_handle_; //<fd, stream>
+    std::map<int64_t, Buffer> buffer_;//<fd, buffer>
+    std::map<int64_t, std::set<int64_t> > transactions_; //<fd, <transmit_id> >
+    std::stack<maid::closure::RemoteClosure*> closure_pool_;
+
+private:
+    // libuv
+    uv_loop_t* loop_;
+    uv_idle_t remote_closure_gc_;
+
     // packet
-    const uint32_t header_length_;
-    const uint32_t controller_max_length_;
-    const uint32_t message_max_length_;
-
-    // read buffer
-    int8_t ** buffer_; // level 1: fd; level 2: buffer start
-    uint32_t * buffer_pending_index_; // level 1: fd
-    uint32_t * buffer_max_length_; // level 1: fd
-    uint32_t buffer_list_max_size_;
+    const size_t controller_max_length_;
 
     //
-    controller::Controller** controller_; // level 1: transmit id
-    uint32_t controller_list_max_size_;
-
-    //
-    controller::Controller** write_pending_; // level 1: fd;
-    uint32_t write_pending_list_max_size_; //
-
+    int64_t default_fd_; //uv_stream_t
 };
 
 } /* namespace channel */

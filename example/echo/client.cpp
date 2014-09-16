@@ -1,41 +1,48 @@
 #include <iostream>
 #include <stdio.h>
+#include <stdlib.h>
 #include "maid.h"
 #include "echo.pb.h"
 
 using maid::channel::Channel;
 using maid::controller::Controller;
 
-class Closure : public google::protobuf::Closure
+int count = 0;
+int success_count = 0;
+
+class Closure : public maid::closure::Closure
 {
 public:
-    Closure(google::protobuf::Message* response)
-        :response_(response)
-    {
-    }
     void Run()
     {
-        //printf("%s\n", response_->DebugString().c_str());
+        //printf("==========\n%s\n-------\n%s\n", controller()->meta_data().DebugString().c_str(), response()->DebugString().c_str());
+        if (!controller()->Failed()) {
+            //printf("success count:%d\n", ++success_count);
+            count++;
+        }
+        //printf("count:%d\n", ++count);
+        if (count == 1000000) {
+            exit(0);
+        }
     }
 
-private:
-    google::protobuf::Message* response_;
 };
 
 
 int main()
 {
-    Channel* channel = new Channel(EV_DEFAULT);
-    int32_t fd = channel->Connect("127.0.0.1", 8888);
-    for(int i = 0; ; ++i){
-        Controller* controller = new Controller(EV_DEFAULT);
-        controller->set_fd(fd);
+    Channel* channel = new Channel(uv_default_loop());
+    channel->Connect("127.0.0.1", 8888, true);
+    for(int i = 0; i < 1000000; ++i){
+        uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+        Controller* controller = new Controller();
         EchoRequest* request = new EchoRequest();
         EchoResponse* response = new EchoResponse();
-        Closure* closure = new Closure(response);
+        Closure* closure = new Closure();
         EchoService_Stub* stub = new EchoService_Stub(channel);
         request->set_message("hello");
         stub->Echo(controller, request, response, closure);
-        ev_run(EV_DEFAULT, 1);
     }
+
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

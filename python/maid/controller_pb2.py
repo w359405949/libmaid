@@ -18,7 +18,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='controller.proto',
   package='maid.proto',
-  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\nmaid.proto\"\xbd\x01\n\x0e\x43ontrollerMeta\x12\x14\n\x0cservice_name\x18\x01 \x01(\t\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\r\x12\x12\n\x04stub\x18\x04 \x01(\x08:\x04true\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06status\x18\x08 \x01(\x05\x12\x0e\n\x06notify\x18\t \x01(\x08')
+  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\nmaid.proto\"\xce\x01\n\x0e\x43ontrollerMeta\x12\x14\n\x0cservice_name\x18\x01 \x01(\t\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\r\x12\x12\n\x04stub\x18\x04 \x01(\x08:\x04true\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06status\x18\x08 \x01(\x05\x12\x0e\n\x06notify\x18\t \x01(\x08\x12\x0f\n\x07message\x18\n \x01(\x0c')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -95,6 +95,13 @@ _CONTROLLERMETA = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='maid.proto.ControllerMeta.message', index=9,
+      number=10, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -107,7 +114,7 @@ _CONTROLLERMETA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=33,
-  serialized_end=222,
+  serialized_end=239,
 )
 
 DESCRIPTOR.message_types_by_name['ControllerMeta'] = _CONTROLLERMETA

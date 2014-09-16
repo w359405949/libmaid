@@ -1,7 +1,6 @@
 #ifndef MAID_CLOSURE_REMOTECLOSURE_H
 #define MAID_CLOSURE_REMOTECLOSURE_H
 #include <google/protobuf/service.h>
-#include <ev.h>
 
 namespace maid
 {
@@ -19,44 +18,65 @@ class Controller;
 namespace closure
 {
 
-class SmartClosure: public google::protobuf::Closure
+class Closure : public google::protobuf::Closure
 {
 public:
-    SmartClosure(struct ev_loop* loop, maid::channel::Channel* channel,
-            maid::controller::Controller* controller);
-    void Run();
+    Closure()
+        :controller_(NULL),
+        request_(NULL),
+        response_(NULL)
+    {
+    }
+
+    inline void set_controller(maid::controller::Controller* controller)
+    {
+        controller_ = controller;
+    }
+
+    inline void set_request(const google::protobuf::Message* request)
+    {
+        request_ = request;
+    }
+
+    inline void set_response(google::protobuf::Message* response)
+    {
+        response_ = response;
+    }
+
+    inline maid::controller::Controller* controller()
+    {
+        return controller_;
+    }
+
+    inline const google::protobuf::Message* request()
+    {
+        return request_;
+    }
+
+    inline google::protobuf::Message* response()
+    {
+        return response_;
+    }
 
 protected:
-    virtual void DoRun();
-    maid::channel::Channel* channel();
-    maid::controller::Controller* controller();
-    struct ev_loop* loop();
-    virtual ~SmartClosure();
-
-private:
-    static void OnGC(EV_P_ ev_check* w, int32_t revents);
-
-    SmartClosure& operator=(SmartClosure& other); // disable evil constructor
-    SmartClosure(SmartClosure& other); // disable evil constructor
-
-private:
-    maid::channel::Channel* channel_;
     maid::controller::Controller* controller_;
-
-    struct ev_check gc_;
-    struct ev_loop* loop_;
-    int32_t count_;
+    const google::protobuf::Message* request_;
+    google::protobuf::Message* response_;
 };
 
 
-
-class RemoteClosure : public SmartClosure
+class RemoteClosure : public Closure
 {
 public:
-    RemoteClosure(struct ev_loop* loop, maid::channel::Channel* channel,
-            maid::controller::Controller* controller);
-protected:
-    void DoRun();
+    RemoteClosure(maid::channel::Channel* channel)
+        :channel_(channel)
+    {
+    }
+
+    virtual void Run();
+
+private:
+    maid::channel::Channel* channel_;
 };
 
 } /* closure */

@@ -14,27 +14,21 @@ SET(CMAKE_C_FLAGS_DEBUG "-g -Wall")
 # SET(CMAKE_CXX_FLAGS "std=c++0x")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -ggdb -Wall")
 
-file(GLOB_RECURSE source src/*.cpp src/*.h src/*.cc)
+file(GLOB_RECURSE header include/*)
+file(GLOB_RECURSE source src/*.cpp src/*.cc)
 message("  -> Prepared: maid")
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/include/
-    ${PROJECT_SOURCE_DIR}/deps/libev/
-    ${PROJECT_SOURCE_DIR}/deps/protobuf/src/
+    ${PROJECT_SOURCE_DIR}/include
 )
-
-link_directories(
-    ${PROJECT_SOURCE_DIR}/deps/libev/.libs/
-    ${PROJECT_SOURCE_DIR}/deps/protobuf/src/.libs/
-)
-
 
 add_library(${PROJECT_NAME} SHARED ${source})
 
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs/)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
 target_link_libraries(${PROJECT_NAME}
-    ev
+    uv
     protobuf
 )
 
-#me_component add_subdirectory(src)
+INSTALL(FILES ${LIBRARY_OUTPUT_PATH}/libmaid.so DESTINATION lib)
+INSTALL(FILES ${header} DESTINATION include)
