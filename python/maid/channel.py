@@ -19,7 +19,7 @@ from controller import Controller
 class Channel(RpcChannel):
 
     def __init__(self, loop=None):
-        self._header = "!II"
+        self._header = "!I"
         self._loop = loop or get_hub().loop
         self._services = {}
         self._pending_request = {}
@@ -41,18 +41,23 @@ class Channel(RpcChannel):
             raise Exception("controller should has type Controller")
 
         controller.response_class = response_class
-        controller.meta_data.stub = True
         controller.meta_data.service_name = method.containing_service.full_name
         controller.meta_data.method_name = method.name
 
         if controller.sock is None:
             controller.sock = self._default_sock
 
+        if controller.meta_data.notify:
+            return self.send_notify(controller, request)
+        else:
+            return self.send_request(controller, request)
+
+    def send_request(self, controller, request):
         if not self._send_queue.has_key(controller.sock):
             controller.SetFailed("did not connect")
             return None
 
-        while not controller.meta_data.notify:
+        while True:
             if self._transmit_id >= (1 << 63) -1:
                 self._transmit_id = 0
             else:
@@ -63,11 +68,23 @@ class Channel(RpcChannel):
                 self._pending_request[self._transmit_id] = controller
                 break
 
+        controller.meta_data.stub = True
+        controller.meta_data.message = request.SerializeToString()
         self._send_queue[controller.sock].put(controller)
 
-        if controller.meta_data.notify:
-            return None
         return controller.async_result.get()
+
+    def send_notify(self, controller, request):
+        controller.meta_data.stub = True
+        controller.meta_data.message = request.SerializeToString()
+        self._send_queue[controller.sock].put(controller)
+        return None
+
+    def send_response(self, controller, response):
+        controller.meta_data.stub = False
+        if not controller.Failed:
+            controller.meta_data.message = response.SerializeToString()
+        self._send_queue[controller.sock].put(controller)
 
     def connect(self, host, port, as_default=False):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -137,7 +154,7 @@ class Channel(RpcChannel):
             if header_buffer is None:
                 break
 
-            controller_length, message_length = struct.unpack(self._header, header_buffer)
+            controller_length, = struct.unpack(self._header, header_buffer)
             controller_buffer = self._recv_n(sock, controller_length)
             if controller_buffer is None:
                 break
@@ -148,28 +165,45 @@ class Channel(RpcChannel):
             try:
                 controller.meta_data.ParseFromString(controller_buffer)
             except DecodeError:
-                break
+                continue
 
-            message_buffer = self._recv_n(sock, message_length)
-            if controller.meta_data.stub: # request
-                self._handle_request(controller, message_buffer)
+            if not controller.meta_data.stub:
+                self._handle_response(controller)
+            elif controller.meta_data.notify:
+                self._handle_notify(controller)
             else:
-                self._handle_response(controller, message_buffer)
+                self._handle_request(controller)
 
-    def _handle_request(self, controller, message_buffer):
+    def _handle_request(self, controller):
         service = self._services.get(controller.meta_data.service_name, None)
-        controller.meta_data.stub = False
-        send_queue = self._send_queue[controller.sock]
-
         if service is None:
             controller.SetFailed("service not exist")
-            send_queue.put(controller)
+            self.send_response(controller, None)
             return
 
         method = service.DESCRIPTOR.FindMethodByName(controller.meta_data.method_name)
         if method is None:
             controller.SetFailed("method not exist")
-            send_queue.put(controller)
+            self.send_response(controller, None)
+            return
+
+        request_class = service.GetRequestClass(method)
+        request = request_class()
+        try:
+            request.ParseFromString(controller.meta_data.message)
+        except DecodeError as err:
+            return
+
+        response = service.CallMethod(method, controller, request, None)
+        self.send_response(controller, response)
+
+    def _handle_notify(self, controller):
+        service = self._services.get(controller.meta_data.service_name, None)
+        if service is None:
+            return
+
+        method = service.DESCRIPTOR.FindMethodByName(controller.meta_data.method_name)
+        if method is None:
             return
 
         request_class = service.GetRequestClass(method)
@@ -179,49 +213,33 @@ class Channel(RpcChannel):
         except DecodeError as err:
             return
 
-        response = service.CallMethod(method, controller, request, None)
-        controller.response = response
-        if not controller.meta_data.notify:
-            send_queue.put(controller)
+        service.CallMethod(method, controller, request, None)
 
-    def _handle_response(self, controller_, message_buffer):
+    def _handle_response(self, controller_):
         controller = self._pending_request.get(controller_.meta_data.transmit_id, None)
         if controller is None:
             return
 
         controller.meta_data = controller_.meta_data
-
         if controller.Failed():
             controller.async_result.set(None)
             return
 
         response = controller.response_class()
         try:
-            response.ParseFromString(message_buffer)
+            response.ParseFromString(controller_.meta_data.message)
         except DecodeError as err:
-            controller.SetFailed(str(err))
-            controller.async_result.set(None)
-        else:
-            controller.async_result.set(response)
+            return
+
+        del self._pending_request[controller.meta_data.transmit_id]
+        controller.async_result.set(response)
 
     def _write(self, sock):
         for controller in self._send_queue[sock]:
             if controller is None:
                 break
             controller_buffer = controller.meta_data.SerializeToString()
-            message_buffer = ""
-            if not controller.Failed():
-                if controller.meta_data.stub:
-                    message = getattr(controller, "request", None)
-                else:
-                    message = getattr(controller, "response", None)
-
-                if message is not None:
-                    message_buffer = message.SerializeToString()
-
-            header_buffer = struct.pack(self._header, len(controller_buffer), len(message_buffer))
+            header_buffer = struct.pack(self._header, len(controller_buffer))
 
             sock.sendall(header_buffer)
             sock.sendall(controller_buffer)
-
-            sock.sendall(message_buffer)

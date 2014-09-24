@@ -1,4 +1,5 @@
 from setuptools import setup
+from setuptools import find_packages
 
 from maid import __version__
 
@@ -12,7 +13,7 @@ def run_setup():
 
             author="w359405949",
             author_email="w359405949@gmail.com",
-            packages=["maid"],
+            packages=find_packages(),
 
             install_requires=[
                 "gevent>=1.0",
