@@ -10,7 +10,7 @@ public:
             HelloResponse* response,
             google::protobuf::Closure* done)
     {
-        //printf("%s\n", request->message().c_str());
+        printf("transmit_id:%d, %s\n", ((maid::controller::Controller*)controller)->meta_data().transmit_id(), request->message().c_str());
         response->set_message("welcome to libmaid");
         done->Run();
     }
@@ -19,9 +19,9 @@ public:
 
 int main()
 {
-    maid::channel::Channel* channel = new maid::channel::Channel(EV_DEFAULT);
+    maid::channel::Channel* channel = new maid::channel::Channel(uv_default_loop());
     HelloService* hello = new HelloServiceImpl();
     channel->AppendService(hello);
     channel->Listen("0.0.0.0", 8888);
-    ev_run(EV_DEFAULT, 0);
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

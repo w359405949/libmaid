@@ -1,0 +1,8 @@
+D:\libmaid\net\maid\maid\bin\Debug\maid.dll
+D:\libmaid\net\maid\maid\bin\Debug\maid.pdb
+D:\libmaid\net\maid\maid\bin\Debug\protobuf-net.dll
+D:\libmaid\net\maid\maid\obj\Debug\maid.dll
+D:\libmaid\net\maid\maid\obj\Debug\maid.pdb
+D:\libmaid\net\maid\maid\bin\Debug\Controller.dll
+D:\libmaid\net\maid\maid\bin\Debug\ControllerSerializer.dll
+D:\libmaid\net\maid\maid\bin\Debug\protobuf-net.xml

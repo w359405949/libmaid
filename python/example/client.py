@@ -8,11 +8,12 @@ def main():
     channel.connect("127.0.0.1", 8888, as_default=True)
 
     stub = HelloService_Stub(channel)
-    controller = Controller()
-    request = HelloRequest()
-    print "meta:", controller.meta_data
-    response = stub.Hello(controller, request, None)
-    print "response:", response
+    while True:
+        controller = Controller()
+        request = HelloRequest()
+        request.message = "this message from pymaid"
+        response = stub.Hello(controller, request, None)
+        print "transmit_id:", controller.meta_data.transmit_id, "response:", response
 
 if __name__ == "__main__":
     main()

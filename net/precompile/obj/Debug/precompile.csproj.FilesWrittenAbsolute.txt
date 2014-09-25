@@ -1,0 +1,9 @@
+/home/wcq/protobuf-net/precompile/bin/Debug/Licence.txt
+/home/wcq/protobuf-net/precompile/bin/Debug/IKVM-LICENSE
+/home/wcq/protobuf-net/precompile/bin/Debug/precompile.exe.mdb
+/home/wcq/protobuf-net/precompile/bin/Debug/precompile.exe
+/home/wcq/protobuf-net/precompile/obj/Debug/precompile.exe
+/home/wcq/protobuf-net/precompile/obj/Debug/precompile.exe.mdb
+/home/wcq/protobuf-net/precompile/bin/Debug/IKVM.Reflection.dll
+/home/wcq/protobuf-net/precompile/bin/Debug/protobuf-net.dll
+/home/wcq/protobuf-net/precompile/bin/Debug/protobuf-net.dll.mdb

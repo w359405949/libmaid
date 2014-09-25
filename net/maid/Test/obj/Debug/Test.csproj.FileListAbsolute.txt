@@ -1,0 +1,13 @@
+D:\libmaid\net\maid\Test\bin\Debug\Test.exe.config
+D:\libmaid\net\maid\Test\bin\Debug\Test.exe
+D:\libmaid\net\maid\Test\bin\Debug\Test.pdb
+D:\libmaid\net\maid\Test\obj\Debug\Test.exe
+D:\libmaid\net\maid\Test\obj\Debug\Test.pdb
+D:\libmaid\net\maid\Test\bin\Debug\ControllerSerializer.dll
+D:\libmaid\net\maid\Test\bin\Debug\Controller.dll
+D:\libmaid\net\maid\Test\bin\Debug\protobuf-net.dll
+D:\libmaid\net\maid\Test\bin\Debug\maid.pdb
+D:\libmaid\net\maid\Test\bin\Debug\protobuf-net.xml
+D:\libmaid\net\maid\Test\obj\Debug\Test.csprojResolveAssemblyReference.cache
+D:\libmaid\net\maid\Test\bin\Debug\maid.dll
+D:\libmaid\net\maid\Test\bin\Debug\Hello.dll

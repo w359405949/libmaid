@@ -12,6 +12,7 @@
 #include "channel.h"
 #include "controller.h"
 #include "closure.h"
+#include "define.h"
 
 using maid::channel::Channel;
 using maid::channel::Buffer;
@@ -25,7 +26,7 @@ Channel::Channel(uv_loop_t* loop)
     controller_max_length_(10000),
      default_fd_(0)
 {
-    assert(loop && "libmaid: loop can not be none");
+    ASSERT(NULL != loop, "libmaid: loop can not be none");
     signal(SIGPIPE, SIG_IGN);
     //uv_idle_init(loop, &remote_closure_gc_);
     //uv_idle_start(&remote_closure_gc_, OnRemoteClosureGC);
@@ -38,8 +39,8 @@ Channel::~Channel()
 
 void Channel::AppendService(google::protobuf::Service* service)
 {
-    assert(NULL != service && "libmaid: service can not be NULL");
-    assert(service_.find(service->GetDescriptor()->full_name()) == service_.end() && "same name service regist twice");
+    ASSERT(NULL != service, "libmaid: service can not be NULL");
+    ASSERT(service_.find(service->GetDescriptor()->full_name()) == service_.end(), "same name service regist twice");
 
     service_[service->GetDescriptor()->full_name()] = service;
 }
@@ -50,21 +51,21 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
         google::protobuf::Message* response,
         google::protobuf::Closure* rpc_done)
 {
-    assert(dynamic_cast<Controller*>(rpc_controller) && "libmaid: controller must have type maid::controller::Controller");
-    assert(request && "libmaid: should not be NULL");
+    ASSERT(dynamic_cast<Controller*>(rpc_controller), "libmaid: controller must have type maid::controller::Controller");
+    ASSERT(request, "libmaid: should not be NULL");
 
     Controller* controller = (Controller*)rpc_controller;
     if (!controller->fd()) {
         controller->set_fd(default_fd_);
     }
-    controller->meta_data().set_service_name(method->service()->full_name());
+    controller->meta_data().set_full_service_name(method->service()->full_name());
     controller->meta_data().set_method_name(method->name());
 
     if (controller->meta_data().notify()) {
         SendNotify(controller, request);
     } else {
-        assert(request && response && "libmaid: should not be NULL");
-        assert(dynamic_cast<Closure*>(rpc_done) && "libmaid: done must have type maid::closure::Closure");
+        ASSERT(request && response, "libmaid: should not be NULL");
+        ASSERT(dynamic_cast<Closure*>(rpc_done), "libmaid: done must have type maid::closure::Closure");
         Closure* done = (Closure*)rpc_done;
         done->set_request(request);
         done->set_controller(controller);
@@ -82,6 +83,7 @@ void Channel::SendNotify(maid::controller::Controller* controller, const google:
 {
     std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(controller->fd());
     if (connected_handle_.end() == it) {
+        WARN("not connected");
         return;
     }
 
@@ -100,6 +102,7 @@ void Channel::SendNotify(maid::controller::Controller* controller, const google:
     uv_buf.len = buffer.length();
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendNotify);
     if (error) {
+        WARN("%s", uv_strerror(error));
         free(req);
     }
 }
@@ -170,12 +173,21 @@ void Channel::SendResponse(Controller* controller, const google::protobuf::Messa
 
     std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(controller->fd());
     if (connected_handle_.end() == it) {
+        WARN("connection:%ld, not connected", controller->fd());
         return;
     }
 
     std::string buffer;
-    std::string* message = controller->meta_data().mutable_message(); //TODO
-    response->SerializeToString(message);
+    if (NULL != response)
+    {
+        std::string* message = controller->meta_data().mutable_message();
+        if (NULL == message)
+        {
+            WARN("no more memory");
+            return;
+        }
+        response->SerializeToString(message);
+    }
     int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
     buffer.append((const char*)&controller_nl, sizeof(controller_nl));
     controller->meta_data().AppendToString(&buffer);
@@ -186,6 +198,7 @@ void Channel::SendResponse(Controller* controller, const google::protobuf::Messa
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendResponse);
     if (error) {
+        WARN("%s", uv_strerror(error));
         free(req);
     }
 }
@@ -193,6 +206,7 @@ void Channel::SendResponse(Controller* controller, const google::protobuf::Messa
 void Channel::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf)
 {
     Channel * self = (Channel*)handle->data;
+    INFO("connection: %ld, nread: %ld", (int64_t)handle, nread);
     if (nread < 0) {
         self->CloseConnection(handle);
         return;
@@ -204,7 +218,7 @@ void Channel::Handle(uv_stream_t* handle, ssize_t nread)
 {
     Buffer& buffer = buffer_[(int64_t)handle];
     buffer.len += nread;
-    assert(buffer.len <= buffer.total && "out of memory");
+    ASSERT(buffer.len <= buffer.total, "out of memory");
 
     // handle
     size_t handled_len = 0;
@@ -218,6 +232,7 @@ void Channel::Handle(uv_stream_t* handle, ssize_t nread)
 
         if (controller_length > controller_max_length_) {
             buffer_cur = buffer.len;
+            WARN("connection: %ld, controller_length: %ld, out of max length: %ld", (int64_t)handle, controller_length, controller_max_length_);
             break;
         }
 
@@ -259,7 +274,7 @@ void Channel::Handle(uv_stream_t* handle, ssize_t nread)
     }
 
     // move
-    assert(handled_len <= buffer.len && "libmaid: overflowed");
+    ASSERT(handled_len <= buffer.len, "libmaid: overflowed");
     buffer.len -= handled_len;
     ::memmove(buffer.base, (int8_t*)buffer.base + handled_len, buffer.len);
 }
@@ -276,8 +291,9 @@ int32_t Channel::HandleRequest(Controller* controller)
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
-    service_it = service_.find(controller->meta_data().service_name());
+    service_it = service_.find(controller->meta_data().full_service_name());
     if (service_.end() == service_it){
+        WARN("service: %s, not exist", controller->meta_data().full_service_name().c_str());
         controller->SetFailed("libmaid: service not exist");
         done->Run();
         return -1;
@@ -287,6 +303,7 @@ int32_t Channel::HandleRequest(Controller* controller)
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
     method_descriptor = service_descriptor->FindMethodByName(controller->meta_data().method_name());
     if (NULL == method_descriptor){
+        WARN("service: %s, method: %s, not exist", controller->meta_data().full_service_name().c_str(), controller->meta_data().method_name().c_str());
         controller->SetFailed("libmaid: method not exist");
         done->Run();
         return -1;
@@ -321,7 +338,7 @@ int32_t Channel::HandleResponse(Controller* controller)
     }
     if (controller->Failed()){
         it->second->controller()->SetFailed(controller->meta_data().error_text());
-    } else {
+    } else if (NULL != it->second->response()) {
         it->second->response()->ParseFromString(controller->meta_data().message());
     }
     async_result_.erase(it->first);
@@ -336,7 +353,7 @@ int32_t Channel::HandleNotify(Controller* controller)
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
-    service_it = service_.find(controller->meta_data().service_name());
+    service_it = service_.find(controller->meta_data().full_service_name());
     if (service_.end() == service_it){
         return 0;
     }
@@ -390,7 +407,7 @@ void Channel::OnConnect(uv_connect_t* req, int32_t status)
     free(req);
 }
 
-int64_t Channel::Connect(const std::string& host, int32_t port, bool as_default)
+int64_t Channel::Connect(const char* host, int32_t port, bool as_default)
 {
     uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     uv_tcp_init(loop_, handle);
@@ -398,13 +415,14 @@ int64_t Channel::Connect(const std::string& host, int32_t port, bool as_default)
     handle->data = this;
 
     struct sockaddr_in address;
-    uv_ip4_addr(host.c_str(), port, &address);
+    uv_ip4_addr(host, port, &address);
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
 
     int result = uv_tcp_connect(req, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
         free(req);
+        WARN("%s", uv_strerror(result));
         return result;
     }
 
@@ -425,30 +443,33 @@ void Channel::OnAccept(uv_stream_t* handle, int32_t status)
         int result = uv_accept(handle, (uv_stream_t*)peer_handle);
         if (result) {
             self->CloseConnection((uv_stream_t*)peer_handle);
+            WARN("%s", uv_strerror(result));
             return;
         }
         self->NewConnection((uv_stream_t*)peer_handle);
     }
 }
 
-int64_t Channel::Listen(const std::string& host, int32_t port, int32_t backlog)
+int64_t Channel::Listen(const char* host, int32_t port, int32_t backlog)
 {
     uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     uv_tcp_init(loop_, handle);
     handle->data = this;
     struct sockaddr_in address;
-    uv_ip4_addr(host.c_str(), port, &address);
+    uv_ip4_addr(host, port, &address);
 
     int32_t flags = 0;
     int32_t result = -1;
     result = uv_tcp_bind(handle, (struct sockaddr*)&address, flags);
     if (result){
         uv_close((uv_handle_t*)handle, OnClose);
+        WARN("%s", uv_strerror(result));
         return result;
     }
     result = uv_listen((uv_stream_t*)handle, backlog, OnAccept);
     if (result){
         uv_close((uv_handle_t*)handle, OnClose);
+        WARN("%s", uv_strerror(result));
         return result;
     }
 
@@ -464,6 +485,7 @@ void Channel::OnClose(uv_handle_t* handle)
 
 void Channel::CloseConnection(uv_stream_t* handle)
 {
+    INFO("close connection:%ld", (int64_t)handle);
     uv_read_stop(handle);
     std::set<int64_t>& transactions = transactions_[(int64_t)handle];
     for (std::set<int64_t>::const_iterator it = transactions.begin(); it != transactions.end(); ++it) {
@@ -482,6 +504,7 @@ void Channel::CloseConnection(uv_stream_t* handle)
 
 void Channel::NewConnection(uv_stream_t* handle)
 {
+    INFO("new connection:%ld", (int64_t)handle);
     handle->data = this;
     connected_handle_[(int64_t)handle] = handle;
     uv_read_start(handle, OnAlloc, OnRead);
@@ -509,7 +532,7 @@ void Buffer::Expend(size_t expect_length)
         new_length <<= 1;
         void* new_ptr = ::realloc(base, new_length);
         if (NULL == new_ptr){
-            ::perror("libmaid: Expend:");
+            ERROR("expend failed");
             return;
         }
         base = new_ptr;

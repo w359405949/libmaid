@@ -91,18 +91,6 @@ class ControllerMeta : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // optional string service_name = 1;
-  inline bool has_service_name() const;
-  inline void clear_service_name();
-  static const int kServiceNameFieldNumber = 1;
-  inline const ::std::string& service_name() const;
-  inline void set_service_name(const ::std::string& value);
-  inline void set_service_name(const char* value);
-  inline void set_service_name(const char* value, size_t size);
-  inline ::std::string* mutable_service_name();
-  inline ::std::string* release_service_name();
-  inline void set_allocated_service_name(::std::string* service_name);
-
   // optional string method_name = 2;
   inline bool has_method_name() const;
   inline void clear_method_name();
@@ -122,7 +110,7 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 transmit_id() const;
   inline void set_transmit_id(::google::protobuf::uint32 value);
 
-  // optional bool stub = 4 [default = true];
+  // optional bool stub = 4;
   inline bool has_stub() const;
   inline void clear_stub();
   static const int kStubFieldNumber = 4;
@@ -155,13 +143,6 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline ::std::string* release_error_text();
   inline void set_allocated_error_text(::std::string* error_text);
 
-  // optional int32 status = 8;
-  inline bool has_status() const;
-  inline void clear_status();
-  static const int kStatusFieldNumber = 8;
-  inline ::google::protobuf::int32 status() const;
-  inline void set_status(::google::protobuf::int32 value);
-
   // optional bool notify = 9;
   inline bool has_notify() const;
   inline void clear_notify();
@@ -181,10 +162,20 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline ::std::string* release_message();
   inline void set_allocated_message(::std::string* message);
 
+  // optional string full_service_name = 11;
+  inline bool has_full_service_name() const;
+  inline void clear_full_service_name();
+  static const int kFullServiceNameFieldNumber = 11;
+  inline const ::std::string& full_service_name() const;
+  inline void set_full_service_name(const ::std::string& value);
+  inline void set_full_service_name(const char* value);
+  inline void set_full_service_name(const char* value, size_t size);
+  inline ::std::string* mutable_full_service_name();
+  inline ::std::string* release_full_service_name();
+  inline void set_allocated_full_service_name(::std::string* full_service_name);
+
   // @@protoc_insertion_point(class_scope:maid.proto.ControllerMeta)
  private:
-  inline void set_has_service_name();
-  inline void clear_has_service_name();
   inline void set_has_method_name();
   inline void clear_has_method_name();
   inline void set_has_transmit_id();
@@ -197,18 +188,17 @@ class ControllerMeta : public ::google::protobuf::Message {
   inline void clear_has_failed();
   inline void set_has_error_text();
   inline void clear_has_error_text();
-  inline void set_has_status();
-  inline void clear_has_status();
   inline void set_has_notify();
   inline void clear_has_notify();
   inline void set_has_message();
   inline void clear_has_message();
+  inline void set_has_full_service_name();
+  inline void clear_has_full_service_name();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint32 _has_bits_[1];
   mutable int _cached_size_;
-  ::std::string* service_name_;
   ::std::string* method_name_;
   ::google::protobuf::uint32 transmit_id_;
   bool stub_;
@@ -217,7 +207,7 @@ class ControllerMeta : public ::google::protobuf::Message {
   bool notify_;
   ::std::string* error_text_;
   ::std::string* message_;
-  ::google::protobuf::int32 status_;
+  ::std::string* full_service_name_;
   friend void  protobuf_AddDesc_controller_2eproto();
   friend void protobuf_AssignDesc_controller_2eproto();
   friend void protobuf_ShutdownFile_controller_2eproto();
@@ -232,91 +222,15 @@ class ControllerMeta : public ::google::protobuf::Message {
 
 // ControllerMeta
 
-// optional string service_name = 1;
-inline bool ControllerMeta::has_service_name() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void ControllerMeta::set_has_service_name() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void ControllerMeta::clear_has_service_name() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void ControllerMeta::clear_service_name() {
-  if (service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    service_name_->clear();
-  }
-  clear_has_service_name();
-}
-inline const ::std::string& ControllerMeta::service_name() const {
-  // @@protoc_insertion_point(field_get:maid.proto.ControllerMeta.service_name)
-  return *service_name_;
-}
-inline void ControllerMeta::set_service_name(const ::std::string& value) {
-  set_has_service_name();
-  if (service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    service_name_ = new ::std::string;
-  }
-  service_name_->assign(value);
-  // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.service_name)
-}
-inline void ControllerMeta::set_service_name(const char* value) {
-  set_has_service_name();
-  if (service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    service_name_ = new ::std::string;
-  }
-  service_name_->assign(value);
-  // @@protoc_insertion_point(field_set_char:maid.proto.ControllerMeta.service_name)
-}
-inline void ControllerMeta::set_service_name(const char* value, size_t size) {
-  set_has_service_name();
-  if (service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    service_name_ = new ::std::string;
-  }
-  service_name_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerMeta.service_name)
-}
-inline ::std::string* ControllerMeta::mutable_service_name() {
-  set_has_service_name();
-  if (service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    service_name_ = new ::std::string;
-  }
-  // @@protoc_insertion_point(field_mutable:maid.proto.ControllerMeta.service_name)
-  return service_name_;
-}
-inline ::std::string* ControllerMeta::release_service_name() {
-  clear_has_service_name();
-  if (service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    return NULL;
-  } else {
-    ::std::string* temp = service_name_;
-    service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-    return temp;
-  }
-}
-inline void ControllerMeta::set_allocated_service_name(::std::string* service_name) {
-  if (service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete service_name_;
-  }
-  if (service_name) {
-    set_has_service_name();
-    service_name_ = service_name;
-  } else {
-    clear_has_service_name();
-    service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  }
-  // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerMeta.service_name)
-}
-
 // optional string method_name = 2;
 inline bool ControllerMeta::has_method_name() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+  return (_has_bits_[0] & 0x00000001u) != 0;
 }
 inline void ControllerMeta::set_has_method_name() {
-  _has_bits_[0] |= 0x00000002u;
+  _has_bits_[0] |= 0x00000001u;
 }
 inline void ControllerMeta::clear_has_method_name() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000001u;
 }
 inline void ControllerMeta::clear_method_name() {
   if (method_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
@@ -386,13 +300,13 @@ inline void ControllerMeta::set_allocated_method_name(::std::string* method_name
 
 // optional uint32 transmit_id = 3;
 inline bool ControllerMeta::has_transmit_id() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000002u) != 0;
 }
 inline void ControllerMeta::set_has_transmit_id() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000002u;
 }
 inline void ControllerMeta::clear_has_transmit_id() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void ControllerMeta::clear_transmit_id() {
   transmit_id_ = 0u;
@@ -408,18 +322,18 @@ inline void ControllerMeta::set_transmit_id(::google::protobuf::uint32 value) {
   // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.transmit_id)
 }
 
-// optional bool stub = 4 [default = true];
+// optional bool stub = 4;
 inline bool ControllerMeta::has_stub() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void ControllerMeta::set_has_stub() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void ControllerMeta::clear_has_stub() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void ControllerMeta::clear_stub() {
-  stub_ = true;
+  stub_ = false;
   clear_has_stub();
 }
 inline bool ControllerMeta::stub() const {
@@ -434,13 +348,13 @@ inline void ControllerMeta::set_stub(bool value) {
 
 // optional bool is_canceled = 5;
 inline bool ControllerMeta::has_is_canceled() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void ControllerMeta::set_has_is_canceled() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void ControllerMeta::clear_has_is_canceled() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void ControllerMeta::clear_is_canceled() {
   is_canceled_ = false;
@@ -458,13 +372,13 @@ inline void ControllerMeta::set_is_canceled(bool value) {
 
 // optional bool failed = 6;
 inline bool ControllerMeta::has_failed() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void ControllerMeta::set_has_failed() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void ControllerMeta::clear_has_failed() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void ControllerMeta::clear_failed() {
   failed_ = false;
@@ -482,13 +396,13 @@ inline void ControllerMeta::set_failed(bool value) {
 
 // optional string error_text = 7;
 inline bool ControllerMeta::has_error_text() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void ControllerMeta::set_has_error_text() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void ControllerMeta::clear_has_error_text() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void ControllerMeta::clear_error_text() {
   if (error_text_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
@@ -556,39 +470,15 @@ inline void ControllerMeta::set_allocated_error_text(::std::string* error_text) 
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerMeta.error_text)
 }
 
-// optional int32 status = 8;
-inline bool ControllerMeta::has_status() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void ControllerMeta::set_has_status() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void ControllerMeta::clear_has_status() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void ControllerMeta::clear_status() {
-  status_ = 0;
-  clear_has_status();
-}
-inline ::google::protobuf::int32 ControllerMeta::status() const {
-  // @@protoc_insertion_point(field_get:maid.proto.ControllerMeta.status)
-  return status_;
-}
-inline void ControllerMeta::set_status(::google::protobuf::int32 value) {
-  set_has_status();
-  status_ = value;
-  // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.status)
-}
-
 // optional bool notify = 9;
 inline bool ControllerMeta::has_notify() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void ControllerMeta::set_has_notify() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void ControllerMeta::clear_has_notify() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void ControllerMeta::clear_notify() {
   notify_ = false;
@@ -606,13 +496,13 @@ inline void ControllerMeta::set_notify(bool value) {
 
 // optional bytes message = 10;
 inline bool ControllerMeta::has_message() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void ControllerMeta::set_has_message() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void ControllerMeta::clear_has_message() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void ControllerMeta::clear_message() {
   if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
@@ -678,6 +568,82 @@ inline void ControllerMeta::set_allocated_message(::std::string* message) {
     message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerMeta.message)
+}
+
+// optional string full_service_name = 11;
+inline bool ControllerMeta::has_full_service_name() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void ControllerMeta::set_has_full_service_name() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void ControllerMeta::clear_has_full_service_name() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void ControllerMeta::clear_full_service_name() {
+  if (full_service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    full_service_name_->clear();
+  }
+  clear_has_full_service_name();
+}
+inline const ::std::string& ControllerMeta::full_service_name() const {
+  // @@protoc_insertion_point(field_get:maid.proto.ControllerMeta.full_service_name)
+  return *full_service_name_;
+}
+inline void ControllerMeta::set_full_service_name(const ::std::string& value) {
+  set_has_full_service_name();
+  if (full_service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    full_service_name_ = new ::std::string;
+  }
+  full_service_name_->assign(value);
+  // @@protoc_insertion_point(field_set:maid.proto.ControllerMeta.full_service_name)
+}
+inline void ControllerMeta::set_full_service_name(const char* value) {
+  set_has_full_service_name();
+  if (full_service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    full_service_name_ = new ::std::string;
+  }
+  full_service_name_->assign(value);
+  // @@protoc_insertion_point(field_set_char:maid.proto.ControllerMeta.full_service_name)
+}
+inline void ControllerMeta::set_full_service_name(const char* value, size_t size) {
+  set_has_full_service_name();
+  if (full_service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    full_service_name_ = new ::std::string;
+  }
+  full_service_name_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerMeta.full_service_name)
+}
+inline ::std::string* ControllerMeta::mutable_full_service_name() {
+  set_has_full_service_name();
+  if (full_service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    full_service_name_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:maid.proto.ControllerMeta.full_service_name)
+  return full_service_name_;
+}
+inline ::std::string* ControllerMeta::release_full_service_name() {
+  clear_has_full_service_name();
+  if (full_service_name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = full_service_name_;
+    full_service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void ControllerMeta::set_allocated_full_service_name(::std::string* full_service_name) {
+  if (full_service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete full_service_name_;
+  }
+  if (full_service_name) {
+    set_has_full_service_name();
+    full_service_name_ = full_service_name;
+  } else {
+    clear_has_full_service_name();
+    full_service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerMeta.full_service_name)
 }
 
 

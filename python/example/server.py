@@ -8,13 +8,14 @@ from gevent import wait
 class HeeloServiceImpl(HelloService):
 
     def Hello(self, controller, request, done):
+        print "transmit_id:", controller.meta_data.transmit_id, request.message
         response = HelloResponse()
         response.message = "from pymaid"
         return response
 
 def main():
     channel = Channel()
-    channel.listen("127.0.0.1", 8888)
+    channel.listen("0.0.0.0", 8888)
     channel.append_service(HeeloServiceImpl())
     wait()
 

@@ -70,8 +70,8 @@ public:
      * < 0: error happend
      * > 0: fd.
      */
-    int64_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
-    int64_t Connect(const std::string& host, int32_t port, bool as_default=false);
+    int64_t Listen(const char* host, int32_t port, int32_t backlog=1);
+    int64_t Connect(const char* host, int32_t port, bool as_default=false);
 
     /*
      * service for remote request
@@ -116,7 +116,7 @@ private:
     void CloseConnection(uv_stream_t* handle);
 
 private:
-    std::map<std::string, google::protobuf::Service*> service_; //<service_name, service>
+    std::map<std::string, google::protobuf::Service*> service_; //<full_service_name, service>
     std::map<int64_t, maid::closure::Closure*> async_result_; //<transmit_id, controller>
     std::map<int64_t, uv_stream_t*> connected_handle_; //<fd, stream>
     std::map<int64_t, uv_stream_t*> listen_handle_; //<fd, stream>

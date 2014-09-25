@@ -41,7 +41,7 @@ class Channel(RpcChannel):
             raise Exception("controller should has type Controller")
 
         controller.response_class = response_class
-        controller.meta_data.service_name = method.containing_service.full_name
+        controller.meta_data.full_service_name = method.containing_service.full_name
         controller.meta_data.method_name = method.name
 
         if controller.sock is None:
@@ -57,16 +57,17 @@ class Channel(RpcChannel):
             controller.SetFailed("did not connect")
             return None
 
-        while True:
-            if self._transmit_id >= (1 << 63) -1:
-                self._transmit_id = 0
-            else:
-                self._transmit_id += 1
-            controller.async_result = AsyncResult()
-            if self._pending_request.get(self._transmit_id, None) is None:
-                controller.meta_data.transmit_id = self._transmit_id
-                self._pending_request[self._transmit_id] = controller
-                break
+        #while True:
+        #    if self._transmit_id >= (1 << 63) -1:
+        #        self._transmit_id = 0
+        #    else:
+        #        self._transmit_id += 1
+        #if self._pending_request.get(self._transmit_id, None) is None:
+        self._transmit_id += 1
+        controller.async_result = AsyncResult()
+        controller.meta_data.transmit_id = self._transmit_id
+        self._pending_request[self._transmit_id] = controller
+        #    break
 
         controller.meta_data.stub = True
         controller.meta_data.message = request.SerializeToString()
@@ -175,7 +176,7 @@ class Channel(RpcChannel):
                 self._handle_request(controller)
 
     def _handle_request(self, controller):
-        service = self._services.get(controller.meta_data.service_name, None)
+        service = self._services.get(controller.meta_data.full_service_name, None)
         if service is None:
             controller.SetFailed("service not exist")
             self.send_response(controller, None)
@@ -198,7 +199,7 @@ class Channel(RpcChannel):
         self.send_response(controller, response)
 
     def _handle_notify(self, controller):
-        service = self._services.get(controller.meta_data.service_name, None)
+        service = self._services.get(controller.meta_data.full_service_name, None)
         if service is None:
             return
 
