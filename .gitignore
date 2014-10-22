@@ -13,3 +13,9 @@ stylesheets/bundles
 
 *.pyc
 *.cache
+
+net/maid/maid/obj*
+net/maid/maid/bin*
+
+net/maid/example/obj*
+net/maid/example/bin*

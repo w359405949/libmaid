@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Net;
 using maid;
-using maid.proto;
 using maid.example;
 
-namespace Test
+namespace Example
 {
     class Program
     {
@@ -17,7 +13,7 @@ namespace Test
         {
             Channel channel = new Channel();
             HelloService service = new HelloService();
-            channel.AddService("HelloService", service);
+            channel.AddMethod("HelloService.Hello", service.Hello);
 
             IAsyncResult result = channel.Connect("192.168.0.99", 8888);
             while (!result.IsCompleted)
@@ -34,10 +30,10 @@ namespace Test
 
             while (true)
             {
-                //Thread.Sleep(100);
+                //Thread.Sleep(10);
                 HelloRequest request = new HelloRequest();
                 request.message = "this message from protobuf-net";
-                channel.CallMethod("HelloService", "Hello", channel.Serialize(service.serializer_, request));
+                channel.CallMethod("HelloService.Hello", channel.Serialize(service.serializer_, request));
                 channel.Update();
             }
         }
