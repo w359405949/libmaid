@@ -12,3 +12,4 @@ javascripts/bundles
 stylesheets/bundles
 
 *.pyc
+*.cache
