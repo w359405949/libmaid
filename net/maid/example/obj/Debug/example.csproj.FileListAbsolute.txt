@@ -12,3 +12,15 @@ D:\libmaid\net\maid\Test\obj\Debug\Test.pdb
 D:\libmaid\net\maid\Test\bin\Debug\maid.dll
 D:\libmaid\net\maid\Test\bin\Debug\maid.pdb
 D:\libmaid\net\maid\Test\obj\Debug\example.csprojResolveAssemblyReference.cache
+D:\libmaid\net\maid\example\bin\Debug\Test.exe.config
+D:\libmaid\net\maid\example\bin\Debug\Test.exe
+D:\libmaid\net\maid\example\bin\Debug\Test.pdb
+D:\libmaid\net\maid\example\bin\Debug\Controller.dll
+D:\libmaid\net\maid\example\bin\Debug\ControllerSerializer.dll
+D:\libmaid\net\maid\example\bin\Debug\maid.dll
+D:\libmaid\net\maid\example\bin\Debug\protobuf-net.dll
+D:\libmaid\net\maid\example\bin\Debug\maid.pdb
+D:\libmaid\net\maid\example\bin\Debug\protobuf-net.xml
+D:\libmaid\net\maid\example\obj\Debug\example.csprojResolveAssemblyReference.cache
+D:\libmaid\net\maid\example\obj\Debug\Test.exe
+D:\libmaid\net\maid\example\obj\Debug\Test.pdb
