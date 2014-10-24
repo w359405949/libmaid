@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
@@ -11,6 +10,9 @@ namespace maid
     public class Channel
     {
         public delegate void MethodEventHandler(Controller controller);
+        private int reconnect_ = -1;
+        private string host_ = "";
+        private int port_ = 0;
         private Socket connection_;
         private NetworkStream networkStream_;
 
@@ -22,9 +24,8 @@ namespace maid
         private Dictionary<string, MethodEventHandler> methods_;
         private byte[] buffer_;
         private int BUFFERSIZE = 4096;
-        private UInt32 transmit_id_ = 0;
+        private uint transmit_id_ = 0;
 
-        private event AsyncCallback afterConnect_;
         private IAsyncResult asyncRead_;
         private IAsyncResult asyncConnect_;
 
@@ -35,18 +36,7 @@ namespace maid
             buffer_ = new byte[BUFFERSIZE];
             serializer_ = new ControllerMetaSerializer();
             methods_ = new Dictionary<string, MethodEventHandler>();
-            afterConnect_ += AfterConnect;
-        }
 
-        private void AfterConnect(IAsyncResult asyncResult)
-        {
-            Socket connection = asyncResult.AsyncState as Socket;
-            connection.EndConnect(asyncResult);
-
-            if (connection.Connected)
-            {
-                NewConnection(connection);
-            }
         }
 
         public void AddMethod(string fullMethodName, MethodEventHandler methodEventHandler)
@@ -58,51 +48,102 @@ namespace maid
         {
             get
             {
-                return connection_ != null && connection_.Connected;
+                return connection_ != null && connection_.Connected && networkStream_ != null;
             }
         }
 
-        public IAsyncResult Connect(string host, int port)
+        public bool Connecting
         {
-            Socket connection = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            asyncConnect_ = connection.BeginConnect(host, port, afterConnect_, connection);
-            return asyncConnect_;
+            get
+            {
+                return asyncConnect_ != null && !asyncConnect_.IsCompleted;
+            }
         }
 
-        private void NewConnection(Socket connection)
+        public void SetReconnect(int reconnect)
         {
-            connection_ = connection;
-            networkStream_ = new NetworkStream(connection_);
+            reconnect_ = reconnect;
+        }
+
+        public void Connect(string host, int port)
+        {
+            host_ = host;
+            port_ = port;
+            connection_ = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            asyncConnect_ = connection_.BeginConnect(host, port, null, null);
+        }
+
+        private void CheckConnection()
+        {
+            if (asyncConnect_ != null)
+            {
+                if (asyncConnect_.IsCompleted)
+                {
+                    if (connection_.Connected)
+                    {
+                        NewConnection();
+                    }
+                    else
+                    {
+                        CloseConnection();
+                    }
+                    asyncConnect_ = null;
+                }
+            }
+            else if (!Connected)
+            {
+                Reconnect();
+            }
+        } 
+
+        private void Reconnect()
+        {
+            if (Connecting)
+            {
+                return;
+            }
+            if (reconnect_ != 0)
+            {
+                Connect(host_, port_);
+            }
+            if (reconnect_ > 0)
+            {
+                reconnect_--;
+            }
         }
 
         public void CloseConnection()
         {
-            if (connection_ != null)
+            try
             {
-                try
-               {
-                    connection_.EndReceive(asyncRead_);
-                }
-                    catch (Exception) { }
-                    asyncRead_ = null;
-
-                    try
-                    {
-                        connection_.EndConnect(asyncConnect_);
-                    }
-                    catch (Exception) { }
-
-                    asyncConnect_ = null;
-                connection_.Close();
-                connection_ = null;
-                networkStream_ = null;
+                connection_.EndReceive(asyncRead_);
             }
+            catch (Exception) { }
+            try
+            {
+                connection_.EndConnect(asyncConnect_);
+            }
+            catch (Exception) { }
+            try
+            {
+                connection_.Close();
+            }
+            catch (Exception) { }
 
+            asyncConnect_ = null;
+            asyncRead_ = null;
+            connection_ = null;
+            networkStream_ = null;
+        }
+
+        public void NewConnection()
+        {
+            networkStream_ = new NetworkStream(connection_);
             readBuffer_.Seek(0, SeekOrigin.Begin);
             readBuffer_.SetLength(0);
         }
 
-        public uint CallMethod(string fullServiceName, string methodName, byte[] message, bool notify=false)
+        public long CallMethod(string fullServiceName, string methodName, byte[] message, bool notify=false)
         {
             Controller controller = new Controller();
             controller.meta = new ControllerMeta();
@@ -110,20 +151,31 @@ namespace maid
             controller.meta.full_service_name = fullServiceName;
             controller.meta.method_name = methodName;
 
-            if (notify)
+            try
             {
-                SendNotify(controller);
+                if (notify)
+                {
+                    SendNotify(controller);
+                }
+                else
+                {
+                    controller.meta.transmit_id = ++transmit_id_;
+                    SendRequest(controller);
+                }
             }
-            else
+            catch (IOException)
             {
-                controller.meta.transmit_id = ++transmit_id_;
-                SendRequest(controller);
+                return -1;
+            }
+            catch (ArgumentNullException)
+            {
+                return -1;
             }
             return controller.meta.transmit_id;
         }
 
 
-        public uint CallMethod(string fullMethodName, byte[] message, bool notify = false)
+        public long CallMethod(string fullMethodName, byte[] message, bool notify = false)
         {
             int last = fullMethodName.LastIndexOf(".");
             if (last < 0)
@@ -133,34 +185,19 @@ namespace maid
             string fullServiceName = fullMethodName.Substring(0, last);
             string methodName = fullMethodName.Substring(last + 1, fullMethodName.Length - last - 1);
 
-            Controller controller = new Controller();
-            controller.meta = new ControllerMeta();
-            controller.meta.message = message;
-            controller.meta.full_service_name = fullServiceName;
-            controller.meta.method_name = methodName;
-
-            if (notify)
-            {
-                SendNotify(controller);
-            }
-            else
-            {
-                controller.meta.transmit_id = ++transmit_id_;
-                SendRequest(controller);
-            }
-            return controller.meta.transmit_id;
+            return CallMethod(fullServiceName, methodName, message, notify);
         }
 
 
         public void Update()
         {
-            if (!Connected)
+            CheckConnection();
+            if (Connected)
             {
-                return;
+                Read();
+                Handle();
             }
-            Read();
         }
-
 
         private void Read()
         {
@@ -170,6 +207,7 @@ namespace maid
                 if (nread == 0)
                 {
                     CloseConnection();
+                    return;
                 }
                 else
                 {
@@ -183,10 +221,7 @@ namespace maid
             {
                 asyncRead_ = connection_.BeginReceive(buffer_, 0, BUFFERSIZE, SocketFlags.None, null, null);
             }
-
-            Handle();
         }
-
 
         protected void Handle()
         {
@@ -273,6 +308,7 @@ namespace maid
             controller.meta.notify = false;
             serializer_.SerializeWithLengthPrefix(networkStream_, controller.meta, typeof(ControllerMeta), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
         }
+
 
         public static T Deserialize<T>(ProtoBuf.Meta.TypeModel serializer, byte[] bytes, int index, int count) where T:class
         {

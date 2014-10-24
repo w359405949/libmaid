@@ -14,26 +14,20 @@ namespace Example
             Channel channel = new Channel();
             HelloService service = new HelloService();
             channel.AddMethod("HelloService.Hello", service.Hello);
-
-            IAsyncResult result = channel.Connect("192.168.0.99", 8888);
-            while (!result.IsCompleted)
-            {
-                Thread.Sleep(1000);
-                Console.WriteLine("连接中");
-            }
-            if (!channel.Connected)
-            {
-                Console.WriteLine("没连上");
-                Console.ReadKey();
-            }
-            Console.WriteLine("连上了");
+            channel.Connect("192.168.0.99", 8888);
 
             while (true)
             {
-                //Thread.Sleep(10);
                 HelloRequest request = new HelloRequest();
                 request.message = "this message from protobuf-net";
-                channel.CallMethod("HelloService.Hello", channel.Serialize(service.serializer_, request));
+                long transmitId = channel.CallMethod("HelloService.Hello", channel.Serialize(service.serializer_, request));
+                if (transmitId == -1)
+                {
+                    if (channel.Connecting)
+                    {
+                        Console.WriteLine("断线了，重连中");
+                    }
+                }
                 channel.Update();
             }
         }
