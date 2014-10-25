@@ -7,7 +7,9 @@ dependency
 =======
 
 c++: libuv, protobuf
+
 python: gevent, protobuf
+
 c#: .net2.0, protobuf-net
 
 proto format
