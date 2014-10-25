@@ -15,9 +15,9 @@ c#: .net2.0, protobuf-net
 proto format
 ======
 
-basic format:|--------4 bytes------------------|---n bytes----|
+basic format:|----------4 bytes------------------|-----n bytes----|
 
-description :|ControllerMeta length(Big Endian)|ControllerMeta---|
+description :|-ControllerMeta length(Big Endian)-|-ControllerMeta-|
 
 
 Build
