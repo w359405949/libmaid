@@ -3,42 +3,55 @@
 #include "hello.pb.h"
 #define MAX_CONNECTION 100000
 
-using maid::channel::Channel;
-using maid::controller::Controller;
+using maid::Channel;
+using maid::Controller;
 
 static int32_t count = 0;
 
-class Closure : public maid::closure::Closure
+class Closure : public google::protobuf::Closure
 {
 public:
+    Closure(maid::Controller* controller, HelloRequest* request, HelloResponse* response)
+        :response_(response),
+        request_(request),
+        controller_(controller)
+    {
+    }
+
     void Run()
     {
-        if (!controller()->Failed()) {
+        if (!controller_->Failed()) {
             ++count;
             printf("count:%d\n", count);
         }
         if(count + 1 >= MAX_CONNECTION){
             uv_stop(uv_default_loop());
         }
-        printf("%s\n", ((HelloResponse*)response())->message().c_str());
+        printf("%s\n", response_->message().c_str());
+
+        delete request_;
+        delete response_;
+        delete controller_;
     }
 
 private:
-    google::protobuf::Message* response_;
+    maid::Controller* controller_;
+    HelloRequest* request_;
+    HelloResponse* response_;
 };
 
 
 int main()
 {
-    Channel* channel = new Channel(uv_default_loop());
+    Channel* channel = new Channel();
     channel->Connect("127.0.0.1", 8888, true);
     for(int32_t i = 0; i < MAX_CONNECTION; i++){
-        uv_run(uv_default_loop(), UV_RUN_ONCE);
+        channel->Update();
         Controller* controller = new Controller();
         HelloRequest* request = new HelloRequest();
         request->set_message("hello");
         HelloResponse* response = new HelloResponse();
-        Closure* closure = new Closure();
+        Closure* closure = new Closure(controller, request, response);
 
         HelloService_Stub* stub = new HelloService_Stub(channel);
         stub->Hello(controller, request, response, closure);

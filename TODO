@@ -1,6 +1,6 @@
-6, add .net/mono supoort.
+(finished)6, add .net/mono supoort.
 5, add lua support.
-4, unittest.
-3, more example.
+(doing)4, unittest.
+(finished)3, more example.
 (finished)2，TODO
 (finished)1，继续增加Hanlde部分的逻辑

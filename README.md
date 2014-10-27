@@ -1,7 +1,7 @@
 libmaid
 =======
 
-a general use of rpc service, support c++, python, c#(unity3d, ios)
+a simple, light weight, general use and multiple language(c++, python, c#-unity3d) support of protobuf rpc service implement.
 
 dependency
 =======

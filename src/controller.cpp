@@ -1,52 +1,64 @@
-#include <stdio.h>
-#include "controller.h"
+#include "maid/controller.h"
+#include "controllerimpl.h"
 
-using maid::controller::Controller;
-using maid::proto::ControllerMeta;
+using maid::Controller;
 
 Controller::Controller()
-    :fd_(0)
 {
-}
-
-Controller::~Controller()
-{
+    controller_ = new ControllerImpl();
 }
 
 void Controller::Reset()
 {
+    controller_->Reset();
 }
 
 bool Controller::Failed() const
 {
-    return meta_data_.failed();
+    return controller_->Failed();
 }
 
 std::string Controller::ErrorText() const
 {
-    return meta_data_.error_text();
+    return controller_->ErrorText();
 }
 
 void Controller::StartCancel()
 {
+    return controller_->StartCancel();
 }
 
 void Controller::SetFailed(const std::string& reason)
 {
-    meta_data_.set_failed(true);
-    meta_data_.set_error_text(reason);
+    return controller_->SetFailed(reason);
 }
 
 bool Controller::IsCanceled() const
 {
-    return meta_data_.is_canceled();
+    return controller_->IsCanceled();
 }
 
 void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 {
+    return controller_->NotifyOnCancel(callback);
 }
 
-ControllerMeta& Controller::meta_data()
+void Controller::set_fd(int64_t fd)
 {
-    return meta_data_;
+    controller_->set_fd(fd);
+}
+
+int64_t Controller::fd()
+{
+    return controller_->fd();
+}
+
+Controller::~Controller()
+{
+    delete controller_;
+}
+
+maid::proto::ControllerMeta& Controller::meta_data()
+{
+    return controller_->meta_data();
 }

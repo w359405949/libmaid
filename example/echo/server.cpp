@@ -22,7 +22,7 @@ public:
 
 int main()
 {
-    maid::channel::Channel* channel = new maid::channel::Channel(uv_default_loop());
+    maid::Channel* channel = new maid::Channel();
     EchoService* echo = new EchoServiceImpl();
     channel->AppendService(echo);
     channel->Listen("0.0.0.0", 8888);

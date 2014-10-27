@@ -1,0 +1,14 @@
+option cc_generic_services = true;
+
+message Request
+{
+}
+
+message Response
+{
+}
+
+service TestService
+{
+	rpc TestMethod(Request) returns (Response);
+}
