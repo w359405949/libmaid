@@ -1,8 +1,0 @@
-message PlayerModel
-{
-    optional int32 id = 1;
-    optional string name = 2;
-    optional string sex = 3;
-    optional int32 gold = 4;
-    optional int32 last_login_time = 5;
-}
