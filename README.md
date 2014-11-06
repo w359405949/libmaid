@@ -6,11 +6,19 @@ a simple, light weight, general use and multiple language(c++, python, c#-unity3
 dependency
 =======
 
-c++: libuv, protobuf
+c++:
 
-python: gevent, protobuf
+    libuv, protobuf
 
-c#: .net2.0, protobuf-net
+
+python:
+
+    gevent, protobuf
+
+
+c#:
+
+    .net2.0, protobuf-net
 
 proto format
 ======
@@ -20,24 +28,28 @@ basic format:|----------4 bytes------------------|-----n bytes----|
 description :|-ControllerMeta length(Big Endian)-|-ControllerMeta-|
 
 
-Build
+Build && install
 =======
 
-cmake .
+c++:
 
-make && make install
+    cmake .
 
-Build Example
-=======
+    make && make install
 
-cp lib/libmaid.a example/hello/
 
-cd example/hello/
+    # unittest
 
-g++ client.cpp libmaid.a echo.pb.cc -lev -lprotobuf -o client
+    cmake -Dmaid_build_tests .
 
-g++ server.cpp libmaid.a echo.pb.cc -lev -lprotobuf -o server
+    make && make test
 
-./server
+    # example
 
-./client
+    g++ client.cpp *.pb.cc -luv -lprotobuf -lmaid -o client
+
+    g++ server.cpp *.pb.cc -luv -lprotobuf -lmaid -o server
+
+    ./server
+
+    ./client
