@@ -13,3 +13,6 @@
 [submodule "deps/protobuf"]
 	path = deps/protobuf
 	url = https://github.com/google/protobuf.git
+[submodule "deps/protobuf-net"]
+	path = deps/protobuf-net
+	url = git@github.com:mgravell/protobuf-net.git
