@@ -1,4 +1,6 @@
-(finished)6, add .net/mono supoort.
+8, add timeout
+7, add session support.(like http cookie)
+(finished)6, add .net/mono support.
 5, add lua support.
 (doing)4, unittest.
 (finished)3, more example.
