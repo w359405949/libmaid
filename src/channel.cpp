@@ -47,6 +47,11 @@ void Channel::Update()
     channel_->Update();
 }
 
+void Channel::ServeForever()
+{
+    channel_->ServeForever();
+}
+
 Channel::~Channel()
 {
     delete channel_;

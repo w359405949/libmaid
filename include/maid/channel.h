@@ -43,6 +43,8 @@ public:
 
     void Update();
 
+    void ServeForever();
+
 private:
     ChannelImpl* channel_;
 };

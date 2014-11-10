@@ -28,7 +28,7 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
     signal(SIGPIPE, SIG_IGN);
     if (NULL == loop)
     {
-        loop = uv_default_loop();
+        loop = uv_loop_new();
     }
     loop_ = loop;
     //uv_idle_init(loop, &remote_closure_gc_);
@@ -520,6 +520,19 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
 
     handle->data = this;
     uv_close((uv_handle_t*)handle, OnClose);
+
+    std::map<std::string, google::protobuf::Service*>::iterator it = service_.begin();
+    for(;it != service_.end(); it++) {
+        const google::protobuf::ServiceDescriptor* service_descriptor = it->second->GetDescriptor();
+        const google::protobuf::MethodDescriptor* method_descriptor = NULL;
+        method_descriptor = service_descriptor->FindMethodByName("Disconnect");
+        if (NULL == method_descriptor){
+            continue;
+        }
+        Controller controller;
+        controller.set_fd(StreamToFd(handle));
+        it->second->CallMethod(method_descriptor, &controller, NULL, NULL, NULL);
+    }
 }
 
 void ChannelImpl::AddConnection(uv_stream_t* handle)
@@ -542,9 +555,4 @@ void ChannelImpl::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* 
 
 void ChannelImpl::OnRemoteClosureGC(uv_idle_t* handle)
 {
-}
-
-void ChannelImpl::Update()
-{
-    uv_run(loop_, UV_RUN_NOWAIT);
 }

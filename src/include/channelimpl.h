@@ -58,7 +58,15 @@ public:
         return default_fd_;
     }
 
-    void Update();
+    inline void Update()
+    {
+        uv_run(loop_, UV_RUN_NOWAIT);
+    }
+
+    inline void ServeForever()
+    {
+        uv_run(loop_, UV_RUN_DEFAULT);
+    }
 
 public:
     virtual void SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done);
