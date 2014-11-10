@@ -23,5 +23,5 @@ int main()
     HelloService* hello = new HelloServiceImpl();
     channel->AppendService(hello);
     channel->Listen("0.0.0.0", 8888);
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    channel->ServeForever();
 }

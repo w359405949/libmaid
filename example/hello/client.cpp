@@ -46,7 +46,6 @@ int main()
     Channel* channel = new Channel();
     channel->Connect("127.0.0.1", 8888, true);
     for(int32_t i = 0; i < MAX_CONNECTION; i++){
-        channel->Update();
         Controller* controller = new Controller();
         HelloRequest* request = new HelloRequest();
         request->set_message("hello");
@@ -55,7 +54,7 @@ int main()
 
         HelloService_Stub* stub = new HelloService_Stub(channel);
         stub->Hello(controller, request, response, closure);
+        channel->Update();
     }
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-
+    channel->ServeForever();
 }

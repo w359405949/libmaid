@@ -22,5 +22,7 @@
 #define ERROR_OTHER         -5
 
 #define CONTROLLERMETA_MAX_LENGTH 10000
+#define RESERVED_METHOD_CONNECT "Connect"
+#define RESERVED_METHOD_DISCONNECT "Disconnect"
 
 #endif /* _MAID_INTERNAL_DEFINE_H_ */

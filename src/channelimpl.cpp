@@ -186,8 +186,7 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
     }
 
     std::string buffer;
-    if (NULL != response)
-    {
+    if (NULL != response) {
         std::string* message = controller->meta_data().mutable_message();
         if (NULL == message)
         {
@@ -195,6 +194,8 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
             return;
         }
         response->SerializeToString(message);
+    } else {
+        controller->meta_data().clear_message();
     }
     int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
     buffer.append((const char*)&controller_nl, sizeof(controller_nl));
@@ -266,6 +267,18 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             break;
         }
         buffer_cur += controller_length;
+
+        if (controller->meta_data().method_name() == RESERVED_METHOD_CONNECT) {
+            WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_CONNECT);
+            handled_len = buffer_cur;
+            continue;
+        }
+
+        if (controller->meta_data().method_name() == RESERVED_METHOD_DISCONNECT) {
+            WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_DISCONNECT);
+            handled_len = buffer_cur;
+            continue;
+        }
 
         controller->set_fd(StreamToFd(handle));
         if (controller->meta_data().stub()) {
@@ -525,7 +538,7 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
     for(;it != service_.end(); it++) {
         const google::protobuf::ServiceDescriptor* service_descriptor = it->second->GetDescriptor();
         const google::protobuf::MethodDescriptor* method_descriptor = NULL;
-        method_descriptor = service_descriptor->FindMethodByName("Disconnect");
+        method_descriptor = service_descriptor->FindMethodByName(RESERVED_METHOD_DISCONNECT);
         if (NULL == method_descriptor){
             continue;
         }
@@ -541,6 +554,19 @@ void ChannelImpl::AddConnection(uv_stream_t* handle)
     handle->data = this;
     connected_handle_[StreamToFd(handle)] = handle;
     uv_read_start(handle, OnAlloc, OnRead);
+
+    std::map<std::string, google::protobuf::Service*>::iterator it = service_.begin();
+    for(;it != service_.end(); it++) {
+        const google::protobuf::ServiceDescriptor* service_descriptor = it->second->GetDescriptor();
+        const google::protobuf::MethodDescriptor* method_descriptor = NULL;
+        method_descriptor = service_descriptor->FindMethodByName(RESERVED_METHOD_CONNECT);
+        if (NULL == method_descriptor){
+            continue;
+        }
+        Controller controller;
+        controller.set_fd(StreamToFd(handle));
+        it->second->CallMethod(method_descriptor, &controller, NULL, NULL, NULL);
+    }
 }
 
 void ChannelImpl::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)

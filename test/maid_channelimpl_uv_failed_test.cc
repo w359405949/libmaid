@@ -86,7 +86,7 @@ TEST(ChannelImpl, Constructor)
     maid::ChannelImpl channelimpl;
 
     ASSERT_EQ(0u, channelimpl.default_fd_);
-    ASSERT_EQ(uv_default_loop(), channelimpl.loop_);
+    ASSERT_TRUE(NULL != channelimpl.loop_);
     ASSERT_EQ(10000u, channelimpl.controller_max_length_);
     ASSERT_EQ(0u, channelimpl.service_.size());
     ASSERT_EQ(0u, channelimpl.async_result_.size());
