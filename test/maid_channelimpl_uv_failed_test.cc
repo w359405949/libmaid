@@ -129,6 +129,40 @@ TEST(ChannelImpl, Listen)
     ASSERT_GT(0, fd);
 }
 
+TEST(ChannelImpl, ListenNULL)
+{
+    maid::ChannelImpl channelimpl;
+    int64_t fd = channelimpl.Listen(NULL, 8888);
+
+    ASSERT_EQ(0u, channelimpl.listen_handle_.size());
+    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(fd));
+    ASSERT_GT(0, fd);
+}
+
+TEST(ChannelImpl, ListenInvalidHost)
+{
+    maid::ChannelImpl channelimpl;
+    int64_t fd = channelimpl.Listen("abcdef", 8888);
+
+    ASSERT_EQ(0u, channelimpl.listen_handle_.size());
+    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(fd));
+    ASSERT_GT(0, fd);
+}
+
+/*
+ *
+ * uv_ip4_addr return success while port invalid(large than  65535)
+ */
+TEST(ChannelImpl, ListenInvalidPort)
+{
+    maid::ChannelImpl channelimpl;
+    int64_t fd = channelimpl.Listen("0.0.0.0", 88888);
+
+    ASSERT_EQ(0u, channelimpl.listen_handle_.size());
+    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(fd));
+    ASSERT_GT(0, fd);
+}
+
 TEST(ChannelImpl, Connect)
 {
     maid::ChannelImpl channelimpl;

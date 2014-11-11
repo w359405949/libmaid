@@ -234,7 +234,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
     int32_t result = 0;
     // handle
     size_t handled_len = 0;
-    while (buffer.len >= sizeof(uint32_t) + handled_len){
+    while (buffer.len >= sizeof(uint32_t) + handled_len) {
         size_t buffer_cur = handled_len;
 
         uint32_t controller_length_nl = 0;
@@ -249,7 +249,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             break;
         }
 
-        if (buffer.len < controller_length + buffer_cur){
+        if (buffer.len < controller_length + buffer_cur) {
             result = ERROR_LACK_DATA;
             break; // lack data
         }
@@ -260,7 +260,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             break;
         }
 
-        if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)){
+        if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
             WARN("connection: %ld, parse meta_data failed", StreamToFd(handle));
             handled_len += sizeof(uint32_t) + controller_length;
             result = ERROR_PARSE_FAILED; // parse failed
@@ -324,7 +324,7 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
     service_it = service_.find(controller->meta_data().full_service_name());
-    if (service_.end() == service_it){
+    if (service_.end() == service_it) {
         WARN("service: %s, not exist", controller->meta_data().full_service_name().c_str());
         controller->SetFailed("service not exist");
         done->Run();
@@ -334,7 +334,7 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
     method_descriptor = service_descriptor->FindMethodByName(controller->meta_data().method_name());
-    if (NULL == method_descriptor){
+    if (NULL == method_descriptor) {
         WARN("service: %s, method: %s, not exist", controller->meta_data().full_service_name().c_str(), controller->meta_data().method_name().c_str());
         controller->SetFailed("method not exist");
         done->Run();
@@ -343,7 +343,7 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
 
     // request
     request = service->GetRequestPrototype(method_descriptor).New();
-    if (NULL == request){
+    if (NULL == request) {
         return ERROR_BUSY; // delay
     }
     done->set_request(request);
@@ -369,7 +369,7 @@ int32_t ChannelImpl::HandleResponse(Controller* controller)
     if (it == async_result_.end() || it->second.controller->fd() != controller->fd()) {
         return 0;
     }
-    if (controller->Failed()){
+    if (controller->Failed()) {
         it->second.controller->SetFailed(controller->ErrorText());
     } else {
         it->second.response->ParseFromString(controller->meta_data().message());
@@ -388,20 +388,20 @@ int32_t ChannelImpl::HandleNotify(Controller* controller)
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
     service_it = service_.find(controller->meta_data().full_service_name());
-    if (service_.end() == service_it){
+    if (service_.end() == service_it) {
         return 0;
     }
     google::protobuf::Service* service = service_it->second;
     const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
     method_descriptor = service_descriptor->FindMethodByName(controller->meta_data().method_name());
-    if (NULL == method_descriptor){
+    if (NULL == method_descriptor) {
         return 0;
     }
 
     // request
     request = service->GetRequestPrototype(method_descriptor).New();
-    if (NULL == request){
+    if (NULL == request) {
         return ERROR_BUSY; // delay
     }
     if (!request->ParseFromString(controller->meta_data().message())) {
@@ -488,18 +488,23 @@ int64_t ChannelImpl::Listen(const char* host, int32_t port, int32_t backlog)
     uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     uv_tcp_init(loop_, handle);
     struct sockaddr_in address;
-    uv_ip4_addr(host, port, &address);
+    int32_t result = 0;
+    result = uv_ip4_addr(host, port, &address);
+    if (result) {
+        uv_close((uv_handle_t*)handle, OnClose);
+        WARN("%s", uv_strerror(result));
+        return ERROR_OTHER;
+    }
 
     int32_t flags = 0;
-    int32_t result = 0;
     result = uv_tcp_bind(handle, (struct sockaddr*)&address, flags);
-    if (result){
+    if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
         WARN("%s", uv_strerror(result));
         return ERROR_OTHER;
     }
     result = uv_listen((uv_stream_t*)handle, backlog, OnAccept);
-    if (result){
+    if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
         WARN("%s", uv_strerror(result));
         return ERROR_OTHER;
@@ -539,7 +544,7 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
         const google::protobuf::ServiceDescriptor* service_descriptor = it->second->GetDescriptor();
         const google::protobuf::MethodDescriptor* method_descriptor = NULL;
         method_descriptor = service_descriptor->FindMethodByName(RESERVED_METHOD_DISCONNECT);
-        if (NULL == method_descriptor){
+        if (NULL == method_descriptor) {
             continue;
         }
         Controller controller;
@@ -560,7 +565,7 @@ void ChannelImpl::AddConnection(uv_stream_t* handle)
         const google::protobuf::ServiceDescriptor* service_descriptor = it->second->GetDescriptor();
         const google::protobuf::MethodDescriptor* method_descriptor = NULL;
         method_descriptor = service_descriptor->FindMethodByName(RESERVED_METHOD_CONNECT);
-        if (NULL == method_descriptor){
+        if (NULL == method_descriptor) {
             continue;
         }
         Controller controller;
