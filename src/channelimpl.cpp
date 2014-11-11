@@ -37,6 +37,9 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
 
 ChannelImpl::~ChannelImpl()
 {
+    if (loop_ != uv_default_loop()) {
+        uv_loop_delete(loop_);
+    }
     //uv_idle_stop(&remote_closure_gc_);
 }
 
