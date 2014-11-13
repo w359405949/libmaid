@@ -45,6 +45,8 @@ public:
 
     void ServeForever();
 
+    uv_loop_t* loop();
+
 private:
     ChannelImpl* channel_;
 };

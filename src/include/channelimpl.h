@@ -68,6 +68,11 @@ public:
         uv_run(loop_, UV_RUN_DEFAULT);
     }
 
+    inline uv_loop_t* loop()
+    {
+        return loop_;
+    }
+
 public:
     virtual void SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done);
     virtual void SendResponse(Controller* controller, const google::protobuf::Message* response);

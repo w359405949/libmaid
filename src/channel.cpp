@@ -56,3 +56,8 @@ Channel::~Channel()
 {
     delete channel_;
 }
+
+uv_loop_t* Channel::loop()
+{
+    return channel_->loop();
+}
