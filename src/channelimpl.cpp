@@ -26,20 +26,19 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
      default_fd_(0)
 {
     signal(SIGPIPE, SIG_IGN);
-    if (NULL == loop)
+    loop_ = loop;
+    if (NULL == loop_)
     {
         loop = uv_loop_new();
     }
-    loop_ = loop;
     //uv_idle_init(loop, &remote_closure_gc_);
     //uv_idle_start(&remote_closure_gc_, OnRemoteClosureGC);
 }
 
 ChannelImpl::~ChannelImpl()
 {
-    if (loop_ != uv_default_loop()) {
-        uv_loop_delete(loop_);
-    }
+    uv_loop_delete(loop_);
+    loop_ = NULL;
     //uv_idle_stop(&remote_closure_gc_);
 }
 
