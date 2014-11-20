@@ -53,6 +53,11 @@ int64_t Controller::fd()
     return controller_->fd();
 }
 
+void Controller::set_notify(bool notify)
+{
+    controller_->set_notify(notify);
+}
+
 Controller::~Controller()
 {
     delete controller_;

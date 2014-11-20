@@ -36,6 +36,8 @@ public:
 
     int64_t fd();
 
+    void set_notify(bool notify);
+
     maid::proto::ControllerMeta& meta_data();
 
     virtual ~Controller();

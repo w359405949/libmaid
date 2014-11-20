@@ -45,6 +45,11 @@ public:
         return fd_;
     }
 
+    inline void set_notify(bool notify)
+    {
+        meta_data_.set_notify(notify);
+    }
+
 public: /* unittest only */
     proto::ControllerMeta meta_data_;
 
