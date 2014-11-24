@@ -48,6 +48,11 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
     return 0;
 }
 
+UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle)
+{
+    return 0;
+}
+
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb)
 {
 }

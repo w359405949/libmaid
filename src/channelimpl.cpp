@@ -28,17 +28,15 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
     signal(SIGPIPE, SIG_IGN);
     if (NULL == loop)
     {
-        loop_create_by_self_ = true;
         loop_ = uv_loop_new();
     } else {
-        loop_create_by_self_ = false;
         loop_ = loop;
     }
 }
 
 ChannelImpl::~ChannelImpl()
 {
-    if (NULL != loop_ && loop_create_by_self_) {
+    if (NULL != loop_) {
         uv_loop_delete(loop_);
     }
     loop_ = NULL;
@@ -384,10 +382,9 @@ int32_t ChannelImpl::HandleResponse(Controller* controller)
     } else {
         it->second.response->ParseFromString(controller->meta_data().message());
     }
+    it->second.done->Run();
     async_result_.erase(it->first);
     transactions_[controller->fd()].erase(it->first);
-    it->second.done->Run();
-    delete controller;
     return 0;
 }
 
