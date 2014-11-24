@@ -11,6 +11,7 @@ class RemoteClosure : public google::protobuf::Closure
 {
 public:
     RemoteClosure(ChannelImpl* channel);
+    ~RemoteClosure();
 
     inline void set_response(google::protobuf::Message* response)
     {

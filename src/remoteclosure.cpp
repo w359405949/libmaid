@@ -15,6 +15,10 @@ RemoteClosure::RemoteClosure(ChannelImpl* channel)
 {
 }
 
+RemoteClosure::~RemoteClosure()
+{
+}
+
 void RemoteClosure::Run()
 {
     channel_->SendResponse(controller_, response_);

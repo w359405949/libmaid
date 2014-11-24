@@ -26,20 +26,22 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
      default_fd_(0)
 {
     signal(SIGPIPE, SIG_IGN);
-    loop_ = loop;
-    if (NULL == loop_)
+    if (NULL == loop)
     {
-        loop = uv_loop_new();
+        loop_create_by_self_ = true;
+        loop_ = uv_loop_new();
+    } else {
+        loop_create_by_self_ = false;
+        loop_ = loop;
     }
-    //uv_idle_init(loop, &remote_closure_gc_);
-    //uv_idle_start(&remote_closure_gc_, OnRemoteClosureGC);
 }
 
 ChannelImpl::~ChannelImpl()
 {
-    uv_loop_delete(loop_);
+    if (NULL != loop_ && loop_create_by_self_) {
+        uv_loop_delete(loop_);
+    }
     loop_ = NULL;
-    //uv_idle_stop(&remote_closure_gc_);
 }
 
 void ChannelImpl::AppendService(google::protobuf::Service* service)
@@ -243,6 +245,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
         memcpy(&controller_length_nl, (uint8_t*)buffer.base + buffer_cur, sizeof(uint32_t));
         uint32_t controller_length = ::ntohl(controller_length_nl);
         buffer_cur += sizeof(uint32_t);
+        Controller* controller = NULL;
 
         if (controller_length > controller_max_length_) {
             handled_len = buffer.len;
@@ -256,16 +259,22 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             break; // lack data
         }
 
-        Controller* controller = new Controller();
-        if (NULL == controller) {
-            result = ERROR_BUSY; // busy
-            break;
-        }
+        try {
+            controller = new Controller();
 
-        if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
-            WARN("connection: %ld, parse meta_data failed", StreamToFd(handle));
-            handled_len += sizeof(uint32_t) + controller_length;
-            result = ERROR_PARSE_FAILED; // parse failed
+            if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
+                WARN("connection: %ld, parse meta_data failed", StreamToFd(handle));
+                handled_len += sizeof(uint32_t) + controller_length;
+                delete controller;
+                result = ERROR_PARSE_FAILED; // parse failed
+                break;
+            }
+
+            controller->set_fd(StreamToFd(handle));
+
+        } catch (std::bad_alloc) {
+            delete controller;
+            result = ERROR_BUSY;
             break;
         }
         buffer_cur += controller_length;
@@ -282,18 +291,14 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             continue;
         }
 
-        controller->set_fd(StreamToFd(handle));
         if (controller->meta_data().stub()) {
             if (controller->meta_data().notify()) {
                 result = HandleNotify(controller);
-                delete controller;
             } else {
                 result = HandleRequest(controller);
-                //delete controller in closure
             }
         } else {
             result = HandleResponse(controller);
-            delete controller;
         }
 
         if (ERROR_BUSY == result) { // busy
@@ -315,48 +320,50 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
 int32_t ChannelImpl::HandleRequest(Controller* controller)
 {
     INFO("connection: %ld, request: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
-    google::protobuf::Message* request = NULL;
-    google::protobuf::Message* response = NULL;
-    RemoteClosure* done = NewRemoteClosure();
-    if (NULL == done) {
-        return ERROR_BUSY;
-    }
-    done->set_controller(controller);
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
     service_it = service_.find(controller->meta_data().full_service_name());
     if (service_.end() == service_it) {
         WARN("service: %s, not exist", controller->meta_data().full_service_name().c_str());
-        controller->SetFailed("service not exist");
-        done->Run();
+        delete controller;
         return ERROR_OTHER;
     }
     google::protobuf::Service* service = service_it->second;
-    const google::protobuf::ServiceDescriptor* service_descriptor = service->GetDescriptor();
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
-    method_descriptor = service_descriptor->FindMethodByName(controller->meta_data().method_name());
+    method_descriptor = service->GetDescriptor()->FindMethodByName(controller->meta_data().method_name());
     if (NULL == method_descriptor) {
         WARN("service: %s, method: %s, not exist", controller->meta_data().full_service_name().c_str(), controller->meta_data().method_name().c_str());
-        controller->SetFailed("method not exist");
-        done->Run();
+        delete controller;
         return ERROR_OTHER;
     }
 
-    // request
-    request = service->GetRequestPrototype(method_descriptor).New();
-    if (NULL == request) {
-        return ERROR_BUSY; // delay
-    }
-    done->set_request(request);
-    if (!request->ParseFromString(controller->meta_data().message())) {
-        controller->SetFailed("parse failed");
-        done->Run();
-        return ERROR_PARSE_FAILED;
+    google::protobuf::Message* request = NULL;
+    google::protobuf::Message* response = NULL;
+    RemoteClosure* done = NULL;
+    try {
+        request = service->GetRequestPrototype(method_descriptor).New();
+        response = service->GetResponsePrototype(method_descriptor).New();
+        done = NewRemoteClosure();
+
+        if (!request->ParseFromString(controller->meta_data().message())) {
+            delete request;
+            delete response;
+            delete done;
+            delete controller;
+            return ERROR_PARSE_FAILED;
+        }
+
+    } catch (std::bad_alloc) {
+        delete request;
+        delete response;
+        delete done;
+        delete controller;
+        return ERROR_BUSY;
     }
 
-    // response
-    response = service->GetResponsePrototype(method_descriptor).New();
+    done->set_controller(controller);
+    done->set_request(request);
     done->set_response(response);
 
     // call
@@ -369,6 +376,7 @@ int32_t ChannelImpl::HandleResponse(Controller* controller)
     INFO("connection: %ld, response: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
     std::map<int64_t, Context>::iterator it = async_result_.find(controller->meta_data().transmit_id());
     if (it == async_result_.end() || it->second.controller->fd() != controller->fd()) {
+        delete controller;
         return 0;
     }
     if (controller->Failed()) {
@@ -379,18 +387,19 @@ int32_t ChannelImpl::HandleResponse(Controller* controller)
     async_result_.erase(it->first);
     transactions_[controller->fd()].erase(it->first);
     it->second.done->Run();
+    delete controller;
     return 0;
 }
 
 int32_t ChannelImpl::HandleNotify(Controller* controller)
 {
     INFO("connection: %ld, notify: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
-    google::protobuf::Message* request = NULL;
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
     service_it = service_.find(controller->meta_data().full_service_name());
     if (service_.end() == service_it) {
+        delete controller;
         return 0;
     }
     google::protobuf::Service* service = service_it->second;
@@ -398,20 +407,27 @@ int32_t ChannelImpl::HandleNotify(Controller* controller)
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
     method_descriptor = service_descriptor->FindMethodByName(controller->meta_data().method_name());
     if (NULL == method_descriptor) {
+        delete controller;
         return 0;
     }
 
-    // request
-    request = service->GetRequestPrototype(method_descriptor).New();
-    if (NULL == request) {
+    google::protobuf::Message* request = NULL;
+    try {
+        request = service->GetRequestPrototype(method_descriptor).New();
+        if (!request->ParseFromString(controller->meta_data().message())) {
+            delete controller;
+            return 0;
+        }
+    } catch (std::bad_alloc) {
+        delete request;
+        delete controller;
         return ERROR_BUSY; // delay
-    }
-    if (!request->ParseFromString(controller->meta_data().message())) {
-        return 0;
     }
 
     // call
     service->CallMethod(method_descriptor, controller, request, NULL, NULL);
+
+    delete controller;
     return 0;
 }
 
@@ -429,7 +445,9 @@ maid::RemoteClosure* ChannelImpl::NewRemoteClosure()
 
 void ChannelImpl::DeleteRemoteClosure(maid::RemoteClosure* done)
 {
-    remote_closure_pool_.push(done);
+    if (done != NULL) {
+        remote_closure_pool_.push(done);
+    }
 }
 
 void ChannelImpl::OnConnect(uv_connect_t* req, int32_t status)

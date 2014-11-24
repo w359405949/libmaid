@@ -120,6 +120,7 @@ public: /* unit test only */
 
 public:  /* unit test only */
     // libuv
+    bool loop_create_by_self_;
     uv_loop_t* loop_;
     uv_idle_t remote_closure_gc_;
 
