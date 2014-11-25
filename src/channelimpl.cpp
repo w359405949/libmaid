@@ -275,7 +275,6 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
             result = ERROR_BUSY;
             break;
         }
-        buffer_cur += controller_length;
 
         if (controller->meta_data().method_name() == RESERVED_METHOD_CONNECT) {
             WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_CONNECT);
@@ -302,7 +301,8 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
         if (ERROR_BUSY == result) { // busy
             break;
         }
-        handled_len = buffer_cur;
+
+        handled_len = buffer_cur + controller_length;
     }
 
     // move
