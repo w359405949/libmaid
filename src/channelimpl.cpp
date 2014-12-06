@@ -36,9 +36,11 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
 
 ChannelImpl::~ChannelImpl()
 {
-    if (NULL != loop_) {
-        uv_loop_delete(loop_);
+    std::map< std::string, google::protobuf::Service*>::iterator it;
+    for (it = service_.begin(); it != service_.end(); it++) {
+        delete it->second;
     }
+    uv_loop_delete(loop_);
     loop_ = NULL;
 }
 
