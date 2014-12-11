@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "maid.h"
+#include "maid/maid.h"
 #include "echo.pb.h"
 
 using maid::Channel;
