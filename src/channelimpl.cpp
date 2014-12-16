@@ -26,11 +26,9 @@ ChannelImpl::ChannelImpl(uv_loop_t* loop)
      default_fd_(0)
 {
     signal(SIGPIPE, SIG_IGN);
-    if (NULL == loop)
-    {
-        loop_ = uv_loop_new();
-    } else {
-        loop_ = loop;
+    loop_ = loop;
+    if (NULL == loop_) {
+        loop_ = uv_default_loop();
     }
 }
 
