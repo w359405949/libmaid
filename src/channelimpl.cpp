@@ -355,7 +355,6 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
         done->set_controller(controller);
         done->set_request(request);
         done->set_response(response);
-        service->CallMethod(method_descriptor, controller, request, response, done);
 
     } catch (std::bad_alloc) {
         delete request;
@@ -364,6 +363,8 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
         delete controller;
         return ERROR_BUSY;
     }
+
+    service->CallMethod(method_descriptor, controller, request, response, done);
 
     // call
     return 0;
@@ -415,13 +416,13 @@ int32_t ChannelImpl::HandleNotify(Controller* controller)
             delete controller;
             return 0;
         }
-        service->CallMethod(method_descriptor, controller, request, NULL, NULL);
     } catch (std::bad_alloc) {
         delete request;
         delete controller;
         return ERROR_BUSY; // delay
     }
 
+    service->CallMethod(method_descriptor, controller, request, NULL, NULL);
     delete controller;
     return 0;
 }
