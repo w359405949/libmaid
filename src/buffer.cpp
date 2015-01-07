@@ -18,7 +18,6 @@ void Buffer::Expend(size_t expect_length)
 
     void* new_ptr = malloc(new_length);
     if (NULL == new_ptr){
-        WARN("expend failed");
         return;
     }
     if (len != 0)

@@ -91,9 +91,8 @@ TEST(ChannelImpl, Constructor)
 {
     maid::ChannelImpl channelimpl;
 
-    ASSERT_EQ(0u, channelimpl.default_fd_);
+    ASSERT_EQ(0u, channelimpl.default_connect_);
     ASSERT_TRUE(NULL != channelimpl.loop_);
-    ASSERT_EQ(10000u, channelimpl.controller_max_length_);
     ASSERT_EQ(0u, channelimpl.service_.size());
     ASSERT_EQ(0u, channelimpl.async_result_.size());
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
@@ -106,9 +105,8 @@ TEST(ChannelImpl, Constructor)
     uv_loop_t* loop = uv_loop_new();
     maid::ChannelImpl channelimpl1(loop);
 
-    ASSERT_EQ(0u, channelimpl1.default_fd_);
+    ASSERT_EQ(0u, channelimpl1.default_connect_);
     ASSERT_EQ(loop, channelimpl1.loop_);
-    ASSERT_EQ(10000u, channelimpl1.controller_max_length_);
     ASSERT_EQ(0u, channelimpl1.service_.size());
     ASSERT_EQ(0u, channelimpl1.async_result_.size());
     ASSERT_EQ(0u, channelimpl1.connected_handle_.size());
@@ -175,13 +173,13 @@ TEST(ChannelImpl, Connect)
     int64_t fd = channelimpl.Connect("0.0.0.0", 8888);
 
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
-    ASSERT_EQ(0, channelimpl.default_fd_);
+    ASSERT_EQ(0, channelimpl.default_connect_);
     ASSERT_EQ(ERROR_OTHER, fd);
 
     int64_t fd1 = channelimpl.Connect("0.0.0.0", 8888, true);
 
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
-    ASSERT_NE(fd1, channelimpl.default_fd_);
+    ASSERT_NE(fd1, channelimpl.default_connect_);
     ASSERT_EQ(ERROR_OTHER, fd1);
 }
 
@@ -217,7 +215,7 @@ TEST(ChannelImpl, SendRequest)
     channelimpl.AddConnection(handle);
 
     maid::Controller controller;
-    controller.set_fd(channelimpl.StreamToFd(handle));
+    controller.set_fd((int64_t)handle);
     Request request;
     Response response;
     ClosureMock done;
@@ -227,7 +225,7 @@ TEST(ChannelImpl, SendRequest)
     ASSERT_TRUE(controller.meta_data().stub());
     ASSERT_LT(0u, controller.meta_data().transmit_id());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
     ASSERT_EQ(0u, channelimpl.async_result_.size());
 
 }
@@ -255,10 +253,10 @@ TEST(ChannelImpl, SendNotify)
 TEST(ChannelImpl, DefaultFdGetSet)
 {
     maid::ChannelImpl channelimpl;
-    ASSERT_EQ(0, channelimpl.default_fd());
+    ASSERT_EQ(0, channelimpl.default_connect());
 
-    channelimpl.set_default_fd(1);
-    ASSERT_EQ(1, channelimpl.default_fd());
+    channelimpl.set_default_connect(1);
+    ASSERT_EQ(1, channelimpl.default_connect());
 }
 
 TEST(ChannelImpl, Update)
@@ -277,7 +275,7 @@ TEST(ChannelImpl, Handle)
     channelimpl.AppendService(new TestServiceImpl());
     uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
     handle->data = &channelimpl;
-    int64_t fd = channelimpl.StreamToFd(handle);
+    int64_t fd = (int64_t)handle;
 
     uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
 
@@ -340,7 +338,7 @@ TEST(ChannelImpl, HandleWithMore)
     channelimpl.AppendService(new TestServiceImpl());
     uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
     handle->data = &channelimpl;
-    int64_t fd = channelimpl.StreamToFd(handle);
+    int64_t fd = (int64_t)handle;
     uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
     maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 1000, buf);
     ASSERT_TRUE(buf->base != NULL);
@@ -467,7 +465,7 @@ TEST(ChannelImpl, HandleResponse)
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
 }
 
@@ -488,7 +486,7 @@ TEST(ChannelImpl, HandleResponseWithFailed)
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
 }
 
@@ -503,7 +501,7 @@ TEST(ChannelImpl, HandleResponseNoRequest)
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
 }
 
@@ -661,7 +659,7 @@ TEST(ChannelImpl, AfterSendRequest)
     uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
     channelimpl.AddConnection(handle);
     maid::Controller* controller = new maid::Controller();
-    controller->set_fd(channelimpl.StreamToFd(handle));
+    controller->set_fd((int64_t)handle);
     Request request;
     Response response;
     ClosureMock done;
@@ -677,7 +675,7 @@ TEST(ChannelImpl, AfterSendRequest)
     ASSERT_EQ(1u, channelimpl.connected_handle_.size());
     ASSERT_EQ(0u, channelimpl.async_result_.size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
 }
 
 TEST(ChannelImpl, AfterSendRequestWithFailed)
@@ -688,7 +686,7 @@ TEST(ChannelImpl, AfterSendRequestWithFailed)
     ASSERT_EQ(1u, channelimpl.connected_handle_.size());
 
     maid::Controller* controller = new maid::Controller();
-    controller->set_fd(channelimpl.StreamToFd(handle));
+    controller->set_fd((int64_t)handle);
     Request request;
     Response response;
     ClosureMock done;
@@ -704,7 +702,7 @@ TEST(ChannelImpl, AfterSendRequestWithFailed)
     ASSERT_EQ(1u, channelimpl.connected_handle_.size());
     ASSERT_EQ(0u, channelimpl.async_result_.size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
-    ASSERT_EQ(0u, channelimpl.transactions_[channelimpl.StreamToFd(handle)].size());
+    ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
 }
 
 TEST(ChannelImpl, AfterSendNotify)

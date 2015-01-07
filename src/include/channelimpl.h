@@ -48,14 +48,14 @@ public:
      * service for remote request
      */
     void AppendService(google::protobuf::Service* service);
-    inline void set_default_fd(int64_t fd)
+    inline void set_default_connect(int64_t connect_id)
     {
-        default_fd_ = fd;
+        default_connect_ = connect_id;
     }
 
-    int64_t default_fd()
+    int64_t default_connect()
     {
-        return default_fd_;
+        return default_connect_;
     }
 
     inline void Update()
@@ -89,15 +89,6 @@ public:
     virtual RemoteClosure* NewRemoteClosure();
     virtual void DeleteRemoteClosure(RemoteClosure* done);
 
-    static inline int64_t StreamToFd(uv_stream_t* stream)
-    {
-        return (int64_t)stream;
-    }
-    static inline uv_stream_t* FdToStream(int64_t fd)
-    {
-        return (uv_stream_t*)fd;
-    }
-
 public: /* unit test only */
     static void OnRead(uv_stream_t* w, ssize_t nread, const uv_buf_t* buf);
     static void OnAccept(uv_stream_t* handle, int32_t status);
@@ -112,10 +103,10 @@ public: /* unit test only */
 public: /* unit test only */
     std::map<std::string, google::protobuf::Service*> service_; //<full_service_name, service>
     std::map<int64_t, Context> async_result_; //<transmit_id, Context>
-    std::map<int64_t, uv_stream_t*> connected_handle_; //<fd, stream>
-    std::map<int64_t, uv_stream_t*> listen_handle_; //<fd, stream>
-    std::map<int64_t, Buffer> buffer_;//<fd, buffer>
-    std::map<int64_t, std::set<int64_t> > transactions_; //<fd, <transmit_id> >
+    std::map<int64_t, uv_stream_t*> connected_handle_; //<connect_id, stream>
+    std::map<int64_t, uv_stream_t*> listen_handle_; //<connect_id, stream>
+    std::map<int64_t, Buffer> buffer_;//<connect_id, buffer>
+    std::map<int64_t, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
     std::stack<RemoteClosure*> remote_closure_pool_;
 
 public:  /* unit test only */
@@ -127,7 +118,7 @@ public:  /* unit test only */
     const uint32_t controller_max_length_;
 
     //
-    int64_t default_fd_; //uv_stream_t
+    int64_t default_connect_; //uv_stream_t
 };
 
 } /* namespace maid */

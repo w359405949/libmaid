@@ -21,9 +21,11 @@
 using maid::proto::ControllerMeta;
 using maid::ChannelImpl;
 
+int count = 0;
+
 ChannelImpl::ChannelImpl(uv_loop_t* loop)
     :controller_max_length_(CONTROLLERMETA_MAX_LENGTH),
-     default_fd_(0)
+     default_connect_(0)
 {
     signal(SIGPIPE, SIG_IGN);
     loop_ = loop;
@@ -38,14 +40,16 @@ ChannelImpl::~ChannelImpl()
     for (it = service_.begin(); it != service_.end(); it++) {
         delete it->second;
     }
-    uv_loop_delete(loop_);
+    if (uv_default_loop() == loop_) {
+        uv_loop_delete(loop_);
+    }
     loop_ = NULL;
 }
 
 void ChannelImpl::AppendService(google::protobuf::Service* service)
 {
-    ASSERT(NULL != service, "service can not be NULL");
-    ASSERT(service_.find(service->GetDescriptor()->full_name()) == service_.end(), "same name service regist twice");
+    GOOGLE_LOG_IF(FATAL, NULL == service) << "service can not be NULL";
+    GOOGLE_LOG_IF(FATAL, service_.find(service->GetDescriptor()->full_name()) != service_.end()) << "same name service regist twice";
 
     service_[service->GetDescriptor()->full_name()] = service;
 }
@@ -56,19 +60,19 @@ void ChannelImpl::CallMethod(const google::protobuf::MethodDescriptor* method,
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    ASSERT(dynamic_cast<Controller*>(rpc_controller), "controller must have type maid::Controller");
-    ASSERT(request, "should not be NULL");
+    GOOGLE_LOG_IF(FATAL, NULL == dynamic_cast<Controller*>(rpc_controller)) << "controller must have type maid::Controller";
+    GOOGLE_LOG_IF(FATAL, NULL == request) << "should not be NULL";
 
     Controller* controller = (Controller*)rpc_controller;
     if (!controller->fd()) {
-        controller->set_fd(default_fd_);
+        controller->set_fd(default_connect_);
     }
     controller->meta_data().set_full_service_name(method->service()->full_name());
     controller->meta_data().set_method_name(method->name());
 
     if (controller->meta_data().notify()) {
-        ASSERT(NULL == done, "notify request will never called the callback");
-        ASSERT(NULL == response, "notify message will not recived a response");
+        GOOGLE_LOG_IF(FATAL, NULL != done) << "notify request will never called the callback";
+        GOOGLE_LOG_IF(FATAL, NULL != response) << "notify message will not recived a response";
         SendNotify(controller, request);
     } else {
         SendRequest(controller, request, response, done);
@@ -77,7 +81,8 @@ void ChannelImpl::CallMethod(const google::protobuf::MethodDescriptor* method,
 
 void ChannelImpl::AfterSendNotify(uv_write_t* req, int32_t status)
 {
-    INFO("connection: %ld, after send notify: %d", StreamToFd(req->handle), status);
+    GOOGLE_LOG(INFO)<<"connection:" << (int64_t)req->handle <<
+        "after send notify: " << status;
     free(req);
 }
 
@@ -86,13 +91,12 @@ void ChannelImpl::SendNotify(Controller* controller, const google::protobuf::Mes
     controller->meta_data().set_stub(true);
     std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(controller->fd());
     if (connected_handle_.end() == it) {
-        WARN("not connected");
+        GOOGLE_LOG(INFO) << "not connected: ";
         return;
     }
 
     std::string buffer;
-    std::string* message = controller->meta_data().mutable_message(); //TODO
-    request->SerializeToString(message);
+    request->SerializeToString(controller->meta_data().mutable_message());
     int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
     buffer.append((const char*)&controller_nl, sizeof(controller_nl));
     controller->meta_data().AppendToString(&buffer);
@@ -105,7 +109,7 @@ void ChannelImpl::SendNotify(Controller* controller, const google::protobuf::Mes
     uv_buf.len = buffer.length();
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendNotify);
     if (error) {
-        WARN("%s", uv_strerror(error));
+        GOOGLE_LOG(INFO) << uv_strerror(error);
         free(req);
     }
 }
@@ -123,8 +127,8 @@ void ChannelImpl::AfterSendRequest(uv_write_t* req, int32_t status)
 
 void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done)
 {
-    ASSERT(done, "callback should not be NULL");
-    ASSERT(response, "response should not be NULL");
+    GOOGLE_LOG_IF(FATAL, NULL == done) << "done should not be NULL";
+    GOOGLE_LOG_IF(FATAL, NULL == response) << "response should not be NULL";
     controller->meta_data().set_stub(true);
     std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(controller->fd());
     if (it == connected_handle_.end()) {
@@ -156,7 +160,8 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
     buffer.append((const char*)&controller_nl, sizeof(controller_nl));
     controller->meta_data().AppendToString(&buffer);
 
-    INFO("connection: %ld, send request:%u", controller->fd(), controller->meta_data().transmit_id());
+    GOOGLE_LOG(INFO) << "connection: " << controller->fd() <<
+            "send request:" << controller->meta_data().transmit_id();
 
     uv_buf_t uv_buf;
     uv_buf.base = (char*)buffer.c_str();
@@ -173,7 +178,12 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
 
 void ChannelImpl::AfterSendResponse(uv_write_t* req, int32_t status)
 {
-    INFO("connection: %ld, after send response: %d", StreamToFd(req->handle), status);
+    printf("status: %d, %s\n", status, uv_strerror(status));
+    if (status != 0) {
+        exit(-1);
+    }
+    GOOGLE_LOG(INFO) << "connection: " << (int64_t)req <<
+            "after send response:" << status;
     free(req);
 }
 
@@ -183,43 +193,45 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
 
     std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(controller->fd());
     if (connected_handle_.end() == it) {
-        WARN("connection: %ld, not connected", controller->fd());
+        GOOGLE_LOG(WARNING) << "connection: " << controller->fd() << "not connected";
         return;
     }
-
-    std::string buffer;
+    controller->meta_data().clear_message();
     if (NULL != response) {
-        std::string* message = controller->meta_data().mutable_message();
-        if (NULL == message)
-        {
-            WARN("no more memory");
-            return;
+        try{
+            response->SerializeToString(controller->meta_data().mutable_message());
+        } catch (std::bad_alloc) {
         }
-        response->SerializeToString(message);
-    } else {
-        controller->meta_data().clear_message();
     }
     int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
-    buffer.append((const char*)&controller_nl, sizeof(controller_nl));
+    std::string buffer;
+    buffer.append((char*)&controller_nl, sizeof(controller_nl));
     controller->meta_data().AppendToString(&buffer);
 
-    INFO("connection: %ld, send response:%u", controller->fd(), controller->meta_data().transmit_id());
+    GOOGLE_LOG(INFO) << "connection: " << controller->fd() <<
+            "send request:" << controller->meta_data().transmit_id();
 
     uv_buf_t uv_buf;
     uv_buf.base = (char*)buffer.c_str();
     uv_buf.len = buffer.length();
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    GOOGLE_LOG_IF(FATAL, NULL == req) << "no more memory";
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendResponse);
     if (error) {
-        WARN("%s", uv_strerror(error));
+        GOOGLE_LOG(FATAL) << uv_strerror(error);
         free(req);
     }
+
+    count++;
+    printf("total send response: %d\n", count);
 }
 
 void ChannelImpl::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf)
 {
     ChannelImpl * self = (ChannelImpl*)handle->data;
-    INFO("connection: %ld, nread: %ld", StreamToFd(handle), nread);
+    GOOGLE_LOG(INFO) << "connection: " << (int64_t)handle <<
+            "nread: " << nread;
+
     if (nread < 0) {
         self->RemoveConnection(handle);
         return;
@@ -229,9 +241,9 @@ void ChannelImpl::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf
 
 int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
 {
-    Buffer& buffer = buffer_[StreamToFd(handle)];
+    Buffer& buffer = buffer_[(int64_t)(handle)];
     buffer.len += nread;
-    ASSERT(buffer.len <= buffer.total, "out of memory");
+    GOOGLE_LOG_IF(FATAL, buffer.len > buffer.total) << "out of memory";
 
     int32_t result = 0;
     // handle
@@ -247,7 +259,9 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
 
         if (controller_length > controller_max_length_) {
             handled_len = buffer.len;
-            WARN("connection: %lu, controller_length: %u, out of max length: %u", StreamToFd(handle), controller_length, controller_max_length_);
+            GOOGLE_LOG(WARNING) << "connection: " << (int64_t)handle <<
+                "controller_length: " << controller_length <<
+                "out of max length: " << controller_max_length_;
             result = ERROR_OUT_OF_LENGTH; // out of max length
             break;
         }
@@ -259,16 +273,15 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
 
         try {
             controller = new Controller();
-
             if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
-                WARN("connection: %ld, parse meta_data failed", StreamToFd(handle));
+                GOOGLE_LOG(WARNING) << "connection: " << (int64_t)handle << "parse meta_data failed";
                 handled_len += sizeof(uint32_t) + controller_length;
                 delete controller;
                 result = ERROR_PARSE_FAILED; // parse failed
                 break;
             }
 
-            controller->set_fd(StreamToFd(handle));
+            controller->set_fd((int64_t)(handle));
 
         } catch (std::bad_alloc) {
             delete controller;
@@ -277,13 +290,13 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
         }
 
         if (controller->meta_data().method_name() == RESERVED_METHOD_CONNECT) {
-            WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_CONNECT);
+            //WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_CONNECT);
             handled_len = buffer_cur;
             continue;
         }
 
         if (controller->meta_data().method_name() == RESERVED_METHOD_DISCONNECT) {
-            WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_DISCONNECT);
+            //WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_DISCONNECT);
             handled_len = buffer_cur;
             continue;
         }
@@ -305,8 +318,8 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
         handled_len = buffer_cur + controller_length;
     }
 
+    GOOGLE_LOG_IF(FATAL, handled_len > buffer.len) << "overflowed";
     // move
-    ASSERT(handled_len <= buffer.len, "overflowed");
     buffer.len -= handled_len;
     if (buffer.len != 0)
     {
@@ -317,13 +330,13 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, ssize_t nread)
 
 int32_t ChannelImpl::HandleRequest(Controller* controller)
 {
-    INFO("connection: %ld, request: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
+    GOOGLE_LOG(INFO) << "connection: " << controller->fd() << "request: ";
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
     service_it = service_.find(controller->meta_data().full_service_name());
     if (service_.end() == service_it) {
-        WARN("service: %s, not exist", controller->meta_data().full_service_name().c_str());
+        GOOGLE_LOG(WARNING) << "service: " << controller->meta_data().full_service_name().c_str() << " not exist";
         delete controller;
         return ERROR_OTHER;
     }
@@ -331,7 +344,8 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
     const google::protobuf::MethodDescriptor* method_descriptor = NULL;
     method_descriptor = service->GetDescriptor()->FindMethodByName(controller->meta_data().method_name());
     if (NULL == method_descriptor) {
-        WARN("service: %s, method: %s, not exist", controller->meta_data().full_service_name().c_str(), controller->meta_data().method_name().c_str());
+        GOOGLE_LOG(WARNING) << "service: " << controller->meta_data().full_service_name().c_str() <<
+            " method:" << controller->meta_data().method_name() << " not exist";
         delete controller;
         return ERROR_OTHER;
     }
@@ -372,7 +386,10 @@ int32_t ChannelImpl::HandleRequest(Controller* controller)
 
 int32_t ChannelImpl::HandleResponse(Controller* controller)
 {
-    INFO("connection: %ld, response: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
+    GOOGLE_LOG(INFO) << "connection: " << controller->fd() <<
+            "response: " << controller->meta_data().transmit_id() <<
+            "size: " << controller->meta_data().ByteSize();
+
     std::map<int64_t, Context>::iterator it = async_result_.find(controller->meta_data().transmit_id());
     if (it == async_result_.end() || it->second.controller->fd() != controller->fd()) {
         delete controller;
@@ -391,7 +408,9 @@ int32_t ChannelImpl::HandleResponse(Controller* controller)
 
 int32_t ChannelImpl::HandleNotify(Controller* controller)
 {
-    INFO("connection: %ld, notify: %u, size: %d", controller->fd(), controller->meta_data().transmit_id(), controller->meta_data().ByteSize());
+    GOOGLE_LOG(INFO) << "connection: " << controller->fd() <<
+            "notyfy: " << controller->meta_data().transmit_id() <<
+            "size: " << controller->meta_data().ByteSize();
 
     // service method
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
@@ -470,15 +489,15 @@ int64_t ChannelImpl::Connect(const char* host, int32_t port, bool as_default)
     if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
         free(req);
-        WARN("%s", uv_strerror(result));
+        GOOGLE_LOG(WARNING) << uv_strerror(result);
         return ERROR_OTHER;
     }
 
     if (as_default) {
-        default_fd_ = StreamToFd((uv_stream_t*)handle);
+        default_connect_ = (int64_t)(handle);
     }
 
-    return StreamToFd((uv_stream_t*)handle);
+    return (int64_t)(handle);
 }
 
 void ChannelImpl::OnAccept(uv_stream_t* handle, int32_t status)
@@ -492,7 +511,7 @@ void ChannelImpl::OnAccept(uv_stream_t* handle, int32_t status)
     uv_tcp_init(handle->loop, peer_handle);
     int result = uv_accept(handle, (uv_stream_t*)peer_handle);
     if (result) {
-        WARN("%s", uv_strerror(result));
+        GOOGLE_LOG(WARNING) << uv_strerror(result);
         uv_close((uv_handle_t*)peer_handle, OnClose);
         return;
     }
@@ -508,7 +527,7 @@ int64_t ChannelImpl::Listen(const char* host, int32_t port, int32_t backlog)
     result = uv_ip4_addr(host, port, &address);
     if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
-        WARN("%s", uv_strerror(result));
+        GOOGLE_LOG(WARNING) << uv_strerror(result);
         return ERROR_OTHER;
     }
 
@@ -516,19 +535,19 @@ int64_t ChannelImpl::Listen(const char* host, int32_t port, int32_t backlog)
     result = uv_tcp_bind(handle, (struct sockaddr*)&address, flags);
     if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
-        WARN("%s", uv_strerror(result));
+        GOOGLE_LOG(WARNING) << uv_strerror(result);
         return ERROR_OTHER;
     }
     result = uv_listen((uv_stream_t*)handle, backlog, OnAccept);
     if (result) {
         uv_close((uv_handle_t*)handle, OnClose);
-        WARN("%s", uv_strerror(result));
+        GOOGLE_LOG(WARNING) << uv_strerror(result);
         return ERROR_OTHER;
     }
 
     handle->data = this;
-    listen_handle_[StreamToFd((uv_stream_t*)handle)] = (uv_stream_t*)handle;
-    return StreamToFd((uv_stream_t*)handle);
+    listen_handle_[(int64_t)handle] = (uv_stream_t*)handle;
+    return (int64_t)handle;
 }
 
 void ChannelImpl::OnClose(uv_handle_t* handle)
@@ -539,18 +558,19 @@ void ChannelImpl::OnClose(uv_handle_t* handle)
 
 void ChannelImpl::RemoveConnection(uv_stream_t* handle)
 {
-    INFO("close connection: %ld", StreamToFd(handle));
+    GOOGLE_LOG(INFO) << "close connection: " << (int64_t)handle;
+
     uv_read_stop(handle);
-    std::set<int64_t>& transactions = transactions_[StreamToFd(handle)];
+    std::set<int64_t>& transactions = transactions_[(int64_t)handle];
     for (std::set<int64_t>::const_iterator it = transactions.begin(); it != transactions.end(); ++it) {
         std::map<int64_t, Context>::iterator async_it = async_result_.find(*it);
         async_it->second.controller->SetFailed("connection closed");
         async_it->second.done->Run();
         async_result_.erase(*it);
     }
-    transactions_.erase(StreamToFd(handle));
-    connected_handle_.erase(StreamToFd(handle));
-    buffer_.erase(StreamToFd(handle));
+    transactions_.erase((int64_t)(handle));
+    connected_handle_.erase((int64_t)(handle));
+    buffer_.erase((int64_t)(handle));
 
     handle->data = this;
     uv_close((uv_handle_t*)handle, OnClose);
@@ -564,16 +584,17 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
             continue;
         }
         Controller controller;
-        controller.set_fd(StreamToFd(handle));
+        controller.set_fd((int64_t)(handle));
         it->second->CallMethod(method_descriptor, &controller, NULL, NULL, NULL);
     }
 }
 
 void ChannelImpl::AddConnection(uv_stream_t* handle)
 {
-    INFO("new connection: %ld", StreamToFd(handle));
+    GOOGLE_LOG(INFO) << "new connection: " << (int64_t)handle;
+
     handle->data = this;
-    connected_handle_[StreamToFd(handle)] = handle;
+    connected_handle_[(int64_t)(handle)] = handle;
     uv_read_start(handle, OnAlloc, OnRead);
 
     std::map<std::string, google::protobuf::Service*>::iterator it = service_.begin();
@@ -585,7 +606,7 @@ void ChannelImpl::AddConnection(uv_stream_t* handle)
             continue;
         }
         Controller controller;
-        controller.set_fd(StreamToFd(handle));
+        controller.set_fd((int64_t)(handle));
         it->second->CallMethod(method_descriptor, &controller, NULL, NULL, NULL);
     }
 }
@@ -593,7 +614,7 @@ void ChannelImpl::AddConnection(uv_stream_t* handle)
 void ChannelImpl::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
     ChannelImpl* self = (ChannelImpl*)handle->data;
-    Buffer& buffer = self->buffer_[StreamToFd((uv_stream_t*)handle)];
+    Buffer& buffer = self->buffer_[(int64_t)(handle)];
     buffer.Expend(suggested_size);
 
     buf->base = (char*)buffer.base + buffer.len ;

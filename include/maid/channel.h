@@ -37,9 +37,9 @@ public:
      */
     void AppendService(google::protobuf::Service* service);
 
-    void set_default_fd(int64_t fd);
+    void set_default_connect(int64_t fd);
 
-    int64_t default_fd();
+    int64_t default_connect();
 
     void Update();
 
