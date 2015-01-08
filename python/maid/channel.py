@@ -57,17 +57,10 @@ class Channel(RpcChannel):
             controller.SetFailed("did not connect")
             return None
 
-        #while True:
-        #    if self._transmit_id >= (1 << 63) -1:
-        #        self._transmit_id = 0
-        #    else:
-        #        self._transmit_id += 1
-        #if self._pending_request.get(self._transmit_id, None) is None:
         self._transmit_id += 1
         controller.async_result = AsyncResult()
         controller.meta_data.transmit_id = self._transmit_id
         self._pending_request[self._transmit_id] = controller
-        #    break
 
         controller.meta_data.stub = True
         controller.meta_data.message = request.SerializeToString()

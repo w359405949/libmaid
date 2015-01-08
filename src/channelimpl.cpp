@@ -228,15 +228,13 @@ void ChannelImpl::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf
         return;
     }
 
+    /*
+     * TODO: buf->base alloced by libuv (win).
+     */
+
     Buffer& buffer = self->buffer_[(int64_t)(handle)];
     GOOGLE_LOG_IF(FATAL, buffer.len + nread > buffer.total) << " out of memory";
-    if (buf->base != buffer.base) {
-        memcpy(((int8_t*)buffer.base) + buffer.len, buf->base, nread);
-        free(buf->base);
-        GOOGLE_LOG(INFO) << " memcpy!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-    }
     buffer.len += nread;
-
     self->Handle(handle, buffer);
 }
 
@@ -264,6 +262,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
 
         if (buffer_cur + controller_length > buffer_end) {
             result = ERROR_LACK_DATA;
+            GOOGLE_LOG(FATAL) << " lack data";
             break; // lack data
         }
 
