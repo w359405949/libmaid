@@ -6,6 +6,7 @@ pushd proto
 protoc --cpp_out=. --python_out=. *
 popd
 mv proto/*.h src/include/
+cp proto/*.proto src/include/
 mv proto/*.cc src/
 mv proto/*.py python/maid/
 echo "done"

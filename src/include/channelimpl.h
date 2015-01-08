@@ -78,7 +78,8 @@ public:
     virtual void SendResponse(Controller* controller, const google::protobuf::Message* response);
     virtual void SendNotify(Controller* controller, const google::protobuf::Message* request);
 
-    virtual int32_t Handle(uv_stream_t* handle, ssize_t nread);
+    //virtual int32_t Handle(uv_stream_t* handle, ssize_t nread);
+    virtual int32_t Handle(uv_stream_t* handle, Buffer& buffer);
     virtual int32_t HandleRequest(Controller* controller);
     virtual int32_t HandleResponse(Controller* controller);
     virtual int32_t HandleNotify(Controller* controller);
@@ -115,10 +116,11 @@ public:  /* unit test only */
     uv_idle_t remote_closure_gc_;
 
     // packet
-    const uint32_t controller_max_length_;
+    const int32_t controller_max_length_;
 
     //
     int64_t default_connect_; //uv_stream_t
+    uint32_t transmit_id_max_;
 };
 
 } /* namespace maid */

@@ -19,7 +19,7 @@ message("  -> Prepared: maid")
 include_directories(
     ${maid_SOURCE_DIR}/include
     ${maid_SOURCE_DIR}/src/include
-    ${maid_SOURCE_DIR}/gtest/include
+    ${maid_SOURCE_DIR}/deps/gtest/include
 )
 
 
@@ -31,7 +31,11 @@ endif()
 cxx_shared_library(maid ${cxx_strict} ${source})
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
-target_link_libraries(maid uv protobuf)
+target_link_libraries(maid
+    uv
+    protobuf
+    libglog.a
+    )
 
 ################################
 # INSTALL
@@ -45,7 +49,7 @@ INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
 if (maid_build_tests)
     enable_testing()
 
-    ADD_SUBDIRECTORY(gtest)
+    ADD_SUBDIRECTORY(deps/gtest)
     cxx_library(maid_main ${cxx_strict} test/maid_main)
     target_link_libraries(maid_main maid gtest)
 
