@@ -228,10 +228,10 @@ void ChannelImpl::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf
 
     Buffer& buffer = self->buffer_[(int64_t)(handle)];
     GOOGLE_LOG_IF(FATAL, buffer.len + nread > buffer.total) << " out of memory";
-    //memcpy(((int8_t*)buffer.base) + buffer.len, buf->base, nread);
+    if (buf->base != buffer.base) {
+        memcpy(((int8_t*)buffer.base) + buffer.len, buf->base, nread);
+    }
     buffer.len += nread;
-    //buffer.base = buf->base;
-    //buffer.len = nread;
 
     self->Handle(handle, buffer);
 }
@@ -265,7 +265,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
         try {
             controller = new Controller();
             if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
-                GOOGLE_LOG(WARNING) << " connection: " << (int64_t)handle << " parse meta_data failed";
+                GOOGLE_LOG(FATAL) << " connection: " << (int64_t)handle << " parse meta_data failed";
                 handled_len += sizeof(uint32_t) + controller_length;
                 delete controller;
                 continue;
