@@ -140,6 +140,7 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
     }
 
     uint32_t transmit_id = ++transmit_id_max_; // TODO: check if used
+    GOOGLE_LOG_IF(FATAL, async_result_.find(transmit_id) != async_result_.end()) << "transmit id used";
 
     controller->meta_data().set_transmit_id(transmit_id);
     async_result_[transmit_id].controller = controller;
@@ -199,6 +200,7 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
             buffer.append((char*)&controller_nl, sizeof(controller_nl));
             controller->meta_data().AppendToString(&buffer);
         } catch (std::bad_alloc) {
+            return;
         }
     }
 
@@ -230,6 +232,8 @@ void ChannelImpl::OnRead(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf
     GOOGLE_LOG_IF(FATAL, buffer.len + nread > buffer.total) << " out of memory";
     if (buf->base != buffer.base) {
         memcpy(((int8_t*)buffer.base) + buffer.len, buf->base, nread);
+        free(buf->base);
+        GOOGLE_LOG(INFO) << " memcpy!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
     }
     buffer.len += nread;
 
@@ -240,33 +244,34 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
 {
     // handle
     int32_t result = 0;
-    size_t handled_len = 0;
-    while (buffer.len >= sizeof(int32_t) + handled_len) {
-        size_t buffer_cur = handled_len;
+    int8_t* handled = (int8_t*)buffer.base;
+    int8_t* buffer_end = handled + buffer.len;
+    while (buffer_end >= handled + sizeof(int32_t)) {
+        int8_t* buffer_cur = handled;
 
         int32_t controller_length_nl = 0;
-        memcpy(&controller_length_nl, ((int8_t*)buffer.base) + buffer_cur, sizeof(controller_length_nl));
+        memcpy(&controller_length_nl, buffer_cur, sizeof(controller_length_nl));
         int32_t controller_length = ::ntohl(controller_length_nl);
         buffer_cur += sizeof(controller_length);
         Controller* controller = NULL;
 
         if (controller_length > controller_max_length_ || controller_length < 0) {
-            handled_len = buffer.len;
+            handled = buffer_end;
             GOOGLE_LOG(FATAL) << " connection: " << (int64_t)handle << " controller_length: " << controller_length << " out of max length: " << controller_max_length_;
             result = ERROR_OUT_OF_LENGTH; // out of max length
             break;
         }
 
-        if (buffer.len < controller_length + buffer_cur) {
+        if (buffer_cur + controller_length > buffer_end) {
             result = ERROR_LACK_DATA;
             break; // lack data
         }
 
         try {
             controller = new Controller();
-            if (!controller->meta_data().ParseFromArray((int8_t*)buffer.base + buffer_cur, controller_length)) {
+            if (!controller->meta_data().ParseFromArray(buffer_cur, controller_length)) {
                 GOOGLE_LOG(FATAL) << " connection: " << (int64_t)handle << " parse meta_data failed";
-                handled_len += sizeof(uint32_t) + controller_length;
+                handled = buffer_cur + controller_length;
                 delete controller;
                 continue;
             }
@@ -277,18 +282,6 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
             delete controller;
             result = ERROR_BUSY;
             break;
-        }
-
-        if (controller->meta_data().method_name() == RESERVED_METHOD_CONNECT) {
-            //WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_CONNECT);
-            handled_len = buffer_cur;
-            continue;
-        }
-
-        if (controller->meta_data().method_name() == RESERVED_METHOD_DISCONNECT) {
-            //WARN("method: %s is a reserved method, do not call it remotely", RESERVED_METHOD_DISCONNECT);
-            handled_len = buffer_cur;
-            continue;
         }
 
         if (controller->meta_data().stub()) {
@@ -305,16 +298,15 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
             break;
         }
 
-        handled_len = buffer_cur + controller_length;
+        handled = buffer_cur + controller_length;
     }
 
-    GOOGLE_LOG_IF(FATAL, handled_len > buffer.len) << " overflowed";
     // move
-    buffer.len -= handled_len;
+    buffer.len -= (handled - (int8_t*)buffer.base);
     if (buffer.len != 0)
     {
-        GOOGLE_LOG(INFO) << " buffer.len: " << buffer.len << " handled_len: " << handled_len << " total: " << buffer.total;
-        memmove(buffer.base, ((int8_t*)buffer.base) + handled_len, buffer.len);
+        GOOGLE_LOG(INFO) << " memmoved, buffer.base: " << (int64_t)buffer.base << " handled: " << (int64_t)handled << " len: " << buffer.len << " total: " << buffer.total;
+        memmove(buffer.base, handled, buffer.len);
     }
     return result;
 }
@@ -491,10 +483,6 @@ int64_t ChannelImpl::Connect(const char* host, int32_t port, bool as_default)
 
 void ChannelImpl::OnAccept(uv_stream_t* handle, int32_t status)
 {
-    if (status) {
-        return;
-    }
-
     ChannelImpl* self = (ChannelImpl*)handle->data;
     uv_tcp_t* peer_handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     uv_tcp_init(handle->loop, peer_handle);
@@ -552,14 +540,6 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
     GOOGLE_LOG(INFO) << " close connection: " << (int64_t)handle;
 
     uv_read_stop(handle);
-    //std::set<int64_t>& transactions = transactions_[(int64_t)handle];
-    //for (std::set<int64_t>::const_iterator it = transactions.begin(); it != transactions.end(); ++it) {
-    //    std::map<int64_t, Context>::iterator async_it = async_result_.find(*it);
-    //    async_it->second.controller->SetFailed("connection closed");
-    //    async_it->second.done->Run();
-    //    async_result_.erase(*it);
-    //}
-    //transactions_.erase((int64_t)(handle));
     connected_handle_.erase((int64_t)(handle));
     buffer_.erase((int64_t)(handle));
 
