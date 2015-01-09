@@ -108,6 +108,7 @@ public: /* unit test only */
     std::map<int64_t, uv_stream_t*> listen_handle_; //<connect_id, stream>
     std::map<int64_t, Buffer> buffer_;//<connect_id, buffer>
     std::map<int64_t, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
+    std::map<uv_write_t*, std::string*> sending_buffer_; //
     std::stack<RemoteClosure*> remote_closure_pool_;
 
 public:  /* unit test only */

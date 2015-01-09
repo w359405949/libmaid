@@ -81,7 +81,12 @@ void ChannelImpl::CallMethod(const google::protobuf::MethodDescriptor* method,
 void ChannelImpl::AfterSendNotify(uv_write_t* req, int32_t status)
 {
     GOOGLE_LOG(INFO) << " connection: " << (int64_t)req->handle << " after send notify: " << status;
-    free(req);
+
+    ChannelImpl* self = (ChannelImpl*)req->handle->data;
+
+    delete self->sending_buffer_[req];
+    self->sending_buffer_.erase(req);
+    delete req;
 }
 
 void ChannelImpl::SendNotify(Controller* controller, const google::protobuf::Message* request)
@@ -93,22 +98,29 @@ void ChannelImpl::SendNotify(Controller* controller, const google::protobuf::Mes
         return;
     }
 
-    std::string buffer;
+    std::string* buffer = NULL;
+    uv_write_t* req = NULL;
     try {
+        buffer = new std::string();
+        req = new uv_write_t();
+
         request->SerializeToString(controller->meta_data().mutable_message());
         int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
-        buffer.append((const char*)&controller_nl, sizeof(controller_nl));
-        controller->meta_data().AppendToString(&buffer);
+        buffer->append((const char*)&controller_nl, sizeof(controller_nl));
+        controller->meta_data().AppendToString(buffer);
+
+        sending_buffer_[req] = buffer;
     } catch (std::bad_alloc) {
+        delete buffer;
+        delete req;
         return;
     }
 
-    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    req->data = controller;
 
+    req->data = controller;
     uv_buf_t uv_buf;
-    uv_buf.base = (char*)buffer.data();
-    uv_buf.len = buffer.length();
+    uv_buf.base = (char*)buffer->data();
+    uv_buf.len = buffer->length();
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendNotify);
     if (error) {
         GOOGLE_LOG(INFO) << uv_strerror(error);
@@ -118,13 +130,16 @@ void ChannelImpl::SendNotify(Controller* controller, const google::protobuf::Mes
 
 void ChannelImpl::AfterSendRequest(uv_write_t* req, int32_t status)
 {
+    ChannelImpl* self = (ChannelImpl*)req->handle->data;
+
     if (status) {
         Controller* controller = (Controller*)req->data;
-        ChannelImpl* self = (ChannelImpl*)req->handle->data;
         controller->SetFailed(uv_strerror(status));
         self->HandleResponse(controller);
     }
-    free(req);
+    delete self->sending_buffer_[req];
+    self->sending_buffer_.erase(req);
+    delete req;
 }
 
 void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done)
@@ -148,13 +163,21 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
     async_result_[transmit_id].done = done;
     transactions_[controller->fd()].insert(transmit_id);
 
-    std::string buffer;
+    std::string* buffer = NULL;
+    uv_write_t* req = NULL;
     try {
+        buffer = new std::string();
+        req = new uv_write_t;
+
         request->SerializeToString(controller->meta_data().mutable_message());
         int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
-        buffer.append((const char*)&controller_nl, sizeof(controller_nl));
-        controller->meta_data().AppendToString(&buffer);
+        buffer->append((const char*)&controller_nl, sizeof(controller_nl));
+        controller->meta_data().AppendToString(buffer);
+
+        sending_buffer_[req] = buffer;
     } catch (std::bad_alloc) {
+        delete buffer;
+        delete req;
         controller->SetFailed("busy");
         HandleResponse(controller);
         return;
@@ -163,9 +186,8 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
     GOOGLE_LOG(INFO) << " connection: " << controller->fd() << " send request: " << controller->meta_data().transmit_id();
 
     uv_buf_t uv_buf;
-    uv_buf.base = (char*)buffer.data();
-    uv_buf.len = buffer.length();
-    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    uv_buf.base = (char*)buffer->data();
+    uv_buf.len = buffer->length();
     req->data = controller;
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendRequest);
     if (error) {
@@ -177,8 +199,11 @@ void ChannelImpl::SendRequest(Controller* controller, const google::protobuf::Me
 
 void ChannelImpl::AfterSendResponse(uv_write_t* req, int32_t status)
 {
-    GOOGLE_LOG_IF(FATAL, status != 0) << "after send response";
-    free(req);
+    ChannelImpl* self = (ChannelImpl*)req->handle->data;
+
+    delete self->sending_buffer_[req];
+    self->sending_buffer_.erase(req);
+    delete req;
 }
 
 void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::Message* response)
@@ -191,15 +216,22 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
         return;
     }
 
-    std::string buffer;
     controller->meta_data().clear_message();
+    std::string* buffer = NULL;
+    uv_write_t* req = NULL;
     if (NULL != response) {
         try{
+            buffer = new std::string();
+            req = new uv_write_t();
             response->SerializeToString(controller->meta_data().mutable_message());
             int32_t controller_nl = ::htonl(controller->meta_data().ByteSize());
-            buffer.append((char*)&controller_nl, sizeof(controller_nl));
-            controller->meta_data().AppendToString(&buffer);
+            buffer->append((char*)&controller_nl, sizeof(controller_nl));
+            controller->meta_data().AppendToString(buffer);
+
+            sending_buffer_[req] = buffer;
         } catch (std::bad_alloc) {
+            delete buffer;
+            delete req;
             return;
         }
     }
@@ -207,9 +239,8 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
     GOOGLE_LOG(INFO) << " connection: " << controller->fd() << " send response: " << controller->meta_data().transmit_id();
 
     uv_buf_t uv_buf;
-    uv_buf.base = (char*)buffer.data();
-    uv_buf.len = buffer.length();
-    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    uv_buf.base = (char*)buffer->data();
+    uv_buf.len = buffer->length();
     GOOGLE_LOG_IF(FATAL, NULL == req) << " no more memory";
     int error = uv_write(req, it->second, &uv_buf, 1, AfterSendResponse);
     if (error) {
@@ -262,8 +293,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
 
         if (buffer_cur + controller_length > buffer_end) {
             result = ERROR_LACK_DATA;
-            GOOGLE_LOG(FATAL) << " lack data";
-            break; // lack data
+            break;
         }
 
         try {
@@ -302,9 +332,9 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
 
     // move
     buffer.len -= (handled - (int8_t*)buffer.base);
-    if (buffer.len != 0)
+    if (buffer.len != 0 && handled != (int8_t*)buffer.base)
     {
-        GOOGLE_LOG(INFO) << " memmoved, buffer.base: " << (int64_t)buffer.base << " handled: " << (int64_t)handled << " len: " << buffer.len << " total: " << buffer.total;
+        GOOGLE_LOG(INFO) << " connection: " << (int64_t)handle << " memmoved, buffer.base: " << (int64_t)buffer.base << " handled: " << (int64_t)handled << " len: " << buffer.len << " total: " << buffer.total;
         memmove(buffer.base, handled, buffer.len);
     }
     return result;
