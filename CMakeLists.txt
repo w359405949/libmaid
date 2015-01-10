@@ -1,8 +1,9 @@
 #
 # author: w<w359405949@gmail.com>
 # created: 2014-08-27
-option(maid_build_tests "Build all of maid's tests." OFF)
+option(maid_test "Build all of maid's tests." OFF)
 option(maid_debug "Build all of maid's tests." OFF)
+option(maid_tcmalloc "" OFF)
 
 PROJECT(maid)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
@@ -26,16 +27,28 @@ include_directories(
 set(cxx_strict "${cxx_strict} -Wno-shadow")
 if (maid_debug)
     set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
+else()
+    set(cxx_strict "${cxx_strict} -O2")
 endif()
 
 cxx_shared_library(maid ${cxx_strict} ${source})
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
-target_link_libraries(maid
-    uv
-    protobuf
-    libglog.a
-    )
+
+if (maid_tcmalloc)
+    target_link_libraries(maid
+        uv
+        protobuf
+        libglog.a
+        )
+else()
+    target_link_libraries(maid
+        uv
+        protobuf
+        libglog.a
+        libtcmalloc.a
+        )
+endif()
 
 ################################
 # INSTALL
@@ -46,7 +59,7 @@ INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
 ################################
 # TEST
 ################################
-if (maid_build_tests)
+if (maid_test)
     enable_testing()
 
     ADD_SUBDIRECTORY(deps/gtest)

@@ -1,8 +1,12 @@
+11, option
+10, event
+9, another scheduler (queue, deadline, fair)
 8, add timeout
 7, add session support.(like http cookie)
 (finished)6, add .net/mono support.
 5, add lua support.
-(doing)4, unittest.
+
+(finished)4, unittest.
 (finished)3, more example.
 (finished)2，TODO
-(finished)1，继续增加Hanlde部分的逻辑
+(finished)1，logic

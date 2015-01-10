@@ -14,4 +14,6 @@ message ControllerMeta
 
     optional string full_service_name = 11;
     //optional string full_method_name = 12;
+
+    extensions 1000 to max;
 }
