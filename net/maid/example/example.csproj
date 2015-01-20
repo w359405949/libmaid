@@ -12,6 +12,7 @@
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>发布\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -24,7 +25,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -50,40 +50,6 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ControllerProto, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\bin\Debug\ControllerProto.dll</HintPath>
-    </Reference>
-    <Reference Include="ControllerProtoSerializer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\bin\Debug\ControllerProtoSerializer.dll</HintPath>
-    <Reference Include="ControllerProto">
-      <HintPath>..\maid\library\ControllerProto.dll</HintPath>
-    </Reference>
-    <Reference Include="ControllerProtoSerializer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\bin\Debug\ControllerProtoSerializer.dll</HintPath>
-    </Reference>
-    <Reference Include="Hello, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>proto\Hello.dll</HintPath>
-    </Reference>
-    <Reference Include="HelloSerializer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>proto\HelloSerializer.dll</HintPath>
-    </Reference>
-    <Reference Include="maid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\bin\Debug\maid.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>..\maid\bin\Debug\protobuf-net.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -104,6 +70,27 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="ControllerProto">
+      <HintPath>..\maid\library\ControllerProto.dll</HintPath>
+    </Reference>
+    <Reference Include="ControllerProtoSerializer">
+      <HintPath>..\maid\library\ControllerProtoSerializer.dll</HintPath>
+    </Reference>
+    <Reference Include="Hello">
+      <HintPath>library\Hello.dll</HintPath>
+    </Reference>
+    <Reference Include="HelloSerializer">
+      <HintPath>library\HelloSerializer.dll</HintPath>
+    </Reference>
+    <Reference Include="maid">
+      <HintPath>..\maid\bin\Debug\maid.dll</HintPath>
+    </Reference>
+    <Reference Include="protobuf-net">
+      <HintPath>..\maid\library\protobuf-net.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
