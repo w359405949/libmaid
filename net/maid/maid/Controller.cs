@@ -5,7 +5,7 @@ namespace maid
 {
     public class Controller
     {
-        public ControllerMeta meta;
+        public ControllerProto proto;
         public Channel channel;
     }
 }

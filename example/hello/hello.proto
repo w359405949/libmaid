@@ -1,3 +1,5 @@
+import "maid/options.proto";
+
 package maid.example;
 
 option cc_generic_services = true;
@@ -16,4 +18,10 @@ message HelloResponse
 service HelloService
 {
     rpc Hello(HelloRequest) returns(HelloResponse);
+    rpc HelloRpc(HelloRequest) returns(HelloResponse);
+
+    rpc HelloNotify(HelloRequest) returns(HelloResponse)
+    {
+    	option (maid.proto.method_options).notify = true;
+    }
 }

@@ -13,13 +13,13 @@ config_compiler_and_linker()
 MESSAGE(STATUS "Project: ${PROJECT_NAME}")
 MESSAGE(STATUS "Project Directory: ${PORJECT_SOURCE_DIR}")
 
-file(GLOB_RECURSE header include/*.h src/include/*.h)
+file(GLOB_RECURSE header include/maid/*.h)
 file(GLOB_RECURSE source src/*.cpp src/*.cc)
 message("  -> Prepared: maid")
 
 include_directories(
     ${maid_SOURCE_DIR}/include
-    ${maid_SOURCE_DIR}/src/include
+    ${maid_SOURCE_DIR}/include/maid
     ${maid_SOURCE_DIR}/deps/gtest/include
 )
 
@@ -28,27 +28,19 @@ set(cxx_strict "${cxx_strict} -Wno-shadow")
 if (maid_debug)
     set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
 else()
-    set(cxx_strict "${cxx_strict} -O2")
+    set(cxx_strict "${cxx_strict} -O2 -fPIC")
 endif()
 
 cxx_shared_library(maid ${cxx_strict} ${source})
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
 
-if (maid_tcmalloc)
-    target_link_libraries(maid
-        uv
-        protobuf
-        libglog.a
-        )
-else()
-    target_link_libraries(maid
-        uv
-        protobuf
-        libglog.a
-        libtcmalloc.a
-        )
-endif()
+target_link_libraries(maid
+    uv
+    protobuf
+    glog
+    #tcmalloc
+    )
 
 ################################
 # INSTALL

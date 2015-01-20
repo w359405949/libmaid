@@ -1,0 +1,25 @@
+import "maid/controller.proto";
+
+option cc_generic_services = true;
+
+package maid.proto;
+
+message SessionProto
+{
+    optional string id = 1;
+    optional uint64 expired_time = 2;
+
+    extensions 1000 to max;
+}
+
+extend ControllerProto
+{
+	optional SessionProto session = 1002;
+}
+
+//service SessionEventService
+//{
+//	rpc NewSession(Session) returns(Session);
+//	rpc SessionTimeout(Session) returns(Session);
+//	rpc Session
+//}

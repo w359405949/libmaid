@@ -25,6 +25,6 @@ int main()
     maid::Channel* channel = new maid::Channel();
     EchoService* echo = new EchoServiceImpl();
     channel->AppendService(echo);
-    channel->Listen("0.0.0.0", 8888);
+    channel->Listen("0.0.0.0", 5555);
     uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

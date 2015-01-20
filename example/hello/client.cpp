@@ -11,7 +11,7 @@ static int32_t count = 0;
 class Closure : public google::protobuf::Closure
 {
 public:
-    Closure(maid::Controller* controller, HelloRequest* request, HelloResponse* response)
+    Closure(maid::Controller* controller, maid::example::HelloRequest* request, maid::example::HelloResponse* response)
         :response_(response),
         request_(request),
         controller_(controller)
@@ -36,23 +36,23 @@ public:
 
 private:
     maid::Controller* controller_;
-    HelloRequest* request_;
-    HelloResponse* response_;
+    maid::example::HelloRequest* request_;
+    maid::example::HelloResponse* response_;
 };
 
 
 int main()
 {
     Channel* channel = new Channel();
-    channel->Connect("127.0.0.1", 11111, true);
+    channel->Connect("127.0.0.1", 5555, true);
     for(int32_t i = 0; i < MAX_CONNECTION; i++){
         Controller* controller = new Controller();
-        HelloRequest* request = new HelloRequest();
+        maid::example::HelloRequest* request = new maid::example::HelloRequest();
         request->set_message("hello");
-        HelloResponse* response = new HelloResponse();
+        maid::example::HelloResponse* response = new maid::example::HelloResponse();
         Closure* closure = new Closure(controller, request, response);
 
-        HelloService_Stub* stub = new HelloService_Stub(channel);
+        maid::example::HelloService_Stub* stub = new maid::example::HelloService_Stub(channel);
         stub->Hello(controller, request, response, closure);
         channel->Update();
     }

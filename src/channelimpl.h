@@ -8,7 +8,7 @@
 #include <google/protobuf/descriptor.h>
 #include <uv.h>
 #include "buffer.h"
-//#include "context.h"
+#include "context.h"
 
 namespace maid
 {
@@ -19,7 +19,7 @@ class Context;
 
 namespace proto
 {
-class ControllerMeta;
+class ConnectionEventService;
 }
 
 class ChannelImpl : public google::protobuf::RpcChannel
@@ -48,15 +48,10 @@ public:
      * service for remote request
      */
     void AppendService(google::protobuf::Service* service);
-    inline void set_default_connect(int64_t connect_id)
-    {
-        default_connect_ = connect_id;
-    }
+    void AppendConnectionEventService(maid::proto::ConnectionEventService* event_service);
 
-    int64_t default_connect()
-    {
-        return default_connect_;
-    }
+    void set_default_connection_id(int64_t connection_id);
+    int64_t default_connection_id();
 
     inline void Update()
     {
@@ -73,16 +68,17 @@ public:
         return loop_;
     }
 
+    uv_stream_t* connected_handle(Controller* controller);
+
 public:
     virtual void SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done);
     virtual void SendResponse(Controller* controller, const google::protobuf::Message* response);
     virtual void SendNotify(Controller* controller, const google::protobuf::Message* request);
 
-    //virtual int32_t Handle(uv_stream_t* handle, ssize_t nread);
     virtual int32_t Handle(uv_stream_t* handle, Buffer& buffer);
-    virtual int32_t HandleRequest(Controller* controller);
+    virtual int32_t HandleRequest(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method);
+    virtual int32_t HandleNotify(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method);
     virtual int32_t HandleResponse(Controller* controller);
-    virtual int32_t HandleNotify(Controller* controller);
 
     virtual void AddConnection(uv_stream_t* handle);
     virtual void RemoveConnection(uv_stream_t* handle);
@@ -90,7 +86,7 @@ public:
     virtual RemoteClosure* NewRemoteClosure();
     virtual void DeleteRemoteClosure(RemoteClosure* done);
 
-public: /* unit test only */
+public:
     static void OnRead(uv_stream_t* w, ssize_t nread, const uv_buf_t* buf);
     static void OnAccept(uv_stream_t* handle, int32_t status);
     static void OnConnect(uv_connect_t* handle, int32_t status);
@@ -99,10 +95,10 @@ public: /* unit test only */
     static void AfterSendResponse(uv_write_t* req, int32_t status);
     static void AfterSendNotify(uv_write_t* req, int32_t status);
     static void OnClose(uv_handle_t* handle);
-    static void OnRemoteClosureGC(uv_idle_t* handle);
 
-public: /* unit test only */
+public:
     std::map<std::string, google::protobuf::Service*> service_; //<full_service_name, service>
+    std::vector<proto::ConnectionEventService*> connection_event_service_; //
     std::map<int64_t, Context> async_result_; //<transmit_id, Context>
     std::map<int64_t, uv_stream_t*> connected_handle_; //<connect_id, stream>
     std::map<int64_t, uv_stream_t*> listen_handle_; //<connect_id, stream>
@@ -111,17 +107,17 @@ public: /* unit test only */
     std::map<uv_write_t*, std::string*> sending_buffer_; //
     std::stack<RemoteClosure*> remote_closure_pool_;
 
-public:  /* unit test only */
+public:
     // libuv
     uv_loop_t* loop_;
     uv_idle_t remote_closure_gc_;
+    uv_stream_t* default_handle_;
 
     // packet
     const int32_t controller_max_length_;
 
     //
-    int64_t default_connect_; //uv_stream_t
-    uint32_t transmit_id_max_;
+    int64_t transmit_id_max_;
 };
 
 } /* namespace maid */

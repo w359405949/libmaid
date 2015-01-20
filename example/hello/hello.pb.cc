@@ -16,6 +16,9 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 
+namespace maid {
+namespace example {
+
 namespace {
 
 const ::google::protobuf::Descriptor* HelloRequest_descriptor_ = NULL;
@@ -99,11 +102,17 @@ void protobuf_AddDesc_hello_2eproto() {
   already_here = true;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+  ::maid::proto::protobuf_AddDesc_maid_2foptions_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\013hello.proto\"\037\n\014HelloRequest\022\017\n\007message"
-    "\030\001 \001(\t\" \n\rHelloResponse\022\017\n\007message\030\001 \001(\t"
-    "26\n\014HelloService\022&\n\005Hello\022\r.HelloRequest"
-    "\032\016.HelloResponseB\006\200\001\001\220\001\001", 144);
+    "\n\013hello.proto\022\014maid.example\032\022maid/option"
+    "s.proto\"\037\n\014HelloRequest\022\017\n\007message\030\001 \001(\t"
+    "\" \n\rHelloResponse\022\017\n\007message\030\001 \001(\t2\344\001\n\014H"
+    "elloService\022@\n\005Hello\022\032.maid.example.Hell"
+    "oRequest\032\033.maid.example.HelloResponse\022C\n"
+    "\010HelloRpc\022\032.maid.example.HelloRequest\032\033."
+    "maid.example.HelloResponse\022M\n\013HelloNotif"
+    "y\022\032.maid.example.HelloRequest\032\033.maid.exa"
+    "mple.HelloResponse\"\005\312>\002\010\001B\006\200\001\001\220\001\001", 353);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "hello.proto", &protobuf_RegisterTypes);
   HelloRequest::default_instance_ = new HelloRequest();
@@ -129,7 +138,7 @@ const int HelloRequest::kMessageFieldNumber;
 HelloRequest::HelloRequest()
   : ::google::protobuf::Message() {
   SharedCtor();
-  // @@protoc_insertion_point(constructor:HelloRequest)
+  // @@protoc_insertion_point(constructor:maid.example.HelloRequest)
 }
 
 void HelloRequest::InitAsDefaultInstance() {
@@ -139,7 +148,7 @@ HelloRequest::HelloRequest(const HelloRequest& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
-  // @@protoc_insertion_point(copy_constructor:HelloRequest)
+  // @@protoc_insertion_point(copy_constructor:maid.example.HelloRequest)
 }
 
 void HelloRequest::SharedCtor() {
@@ -150,7 +159,7 @@ void HelloRequest::SharedCtor() {
 }
 
 HelloRequest::~HelloRequest() {
-  // @@protoc_insertion_point(destructor:HelloRequest)
+  // @@protoc_insertion_point(destructor:maid.example.HelloRequest)
   SharedDtor();
 }
 
@@ -197,7 +206,7 @@ bool HelloRequest::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:HelloRequest)
+  // @@protoc_insertion_point(parse_start:maid.example.HelloRequest)
   for (;;) {
     ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
     tag = p.first;
@@ -233,17 +242,17 @@ bool HelloRequest::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:HelloRequest)
+  // @@protoc_insertion_point(parse_success:maid.example.HelloRequest)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:HelloRequest)
+  // @@protoc_insertion_point(parse_failure:maid.example.HelloRequest)
   return false;
 #undef DO_
 }
 
 void HelloRequest::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:HelloRequest)
+  // @@protoc_insertion_point(serialize_start:maid.example.HelloRequest)
   // optional string message = 1;
   if (has_message()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -258,12 +267,12 @@ void HelloRequest::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:HelloRequest)
+  // @@protoc_insertion_point(serialize_end:maid.example.HelloRequest)
 }
 
 ::google::protobuf::uint8* HelloRequest::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // @@protoc_insertion_point(serialize_to_array_start:HelloRequest)
+  // @@protoc_insertion_point(serialize_to_array_start:maid.example.HelloRequest)
   // optional string message = 1;
   if (has_message()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -279,7 +288,7 @@ void HelloRequest::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:HelloRequest)
+  // @@protoc_insertion_point(serialize_to_array_end:maid.example.HelloRequest)
   return target;
 }
 
@@ -372,7 +381,7 @@ const int HelloResponse::kMessageFieldNumber;
 HelloResponse::HelloResponse()
   : ::google::protobuf::Message() {
   SharedCtor();
-  // @@protoc_insertion_point(constructor:HelloResponse)
+  // @@protoc_insertion_point(constructor:maid.example.HelloResponse)
 }
 
 void HelloResponse::InitAsDefaultInstance() {
@@ -382,7 +391,7 @@ HelloResponse::HelloResponse(const HelloResponse& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
-  // @@protoc_insertion_point(copy_constructor:HelloResponse)
+  // @@protoc_insertion_point(copy_constructor:maid.example.HelloResponse)
 }
 
 void HelloResponse::SharedCtor() {
@@ -393,7 +402,7 @@ void HelloResponse::SharedCtor() {
 }
 
 HelloResponse::~HelloResponse() {
-  // @@protoc_insertion_point(destructor:HelloResponse)
+  // @@protoc_insertion_point(destructor:maid.example.HelloResponse)
   SharedDtor();
 }
 
@@ -440,7 +449,7 @@ bool HelloResponse::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:HelloResponse)
+  // @@protoc_insertion_point(parse_start:maid.example.HelloResponse)
   for (;;) {
     ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
     tag = p.first;
@@ -476,17 +485,17 @@ bool HelloResponse::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:HelloResponse)
+  // @@protoc_insertion_point(parse_success:maid.example.HelloResponse)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:HelloResponse)
+  // @@protoc_insertion_point(parse_failure:maid.example.HelloResponse)
   return false;
 #undef DO_
 }
 
 void HelloResponse::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:HelloResponse)
+  // @@protoc_insertion_point(serialize_start:maid.example.HelloResponse)
   // optional string message = 1;
   if (has_message()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -501,12 +510,12 @@ void HelloResponse::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:HelloResponse)
+  // @@protoc_insertion_point(serialize_end:maid.example.HelloResponse)
 }
 
 ::google::protobuf::uint8* HelloResponse::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // @@protoc_insertion_point(serialize_to_array_start:HelloResponse)
+  // @@protoc_insertion_point(serialize_to_array_start:maid.example.HelloResponse)
   // optional string message = 1;
   if (has_message()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -522,7 +531,7 @@ void HelloResponse::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:HelloResponse)
+  // @@protoc_insertion_point(serialize_to_array_end:maid.example.HelloResponse)
   return target;
 }
 
@@ -621,10 +630,26 @@ const ::google::protobuf::ServiceDescriptor* HelloService::GetDescriptor() {
 }
 
 void HelloService::Hello(::google::protobuf::RpcController* controller,
-                         const ::HelloRequest*,
-                         ::HelloResponse*,
+                         const ::maid::example::HelloRequest*,
+                         ::maid::example::HelloResponse*,
                          ::google::protobuf::Closure* done) {
   controller->SetFailed("Method Hello() not implemented.");
+  done->Run();
+}
+
+void HelloService::HelloRpc(::google::protobuf::RpcController* controller,
+                         const ::maid::example::HelloRequest*,
+                         ::maid::example::HelloResponse*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method HelloRpc() not implemented.");
+  done->Run();
+}
+
+void HelloService::HelloNotify(::google::protobuf::RpcController* controller,
+                         const ::maid::example::HelloRequest*,
+                         ::maid::example::HelloResponse*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method HelloNotify() not implemented.");
   done->Run();
 }
 
@@ -637,8 +662,20 @@ void HelloService::CallMethod(const ::google::protobuf::MethodDescriptor* method
   switch(method->index()) {
     case 0:
       Hello(controller,
-             ::google::protobuf::down_cast<const ::HelloRequest*>(request),
-             ::google::protobuf::down_cast< ::HelloResponse*>(response),
+             ::google::protobuf::down_cast<const ::maid::example::HelloRequest*>(request),
+             ::google::protobuf::down_cast< ::maid::example::HelloResponse*>(response),
+             done);
+      break;
+    case 1:
+      HelloRpc(controller,
+             ::google::protobuf::down_cast<const ::maid::example::HelloRequest*>(request),
+             ::google::protobuf::down_cast< ::maid::example::HelloResponse*>(response),
+             done);
+      break;
+    case 2:
+      HelloNotify(controller,
+             ::google::protobuf::down_cast<const ::maid::example::HelloRequest*>(request),
+             ::google::protobuf::down_cast< ::maid::example::HelloResponse*>(response),
              done);
       break;
     default:
@@ -652,7 +689,11 @@ const ::google::protobuf::Message& HelloService::GetRequestPrototype(
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
     case 0:
-      return ::HelloRequest::default_instance();
+      return ::maid::example::HelloRequest::default_instance();
+    case 1:
+      return ::maid::example::HelloRequest::default_instance();
+    case 2:
+      return ::maid::example::HelloRequest::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
@@ -664,7 +705,11 @@ const ::google::protobuf::Message& HelloService::GetResponsePrototype(
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
     case 0:
-      return ::HelloResponse::default_instance();
+      return ::maid::example::HelloResponse::default_instance();
+    case 1:
+      return ::maid::example::HelloResponse::default_instance();
+    case 2:
+      return ::maid::example::HelloResponse::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
@@ -683,13 +728,30 @@ HelloService_Stub::~HelloService_Stub() {
 }
 
 void HelloService_Stub::Hello(::google::protobuf::RpcController* controller,
-                              const ::HelloRequest* request,
-                              ::HelloResponse* response,
+                              const ::maid::example::HelloRequest* request,
+                              ::maid::example::HelloResponse* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(0),
                        controller, request, response, done);
 }
+void HelloService_Stub::HelloRpc(::google::protobuf::RpcController* controller,
+                              const ::maid::example::HelloRequest* request,
+                              ::maid::example::HelloResponse* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(1),
+                       controller, request, response, done);
+}
+void HelloService_Stub::HelloNotify(::google::protobuf::RpcController* controller,
+                              const ::maid::example::HelloRequest* request,
+                              ::maid::example::HelloResponse* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(2),
+                       controller, request, response, done);
+}
 
 // @@protoc_insertion_point(namespace_scope)
+
+}  // namespace example
+}  // namespace maid
 
 // @@protoc_insertion_point(global_scope)

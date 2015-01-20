@@ -9,7 +9,7 @@ namespace maid
 {
 namespace proto
 {
-class ControllerMeta;
+class ControllerProto;
 }
 
 class ControllerImpl : public google::protobuf::RpcController
@@ -32,28 +32,21 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    proto::ControllerMeta& meta_data();
+public:
+    inline proto::ControllerProto* mutable_proto()
+    {
+        return &proto_;
+    }
+    inline const proto::ControllerProto& proto()
+    {
+        return proto_;
+    }
+
+    void set_connection_id(int64_t connection_id);
+    int64_t connection_id();
 
 public:
-    inline void set_fd(int64_t fd)
-    {
-        fd_ = fd;
-    }
-
-    inline int64_t fd()
-    {
-        return fd_;
-    }
-
-    inline void set_notify(bool notify)
-    {
-        meta_data_.set_notify(notify);
-    }
-
-public: /* unittest only */
-    proto::ControllerMeta meta_data_;
-
-    int64_t fd_;
+    proto::ControllerProto proto_;
 };
 
 } /* maid */

@@ -99,11 +99,12 @@ void protobuf_AddDesc_echo_2eproto() {
   already_here = true;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+  ::maid::proto::protobuf_AddDesc_maid_2foptions_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\necho.proto\"\036\n\013EchoRequest\022\017\n\007message\030\001"
-    " \001(\t\"\037\n\014EchoResponse\022\017\n\007message\030\001 \001(\t22\n"
-    "\013EchoService\022#\n\004Echo\022\014.EchoRequest\032\r.Ech"
-    "oResponseB\003\200\001\001", 134);
+    "\n\necho.proto\032\022maid/options.proto\"\036\n\013Echo"
+    "Request\022\017\n\007message\030\001 \001(\t\"\037\n\014EchoResponse"
+    "\022\017\n\007message\030\001 \001(\t24\n\013EchoService\022%\n\004Echo"
+    "\022\014.EchoRequest\032\r.EchoResponse\"\000B\003\200\001\001", 156);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "echo.proto", &protobuf_RegisterTypes);
   EchoRequest::default_instance_ = new EchoRequest();

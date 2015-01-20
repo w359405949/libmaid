@@ -25,7 +25,11 @@
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/service.h>
 #include <google/protobuf/unknown_field_set.h>
+#include "maid/options.pb.h"
 // @@protoc_insertion_point(includes)
+
+namespace maid {
+namespace example {
 
 // Internal implementation detail -- do not call these.
 void  protobuf_AddDesc_hello_2eproto();
@@ -102,7 +106,7 @@ class HelloRequest : public ::google::protobuf::Message {
   inline ::std::string* release_message();
   inline void set_allocated_message(::std::string* message);
 
-  // @@protoc_insertion_point(class_scope:HelloRequest)
+  // @@protoc_insertion_point(class_scope:maid.example.HelloRequest)
  private:
   inline void set_has_message();
   inline void clear_has_message();
@@ -186,7 +190,7 @@ class HelloResponse : public ::google::protobuf::Message {
   inline ::std::string* release_message();
   inline void set_allocated_message(::std::string* message);
 
-  // @@protoc_insertion_point(class_scope:HelloResponse)
+  // @@protoc_insertion_point(class_scope:maid.example.HelloResponse)
  private:
   inline void set_has_message();
   inline void clear_has_message();
@@ -219,8 +223,16 @@ class HelloService : public ::google::protobuf::Service {
   static const ::google::protobuf::ServiceDescriptor* descriptor();
 
   virtual void Hello(::google::protobuf::RpcController* controller,
-                       const ::HelloRequest* request,
-                       ::HelloResponse* response,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void HelloRpc(::google::protobuf::RpcController* controller,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void HelloNotify(::google::protobuf::RpcController* controller,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
                        ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
@@ -252,8 +264,16 @@ class HelloService_Stub : public HelloService {
   // implements HelloService ------------------------------------------
 
   void Hello(::google::protobuf::RpcController* controller,
-                       const ::HelloRequest* request,
-                       ::HelloResponse* response,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Closure* done);
+  void HelloRpc(::google::protobuf::RpcController* controller,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Closure* done);
+  void HelloNotify(::google::protobuf::RpcController* controller,
+                       const ::maid::example::HelloRequest* request,
+                       ::maid::example::HelloResponse* response,
                        ::google::protobuf::Closure* done);
  private:
   ::google::protobuf::RpcChannel* channel_;
@@ -286,7 +306,7 @@ inline void HelloRequest::clear_message() {
   clear_has_message();
 }
 inline const ::std::string& HelloRequest::message() const {
-  // @@protoc_insertion_point(field_get:HelloRequest.message)
+  // @@protoc_insertion_point(field_get:maid.example.HelloRequest.message)
   return *message_;
 }
 inline void HelloRequest::set_message(const ::std::string& value) {
@@ -295,7 +315,7 @@ inline void HelloRequest::set_message(const ::std::string& value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set:HelloRequest.message)
+  // @@protoc_insertion_point(field_set:maid.example.HelloRequest.message)
 }
 inline void HelloRequest::set_message(const char* value) {
   set_has_message();
@@ -303,7 +323,7 @@ inline void HelloRequest::set_message(const char* value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set_char:HelloRequest.message)
+  // @@protoc_insertion_point(field_set_char:maid.example.HelloRequest.message)
 }
 inline void HelloRequest::set_message(const char* value, size_t size) {
   set_has_message();
@@ -311,14 +331,14 @@ inline void HelloRequest::set_message(const char* value, size_t size) {
     message_ = new ::std::string;
   }
   message_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:HelloRequest.message)
+  // @@protoc_insertion_point(field_set_pointer:maid.example.HelloRequest.message)
 }
 inline ::std::string* HelloRequest::mutable_message() {
   set_has_message();
   if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     message_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:HelloRequest.message)
+  // @@protoc_insertion_point(field_mutable:maid.example.HelloRequest.message)
   return message_;
 }
 inline ::std::string* HelloRequest::release_message() {
@@ -342,7 +362,7 @@ inline void HelloRequest::set_allocated_message(::std::string* message) {
     clear_has_message();
     message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:HelloRequest.message)
+  // @@protoc_insertion_point(field_set_allocated:maid.example.HelloRequest.message)
 }
 
 // -------------------------------------------------------------------
@@ -366,7 +386,7 @@ inline void HelloResponse::clear_message() {
   clear_has_message();
 }
 inline const ::std::string& HelloResponse::message() const {
-  // @@protoc_insertion_point(field_get:HelloResponse.message)
+  // @@protoc_insertion_point(field_get:maid.example.HelloResponse.message)
   return *message_;
 }
 inline void HelloResponse::set_message(const ::std::string& value) {
@@ -375,7 +395,7 @@ inline void HelloResponse::set_message(const ::std::string& value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set:HelloResponse.message)
+  // @@protoc_insertion_point(field_set:maid.example.HelloResponse.message)
 }
 inline void HelloResponse::set_message(const char* value) {
   set_has_message();
@@ -383,7 +403,7 @@ inline void HelloResponse::set_message(const char* value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set_char:HelloResponse.message)
+  // @@protoc_insertion_point(field_set_char:maid.example.HelloResponse.message)
 }
 inline void HelloResponse::set_message(const char* value, size_t size) {
   set_has_message();
@@ -391,14 +411,14 @@ inline void HelloResponse::set_message(const char* value, size_t size) {
     message_ = new ::std::string;
   }
   message_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:HelloResponse.message)
+  // @@protoc_insertion_point(field_set_pointer:maid.example.HelloResponse.message)
 }
 inline ::std::string* HelloResponse::mutable_message() {
   set_has_message();
   if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     message_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:HelloResponse.message)
+  // @@protoc_insertion_point(field_mutable:maid.example.HelloResponse.message)
   return message_;
 }
 inline ::std::string* HelloResponse::release_message() {
@@ -422,11 +442,14 @@ inline void HelloResponse::set_allocated_message(::std::string* message) {
     clear_has_message();
     message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:HelloResponse.message)
+  // @@protoc_insertion_point(field_set_allocated:maid.example.HelloResponse.message)
 }
 
 
 // @@protoc_insertion_point(namespace_scope)
+
+}  // namespace example
+}  // namespace maid
 
 #ifndef SWIG
 namespace google {

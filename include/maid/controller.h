@@ -8,7 +8,7 @@ namespace maid
 
 namespace proto
 {
-class ControllerMeta;
+class ControllerProto;
 }
 
 class ControllerImpl;
@@ -32,13 +32,11 @@ public:
 
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
-    void set_fd(int64_t fd);
+    proto::ControllerProto* mutable_proto();
+    const proto::ControllerProto& proto();
 
-    int64_t fd();
-
-    void set_notify(bool notify);
-
-    maid::proto::ControllerMeta& meta_data();
+    int64_t connection_id();
+    void set_connection_id(int64_t connection_id);
 
     virtual ~Controller();
 

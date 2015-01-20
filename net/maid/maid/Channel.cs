@@ -4,12 +4,23 @@ using System.Net.Sockets;
 using System.IO;
 using maid.proto;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace maid
 {
     public class Channel
     {
-        public delegate void MethodEventHandler(Controller controller);
+        public delegate void SendRequestFunc(Controller controller, Object request);
+        public delegate void SendResponseFunc(Controller controller, Object response);
+        public delegate void HandleRequestFunc(Controller controller);
+        public delegate void HandleResponseFunc(Controller controller);
+        public delegate void RpcCallFunc<RequestType, ResponseType>(Controller controller, RequestType request, ResponseType response);
+        public delegate void NotifyCallFunc<RequestType>(Controller controller, RequestType request);
+
+        private Dictionary<string, SendRequestFunc> sendRequestFunc_;
+        private Dictionary<string, HandleRequestFunc> handleRequestFunc_;
+        private Dictionary<string, HandleResponseFunc> handleResponseFunc_;
+
         private int reconnect_ = -1;
         private string host_ = "";
         private int port_ = 0;
@@ -20,11 +31,10 @@ namespace maid
         private MemoryStream readBuffer_;
         private MemoryStream readBufferBack_;
 
-        private ControllerMetaSerializer serializer_;
-        private Dictionary<string, MethodEventHandler> methods_;
+        private ControllerProtoSerializer serializer_;
+
         private byte[] buffer_;
         private int BUFFERSIZE = 4096;
-        private uint transmit_id_ = 0;
 
         private IAsyncResult asyncRead_;
         private IAsyncResult asyncConnect_;
@@ -34,14 +44,142 @@ namespace maid
             readBuffer_ = new MemoryStream();
             readBufferBack_ = new MemoryStream();
             buffer_ = new byte[BUFFERSIZE];
-            serializer_ = new ControllerMetaSerializer();
-            methods_ = new Dictionary<string, MethodEventHandler>();
-
+            serializer_ = new ControllerProtoSerializer();
+            sendRequestFunc_ = new Dictionary<string, SendRequestFunc>();
+            handleRequestFunc_ = new Dictionary<string, HandleRequestFunc>();
+            handleResponseFunc_ = new Dictionary<string, HandleResponseFunc>();
         }
 
-        public void AddMethod(string fullMethodName, MethodEventHandler methodEventHandler)
+        public void AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RpcCallFunc<RequestType, ResponseType> callback)
+            where RequestType : class, ProtoBuf.IExtensible
+            where RequestSerializerType : ProtoBuf.Meta.TypeModel
+            where ResponseType : class, ProtoBuf.IExtensible
+            where ResponseSerializerType : ProtoBuf.Meta.TypeModel
         {
-            methods_[fullMethodName] = methodEventHandler;
+            RpcCallFunc<RequestType, ResponseType> method = (controller, request, response) =>
+            {
+            };
+
+            AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(fullMethodName, method, callback);
+        }
+
+        /*
+         * package MyPackage;
+         * serivce ServiceName
+         * {
+         *     rpc MethodName(RequestType) returns(ResponseType);
+         * }
+         *
+         * fullMethodName = MyPackage + "." + ServiceName + "." + MethodName
+         *
+         */
+        public void AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RpcCallFunc<RequestType, ResponseType> method, RpcCallFunc<RequestType, ResponseType> callback)
+            where RequestType : class, ProtoBuf.IExtensible
+            where RequestSerializerType : ProtoBuf.Meta.TypeModel
+            where ResponseType : class, ProtoBuf.IExtensible
+            where ResponseSerializerType : ProtoBuf.Meta.TypeModel
+        {
+            Dictionary<UInt64, object> requests = new Dictionary<UInt64, object>();
+            UInt64 transmit_id_ = 0;
+            RequestSerializerType requestSerializer = Activator.CreateInstance<RequestSerializerType>();
+            ResponseSerializerType responseSerializer = Activator.CreateInstance<ResponseSerializerType>();
+
+            sendRequestFunc_[fullMethodName] = (controller, request) =>
+            {
+                controller.proto.transmit_id = ++transmit_id_;
+                requests[controller.proto.transmit_id] = request as RequestType;
+
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    requestSerializer.Serialize(stream, request);
+                    controller.proto.message = stream.ToArray();
+                }
+                controller.proto.stub = true;
+                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+            };
+
+            handleResponseFunc_[fullMethodName] = (controller) =>
+            {
+                if (!requests.ContainsKey(controller.proto.transmit_id))
+                {
+                    return;
+                }
+                RequestType request = requests[controller.proto.transmit_id] as RequestType;
+
+                ResponseType response = null;
+                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
+                {
+                    response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
+                }
+                callback(controller, request as RequestType, response);
+
+                requests.Remove(controller.proto.transmit_id);
+            };
+
+            handleRequestFunc_[fullMethodName] = (controller) =>
+            {
+                if (null == method)
+                {
+                    return;
+                }
+                RequestType request = null;
+                ResponseType response = Activator.CreateInstance<ResponseType>();
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
+                }
+
+                method(controller, request, response);
+
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    responseSerializer.Serialize(stream, response);
+                    controller.proto.message = stream.ToArray();
+                }
+                controller.proto.stub = false;
+                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+            };
+        }
+
+        /*
+         * package MyPackage;
+         * serivce ServiceName
+         * {
+         *     rpc MethodName(RequestType) returns(ResponseType)
+         *     {
+         *          (maid.proto.method_options).notify = true;
+         *     }
+         * }
+         *
+         * fullMethodName = MyPackage + "." + ServiceName + "." + MethodName
+         *
+         */
+        public void AddMethod<RequestType, RequestSerializerType>(string fullMethodName, NotifyCallFunc<RequestType> method)
+            where RequestType : class, ProtoBuf.IExtensible
+            where RequestSerializerType : ProtoBuf.Meta.TypeModel
+        {
+            RequestSerializerType requestSerializer = Activator.CreateInstance<RequestSerializerType>();
+
+            sendRequestFunc_[fullMethodName] = (controller, request) =>
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    requestSerializer.Serialize(stream, request);
+                    controller.proto.message = stream.ToArray();
+                }
+                controller.proto.stub = true;
+                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+            };
+
+            handleRequestFunc_[fullMethodName] = (controller) =>
+            {
+                RequestType request = null;
+                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
+                {
+                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
+                }
+                method(controller, request);
+            };
         }
 
         public bool Connected
@@ -94,7 +232,7 @@ namespace maid
             {
                 Reconnect();
             }
-        } 
+        }
 
         private void Reconnect()
         {
@@ -143,51 +281,28 @@ namespace maid
             readBuffer_.SetLength(0);
         }
 
-        public long CallMethod(string fullServiceName, string methodName, byte[] message, bool notify=false)
+        public void CallMethod(string fullMethodName, object request)
         {
-            Controller controller = new Controller();
-            controller.meta = new ControllerMeta();
-            controller.meta.message = message;
-            controller.meta.full_service_name = fullServiceName;
-            controller.meta.method_name = methodName;
-
-            try
+            if (!sendRequestFunc_.ContainsKey(fullMethodName))
             {
-                if (notify)
-                {
-                    SendNotify(controller);
-                }
-                else
-                {
-                    controller.meta.transmit_id = ++transmit_id_;
-                    SendRequest(controller);
-                }
+                throw new Exception("method:" + fullMethodName + " not registed");
             }
-            catch (IOException)
-            {
-                return -1;
-            }
-            catch (ArgumentNullException)
-            {
-                return -1;
-            }
-            return controller.meta.transmit_id;
-        }
 
-
-        public long CallMethod(string fullMethodName, byte[] message, bool notify = false)
-        {
             int last = fullMethodName.LastIndexOf(".");
             if (last < 0)
             {
                 throw new Exception("invalid fullMethodName");
             }
+
             string fullServiceName = fullMethodName.Substring(0, last);
             string methodName = fullMethodName.Substring(last + 1, fullMethodName.Length - last - 1);
 
-            return CallMethod(fullServiceName, methodName, message, notify);
+            Controller controller = new Controller();
+            controller.proto = new ControllerProto();
+            controller.proto.full_service_name = fullServiceName;
+            controller.proto.method_name = methodName;
+            sendRequestFunc_[fullMethodName](controller, request);
         }
-
 
         public void Update()
         {
@@ -235,27 +350,30 @@ namespace maid
             try
             {
                 readBuffer_.Seek(0, SeekOrigin.Begin);
-                controller.meta = serializer_.DeserializeWithLengthPrefix(readBuffer_, null, typeof(ControllerMeta), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0) as ControllerMeta;
+                controller.proto = serializer_.DeserializeWithLengthPrefix(readBuffer_, null, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0) as ControllerProto;
             }
             catch (System.IO.EndOfStreamException)
             {
                 return;
             }
 
-            if (controller.meta.stub)
+            if (controller.proto.stub)
             {
-                if (controller.meta.notify)
+                string fullMethodName = controller.proto.full_service_name + "." + controller.proto.method_name;
+                if (!handleRequestFunc_.ContainsKey(fullMethodName))
                 {
-                    HandleNotify(controller);
+                    return;
                 }
-                else
-                {
-                    HandleRequest(controller);
-                }
+                handleRequestFunc_[fullMethodName](controller);
             }
             else
             {
-                HandleResponse(controller);
+                string fullMethodName = controller.proto.full_service_name + "." + controller.proto.method_name;
+                if (!handleResponseFunc_.ContainsKey(fullMethodName))
+                {
+                    return;
+                }
+                handleResponseFunc_[fullMethodName](controller);
             }
 
             // swap buffer
@@ -266,79 +384,6 @@ namespace maid
             MemoryStream ms = readBuffer_;
             readBuffer_ = readBufferBack_;
             readBufferBack_ = ms;
- 
-        }
-
-        protected void HandleRequest(Controller controller)
-        {
-        }
-
-        protected void HandleNotify(Controller controller)
-        {
-            string fullMethodName = controller.meta.full_service_name + "." + controller.meta.method_name;
-            if (!methods_.ContainsKey(fullMethodName))
-            {
-                return;
-            }
-            methods_[fullMethodName](controller);
-        }
-
-
-        protected void HandleResponse(Controller controller)
-        {
-            string fullMethodName = controller.meta.full_service_name + "." + controller.meta.method_name;
-            if (!methods_.ContainsKey(fullMethodName))
-            {
-                return;
-            }
-            methods_[fullMethodName](controller);
-        }
-
-
-        protected void SendNotify(Controller controller)
-        {
-            controller.meta.stub = true;
-            controller.meta.notify = true;
-            serializer_.SerializeWithLengthPrefix(networkStream_, controller.meta, typeof(ControllerMeta), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
-        }
-
-        protected void SendRequest(Controller controller)
-        {
-            controller.meta.stub = true;
-            controller.meta.notify = false;
-            serializer_.SerializeWithLengthPrefix(networkStream_, controller.meta, typeof(ControllerMeta), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
-        }
-
-
-        public static T Deserialize<T>(ProtoBuf.Meta.TypeModel serializer, byte[] bytes, int index, int count) where T:class
-        {
-            T obj = null;
-            using (MemoryStream stream = new MemoryStream(bytes, index, count))
-            {
-                obj = serializer.Deserialize(stream, null, typeof(T)) as T;
-            }
-            return obj;
-        }
-
-        public T Deserialize<T>(ProtoBuf.Meta.TypeModel serializer, byte[] bytes) where T : class
-        {
-            T obj = null;
-            using (MemoryStream stream = new MemoryStream(bytes, 0, bytes.Length))
-            {
-                obj = serializer.Deserialize(stream, null, typeof(T)) as T;
-            }
-            return obj;
-        }
-
-        public byte[] Serialize(ProtoBuf.Meta.TypeModel serializer, object message)
-        {
-            byte[] bytes = null;
-            using (MemoryStream stream = new MemoryStream())
-            {
-                serializer.Serialize(stream, message);
-                bytes = stream.ToArray();
-            }
-            return bytes;
         }
     }
 }

@@ -1,4 +1,7 @@
+import "maid/options.proto";
+
 option cc_generic_services = true;
+
 message EchoRequest
 {
     optional string message = 1;
@@ -11,5 +14,8 @@ message EchoResponse
 
 service EchoService
 {
-    rpc Echo(EchoRequest) returns(EchoResponse);
+    rpc Echo(EchoRequest) returns(EchoResponse)
+    {
+    	//option (maid.proto.method_options).notify = true;
+    }
 }

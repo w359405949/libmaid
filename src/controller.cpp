@@ -43,27 +43,27 @@ void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
     return controller_->NotifyOnCancel(callback);
 }
 
-void Controller::set_fd(int64_t fd)
-{
-    controller_->set_fd(fd);
-}
-
-int64_t Controller::fd()
-{
-    return controller_->fd();
-}
-
-void Controller::set_notify(bool notify)
-{
-    controller_->set_notify(notify);
-}
-
 Controller::~Controller()
 {
     delete controller_;
 }
 
-maid::proto::ControllerMeta& Controller::meta_data()
+maid::proto::ControllerProto* Controller::mutable_proto()
 {
-    return controller_->meta_data();
+    return controller_->mutable_proto();
+}
+
+const maid::proto::ControllerProto& Controller::proto()
+{
+    return controller_->proto();
+}
+
+int64_t Controller::connection_id()
+{
+    return controller_->connection_id();
+}
+
+void Controller::set_connection_id(int64_t connection_id)
+{
+    controller_->set_connection_id(connection_id);
 }

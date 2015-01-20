@@ -32,14 +32,14 @@ void Channel::AppendService(google::protobuf::Service* service)
     channel_->AppendService(service);
 }
 
-void Channel::set_default_connect(int64_t connect)
+void Channel::set_default_connection_id(int64_t connection_id)
 {
-    channel_->set_default_connect(connect);
+    channel_->set_default_connection_id(connection_id);
 }
 
-int64_t Channel::default_connect()
+int64_t Channel::default_connection_id()
 {
-    return channel_->default_connect();
+    return channel_->default_connection_id();
 }
 
 void Channel::Update()

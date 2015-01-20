@@ -1,0 +1,25 @@
+import "maid/controller.proto";
+
+option cc_generic_services = true;
+
+package maid.proto;
+
+message ConnectionProto
+{
+	optional int64 id = 1;
+	optional string host = 2;
+	optional int32 port = 3;
+
+	extensions 1000 to max;
+}
+
+extend ControllerProto
+{
+	optional ConnectionProto connection = 1001;
+}
+
+service ConnectionEventService
+{
+	rpc Connected(ConnectionProto) returns(ConnectionProto);
+	rpc Disconnected(ConnectionProto) returns(ConnectionProto);
+}
