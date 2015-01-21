@@ -9,9 +9,6 @@ namespace Example
 {
     class Program
     {
-        public void Result(HelloRequest re)
-        {
-        }
 
         static void Main(string[] args)
         {
@@ -31,7 +28,7 @@ namespace Example
                     channel.CallMethod("maid.example.HelloService.HelloRpc", request);
                 }
                 catch (Exception ){ }
-                if (channel.Connecting)
+                if (!channel.Connected && channel.Connecting)
                 {
                     Console.WriteLine("断线了，重连中");
                 }

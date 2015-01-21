@@ -24,25 +24,33 @@ namespace maid
         private int reconnect_ = -1;
         private string host_ = "";
         private int port_ = 0;
+        private IAsyncResult asyncConnect_;
         private Socket connection_;
-        private NetworkStream networkStream_;
+
+
+        // double write buffer
+        private IAsyncResult asyncWrite_;
+        private MemoryStream writeBuffer_; //
+        private MemoryStream writeBufferPending_; //
 
         // double read buffer
-        private MemoryStream readBuffer_;
-        private MemoryStream readBufferBack_;
+        private IAsyncResult asyncRead_;
+        private MemoryStream readBuffer_; // 
+        private MemoryStream readBufferBack_; //
 
         private ControllerProtoSerializer serializer_;
 
         private byte[] buffer_;
         private int BUFFERSIZE = 4096;
 
-        private IAsyncResult asyncRead_;
-        private IAsyncResult asyncConnect_;
-
         public Channel()
         {
             readBuffer_ = new MemoryStream();
             readBufferBack_ = new MemoryStream();
+
+            writeBuffer_ = new MemoryStream();
+            writeBufferPending_ = new MemoryStream();
+
             buffer_ = new byte[BUFFERSIZE];
             serializer_ = new ControllerProtoSerializer();
             sendRequestFunc_ = new Dictionary<string, SendRequestFunc>();
@@ -56,11 +64,7 @@ namespace maid
             where ResponseType : class, ProtoBuf.IExtensible
             where ResponseSerializerType : ProtoBuf.Meta.TypeModel
         {
-            RpcCallFunc<RequestType, ResponseType> method = (controller, request, response) =>
-            {
-            };
-
-            AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(fullMethodName, method, callback);
+            AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(fullMethodName, null, callback);
         }
 
         /*
@@ -95,50 +99,60 @@ namespace maid
                     controller.proto.message = stream.ToArray();
                 }
                 controller.proto.stub = true;
-                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+
+                writeBufferPending_.Seek(0, SeekOrigin.End);
+                serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
 
-            handleResponseFunc_[fullMethodName] = (controller) =>
+            if (null != callback)
             {
-                if (!requests.ContainsKey(controller.proto.transmit_id))
+                handleResponseFunc_[fullMethodName] = (controller) =>
                 {
-                    return;
-                }
-                RequestType request = requests[controller.proto.transmit_id] as RequestType;
+                    if (!requests.ContainsKey(controller.proto.transmit_id))
+                    {
+                        return;
+                    }
+                    RequestType request = requests[controller.proto.transmit_id] as RequestType;
 
-                ResponseType response = null;
-                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
-                {
-                    response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
-                }
-                callback(controller, request as RequestType, response);
+                    ResponseType response = null;
+                    using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
+                    {
+                        response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
+                    }
+                    callback(controller, request, response);
 
-                requests.Remove(controller.proto.transmit_id);
-            };
+                    requests.Remove(controller.proto.transmit_id);
+                };
+            }
 
-            handleRequestFunc_[fullMethodName] = (controller) =>
+            if (method != null)
             {
-                if (null == method)
+                handleRequestFunc_[fullMethodName] = (controller) =>
                 {
-                    return;
-                }
-                RequestType request = null;
-                ResponseType response = Activator.CreateInstance<ResponseType>();
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
-                }
+                    if (null == method)
+                    {
+                        return;
+                    }
+                    RequestType request = null;
+                    ResponseType response = Activator.CreateInstance<ResponseType>();
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
+                    }
 
-                method(controller, request, response);
+                    method(controller, request, response);
 
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    responseSerializer.Serialize(stream, response);
-                    controller.proto.message = stream.ToArray();
-                }
-                controller.proto.stub = false;
-                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
-            };
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        responseSerializer.Serialize(stream, response);
+                        controller.proto.message = stream.ToArray();
+                    }
+                    controller.proto.stub = false;
+
+                    writeBufferPending_.Seek(0, SeekOrigin.End);
+                    serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+                };
+            }
         }
 
         /*
@@ -168,124 +182,28 @@ namespace maid
                     controller.proto.message = stream.ToArray();
                 }
                 controller.proto.stub = true;
-                serializer_.SerializeWithLengthPrefix(networkStream_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+                serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
 
-            handleRequestFunc_[fullMethodName] = (controller) =>
+            if (method != null)
             {
-                RequestType request = null;
-                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
+                handleRequestFunc_[fullMethodName] = (controller) =>
                 {
-                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
-                }
-                method(controller, request);
-            };
-        }
-
-        public bool Connected
-        {
-            get
-            {
-                return connection_ != null && connection_.Connected && networkStream_ != null;
-            }
-        }
-
-        public bool Connecting
-        {
-            get
-            {
-                return asyncConnect_ != null && !asyncConnect_.IsCompleted;
-            }
-        }
-
-        public void SetReconnect(int reconnect)
-        {
-            reconnect_ = reconnect;
-        }
-
-        public void Connect(string host, int port)
-        {
-            host_ = host;
-            port_ = port;
-            connection_ = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            asyncConnect_ = connection_.BeginConnect(host, port, null, null);
-        }
-
-        private void CheckConnection()
-        {
-            if (asyncConnect_ != null)
-            {
-                if (asyncConnect_.IsCompleted)
-                {
-                    if (connection_.Connected)
+                    RequestType request = null;
+                    using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
                     {
-                        NewConnection();
+                        request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
                     }
-                    else
-                    {
-                        CloseConnection();
-                    }
-                    asyncConnect_ = null;
-                }
+                    method(controller, request);
+                };
             }
-            else if (!Connected)
-            {
-                Reconnect();
-            }
-        }
-
-        private void Reconnect()
-        {
-            if (Connecting)
-            {
-                return;
-            }
-            if (reconnect_ != 0)
-            {
-                Connect(host_, port_);
-            }
-            if (reconnect_ > 0)
-            {
-                reconnect_--;
-            }
-        }
-
-        public void CloseConnection()
-        {
-            try
-            {
-                connection_.EndReceive(asyncRead_);
-            }
-            catch (Exception) { }
-            try
-            {
-                connection_.EndConnect(asyncConnect_);
-            }
-            catch (Exception) { }
-            try
-            {
-                connection_.Close();
-            }
-            catch (Exception) { }
-
-            asyncConnect_ = null;
-            asyncRead_ = null;
-            connection_ = null;
-            networkStream_ = null;
-        }
-
-        public void NewConnection()
-        {
-            networkStream_ = new NetworkStream(connection_);
-            readBuffer_.Seek(0, SeekOrigin.Begin);
-            readBuffer_.SetLength(0);
         }
 
         public void CallMethod(string fullMethodName, object request)
         {
             if (!sendRequestFunc_.ContainsKey(fullMethodName))
             {
-                throw new Exception("method:" + fullMethodName + " not registed");
+                throw new Exception("method: " + fullMethodName + " not registed");
             }
 
             int last = fullMethodName.LastIndexOf(".");
@@ -304,13 +222,170 @@ namespace maid
             sendRequestFunc_[fullMethodName](controller, request);
         }
 
+        public bool Connected
+        {
+            get
+            {
+                return connection_ != null && connection_.Connected;
+            }
+        }
+
+        public bool Connecting
+        {
+            get
+            {
+                return asyncConnect_ != null;
+            }
+        }
+
+        public void SetReconnect(int reconnect)
+        {
+            reconnect_ = reconnect;
+        }
+
+        private void OnConnect(IAsyncResult result)
+        {
+            asyncConnect_ = null;
+            Socket connection = result.AsyncState as Socket;
+            try
+            {
+                connection.EndConnect(result);
+                if (connection.Connected)
+                {
+                    NewConnection(connection);
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        public void Connect(string host, int port)
+        {
+            CloseConnection();
+
+            host_ = host;
+            port_ = port;
+            Socket connection = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            asyncConnect_ = connection.BeginConnect(host, port, OnConnect, connection);
+        }
+
+        private void Reconnect()
+        {
+            if (Connecting)
+            {
+                return;
+            }
+            if (reconnect_ != 0)
+            {
+                Connect(host_, port_);
+            }
+            if (reconnect_ > 0)
+            {
+                reconnect_--;
+            }
+        }
+
+        public void NewConnection(Socket connection)
+        {
+            asyncRead_ = null;
+            readBuffer_.Seek(0, SeekOrigin.Begin);
+            readBuffer_.SetLength(0);
+            readBufferBack_.Seek(0, SeekOrigin.Begin);
+            readBufferBack_.SetLength(0);
+
+            asyncWrite_ = null;
+            writeBuffer_.Seek(0, SeekOrigin.Begin);
+            writeBuffer_.SetLength(0);
+            writeBufferPending_.Seek(0, SeekOrigin.Begin);
+            writeBufferPending_.SetLength(0);
+
+            connection_ = connection;
+        }
+
+        public void CloseConnection()
+        {
+            try
+            {
+                connection_.EndConnect(asyncConnect_);
+            }
+            catch (Exception) { }
+            try
+            {
+                connection_.EndReceive(asyncRead_);
+            }
+            catch (Exception) { }
+            try
+            {
+                connection_.EndSend(asyncWrite_);
+            }
+            catch (Exception) { }
+
+            try
+            {
+                connection_.Close();
+            }
+            catch (Exception) { }
+
+            asyncConnect_ = null;
+            asyncWrite_ = null;
+            asyncRead_ = null;
+            connection_ = null;
+        }
+
+
         public void Update()
         {
-            CheckConnection();
-            if (Connected)
+            if (!Connected)
+            {
+                Reconnect();
+                return;
+            }
+            try
             {
                 Read();
-                Handle();
+                Write();
+            }
+            catch (SocketException)
+            {
+                CloseConnection();
+                return;
+            }
+
+            Handle();
+        }
+
+        private void Write()
+        {
+            if (asyncWrite_ != null && asyncWrite_.IsCompleted)
+            {
+                int nwrite = connection_.EndSend(asyncWrite_);
+
+                if (nwrite < writeBuffer_.Length)
+                {
+                    byte[] data = writeBuffer_.ToArray();
+                    int remain = data.Length - nwrite;
+                    asyncWrite_ = connection_.BeginSend(data, nwrite, remain, SocketFlags.None, null, null);
+                } 
+                else 
+                {
+                    writeBuffer_.Seek(0, SeekOrigin.Begin);
+                    writeBuffer_.SetLength(0);
+                    asyncWrite_ = null;
+                }
+            }
+
+            if (asyncWrite_ == null)
+            {
+                MemoryStream ms = writeBuffer_;
+                writeBuffer_ = writeBufferPending_;
+                writeBufferPending_ = ms;
+
+                if (writeBuffer_.Length > 0)
+                {
+                    byte[] data = writeBuffer_.ToArray();
+                    asyncWrite_ = connection_.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                }
             }
         }
 
@@ -319,12 +394,7 @@ namespace maid
             if (asyncRead_ != null && asyncRead_.IsCompleted)
             {
                 int nread = connection_.EndReceive(asyncRead_);
-                if (nread == 0)
-                {
-                    CloseConnection();
-                    return;
-                }
-                else
+                if (nread > 0)
                 {
                     readBuffer_.Seek(0, SeekOrigin.End);
                     readBuffer_.Write(buffer_, 0, nread);
