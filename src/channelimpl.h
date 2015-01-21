@@ -19,7 +19,7 @@ class Context;
 
 namespace proto
 {
-class ConnectionEventService;
+class ConnectionMiddleware;
 }
 
 class ChannelImpl : public google::protobuf::RpcChannel
@@ -48,7 +48,7 @@ public:
      * service for remote request
      */
     void AppendService(google::protobuf::Service* service);
-    void AppendConnectionEventService(maid::proto::ConnectionEventService* event_service);
+    void AppendConnectionMiddleware(maid::proto::ConnectionMiddleware* middleware);
 
     void set_default_connection_id(int64_t connection_id);
     int64_t default_connection_id();
@@ -98,11 +98,11 @@ public:
 
 public:
     std::map<std::string, google::protobuf::Service*> service_; //<full_service_name, service>
-    std::vector<proto::ConnectionEventService*> connection_event_service_; //
+    std::vector<proto::ConnectionMiddleware*> connection_middleware_; //
+    std::map<int64_t, uv_stream_t*> connected_handle_; //<connection_id, stream>
+    std::map<int64_t, uv_stream_t*> listen_handle_; //<connection_id, stream>
+    std::map<int64_t, Buffer> buffer_;//<connection_id, buffer>
     std::map<int64_t, Context> async_result_; //<transmit_id, Context>
-    std::map<int64_t, uv_stream_t*> connected_handle_; //<connect_id, stream>
-    std::map<int64_t, uv_stream_t*> listen_handle_; //<connect_id, stream>
-    std::map<int64_t, Buffer> buffer_;//<connect_id, buffer>
     std::map<int64_t, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
     std::map<uv_write_t*, std::string*> sending_buffer_; //
     std::stack<RemoteClosure*> remote_closure_pool_;

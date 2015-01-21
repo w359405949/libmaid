@@ -1,5 +1,3 @@
-import "google/protobuf/descriptor.proto";
-
 package maid.proto;
 
 message ControllerProto

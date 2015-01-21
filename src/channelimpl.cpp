@@ -54,9 +54,9 @@ void ChannelImpl::AppendService(google::protobuf::Service* service)
     service_[service->GetDescriptor()->full_name()] = service;
 }
 
-void ChannelImpl::AppendConnectionEventService(proto::ConnectionEventService* event_service)
+void ChannelImpl::AppendConnectionMiddleware(proto::ConnectionMiddleware* middleware)
 {
-    connection_event_service_.push_back(event_service);
+    connection_middleware_.push_back(middleware);
 }
 
 void ChannelImpl::CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -323,7 +323,6 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
         }
 
         if (controller->proto().stub()) {
-            // service method
             std::map<std::string, google::protobuf::Service*>::iterator service_it;
             service_it = service_.find(controller->proto().full_service_name());
             if (service_.end() == service_it) {
@@ -334,21 +333,21 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
             }
 
             google::protobuf::Service* service = service_it->second;
-            const google::protobuf::MethodDescriptor* method_descriptor = NULL;
-            method_descriptor = service->GetDescriptor()->FindMethodByName(controller->proto().method_name());
-            if (NULL == method_descriptor) {
+            const google::protobuf::MethodDescriptor* method = NULL;
+            method = service->GetDescriptor()->FindMethodByName(controller->proto().method_name());
+            if (NULL == method) {
                 DLOG(WARNING) << " service: " << controller->proto().full_service_name().c_str() << " method: " << controller->proto().method_name() << " not exist";
                 delete controller;
                 result = ERROR_OTHER;
                 break;
             }
 
-            const proto::MaidMethodOptions& method_options = method_descriptor->options().GetExtension(proto::method_options);
+            const proto::MaidMethodOptions& method_options = method->options().GetExtension(proto::method_options);
 
             if (method_options.notify()) {
-                result = HandleNotify(controller, service, method_descriptor);
+                result = HandleNotify(controller, service, method);
             } else {
-                result = HandleRequest(controller, service, method_descriptor);
+                result = HandleRequest(controller, service, method);
             }
         } else {
             result = HandleResponse(controller);
@@ -371,7 +370,7 @@ int32_t ChannelImpl::Handle(uv_stream_t* handle, Buffer& buffer)
     return result;
 }
 
-int32_t ChannelImpl::HandleRequest(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method_descriptor)
+int32_t ChannelImpl::HandleRequest(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method)
 {
     DLOG(INFO) << " connection: " << controller->connection_id() << " request: " << controller->proto().transmit_id();
 
@@ -379,8 +378,8 @@ int32_t ChannelImpl::HandleRequest(Controller* controller, google::protobuf::Ser
     google::protobuf::Message* response = NULL;
     RemoteClosure* done = NULL;
     try {
-        request = service->GetRequestPrototype(method_descriptor).New();
-        response = service->GetResponsePrototype(method_descriptor).New();
+        request = service->GetRequestPrototype(method).New();
+        response = service->GetResponsePrototype(method).New();
         done = NewRemoteClosure();
 
         if (!request->ParseFromString(controller->proto().message())) {
@@ -403,7 +402,7 @@ int32_t ChannelImpl::HandleRequest(Controller* controller, google::protobuf::Ser
         return ERROR_BUSY;
     }
 
-    service->CallMethod(method_descriptor, controller, request, response, done);
+    service->CallMethod(method, controller, request, response, done);
 
     // call
     return 0;
@@ -601,8 +600,8 @@ void ChannelImpl::RemoveConnection(uv_stream_t* handle)
     MockClosure closure;
     proto::ConnectionProto connection;
     connection.set_id((int64_t)handle);
-    std::vector<proto::ConnectionEventService*>::iterator it = connection_event_service_.begin();
-    for (; it != connection_event_service_.end(); it++) {
+    std::vector<proto::ConnectionMiddleware*>::iterator it = connection_middleware_.begin();
+    for (; it != connection_middleware_.end(); it++) {
         (*it)->Disconnected(&controller, &connection, &connection, &closure);
     }
 }
@@ -622,8 +621,8 @@ void ChannelImpl::AddConnection(uv_stream_t* handle)
     MockClosure closure;
     proto::ConnectionProto connection;
     connection.set_id((int64_t)handle);
-    std::vector<proto::ConnectionEventService*>::iterator it = connection_event_service_.begin();
-    for (; it != connection_event_service_.end(); it++) {
+    std::vector<proto::ConnectionMiddleware*>::iterator it = connection_middleware_.begin();
+    for (; it != connection_middleware_.end(); it++) {
         (*it)->Connected(&controller, &connection, &connection, &closure);
     }
 }

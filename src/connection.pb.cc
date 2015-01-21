@@ -24,7 +24,7 @@ namespace {
 const ::google::protobuf::Descriptor* ConnectionProto_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   ConnectionProto_reflection_ = NULL;
-const ::google::protobuf::ServiceDescriptor* ConnectionEventService_descriptor_ = NULL;
+const ::google::protobuf::ServiceDescriptor* ConnectionMiddleware_descriptor_ = NULL;
 
 }  // namespace
 
@@ -52,7 +52,7 @@ void protobuf_AssignDesc_maid_2fconnection_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ConnectionProto));
-  ConnectionEventService_descriptor_ = file->service(0);
+  ConnectionMiddleware_descriptor_ = file->service(0);
 }
 
 namespace {
@@ -87,13 +87,13 @@ void protobuf_AddDesc_maid_2fconnection_2eproto() {
     "\n\025maid/connection.proto\022\nmaid.proto\032\025mai"
     "d/controller.proto\"D\n\017ConnectionProto\022\n\n"
     "\002id\030\001 \001(\003\022\014\n\004host\030\002 \001(\t\022\014\n\004port\030\003 \001(\005*\t\010"
-    "\350\007\020\200\200\200\200\0022\251\001\n\026ConnectionEventService\022E\n\tC"
-    "onnected\022\033.maid.proto.ConnectionProto\032\033."
-    "maid.proto.ConnectionProto\022H\n\014Disconnect"
-    "ed\022\033.maid.proto.ConnectionProto\032\033.maid.p"
-    "roto.ConnectionProto:M\n\nconnection\022\033.mai"
-    "d.proto.ControllerProto\030\351\007 \001(\0132\033.maid.pr"
-    "oto.ConnectionProtoB\003\200\001\001", 384);
+    "\350\007\020\200\200\200\200\0022\247\001\n\024ConnectionMiddleware\022E\n\tCon"
+    "nected\022\033.maid.proto.ConnectionProto\032\033.ma"
+    "id.proto.ConnectionProto\022H\n\014Disconnected"
+    "\022\033.maid.proto.ConnectionProto\032\033.maid.pro"
+    "to.ConnectionProto:M\n\nconnection\022\033.maid."
+    "proto.ControllerProto\030\351\007 \001(\0132\033.maid.prot"
+    "o.ConnectionProtoB\003\200\001\001", 382);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/connection.proto", &protobuf_RegisterTypes);
   ConnectionProto::default_instance_ = new ConnectionProto();
@@ -456,19 +456,19 @@ void ConnectionProto::Swap(ConnectionProto* other) {
 
 // ===================================================================
 
-ConnectionEventService::~ConnectionEventService() {}
+ConnectionMiddleware::~ConnectionMiddleware() {}
 
-const ::google::protobuf::ServiceDescriptor* ConnectionEventService::descriptor() {
+const ::google::protobuf::ServiceDescriptor* ConnectionMiddleware::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return ConnectionEventService_descriptor_;
+  return ConnectionMiddleware_descriptor_;
 }
 
-const ::google::protobuf::ServiceDescriptor* ConnectionEventService::GetDescriptor() {
+const ::google::protobuf::ServiceDescriptor* ConnectionMiddleware::GetDescriptor() {
   protobuf_AssignDescriptorsOnce();
-  return ConnectionEventService_descriptor_;
+  return ConnectionMiddleware_descriptor_;
 }
 
-void ConnectionEventService::Connected(::google::protobuf::RpcController* controller,
+void ConnectionMiddleware::Connected(::google::protobuf::RpcController* controller,
                          const ::maid::proto::ConnectionProto*,
                          ::maid::proto::ConnectionProto*,
                          ::google::protobuf::Closure* done) {
@@ -476,7 +476,7 @@ void ConnectionEventService::Connected(::google::protobuf::RpcController* contro
   done->Run();
 }
 
-void ConnectionEventService::Disconnected(::google::protobuf::RpcController* controller,
+void ConnectionMiddleware::Disconnected(::google::protobuf::RpcController* controller,
                          const ::maid::proto::ConnectionProto*,
                          ::maid::proto::ConnectionProto*,
                          ::google::protobuf::Closure* done) {
@@ -484,12 +484,12 @@ void ConnectionEventService::Disconnected(::google::protobuf::RpcController* con
   done->Run();
 }
 
-void ConnectionEventService::CallMethod(const ::google::protobuf::MethodDescriptor* method,
+void ConnectionMiddleware::CallMethod(const ::google::protobuf::MethodDescriptor* method,
                              ::google::protobuf::RpcController* controller,
                              const ::google::protobuf::Message* request,
                              ::google::protobuf::Message* response,
                              ::google::protobuf::Closure* done) {
-  GOOGLE_DCHECK_EQ(method->service(), ConnectionEventService_descriptor_);
+  GOOGLE_DCHECK_EQ(method->service(), ConnectionMiddleware_descriptor_);
   switch(method->index()) {
     case 0:
       Connected(controller,
@@ -509,7 +509,7 @@ void ConnectionEventService::CallMethod(const ::google::protobuf::MethodDescript
   }
 }
 
-const ::google::protobuf::Message& ConnectionEventService::GetRequestPrototype(
+const ::google::protobuf::Message& ConnectionMiddleware::GetRequestPrototype(
     const ::google::protobuf::MethodDescriptor* method) const {
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
@@ -523,7 +523,7 @@ const ::google::protobuf::Message& ConnectionEventService::GetRequestPrototype(
   }
 }
 
-const ::google::protobuf::Message& ConnectionEventService::GetResponsePrototype(
+const ::google::protobuf::Message& ConnectionMiddleware::GetResponsePrototype(
     const ::google::protobuf::MethodDescriptor* method) const {
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
@@ -537,25 +537,25 @@ const ::google::protobuf::Message& ConnectionEventService::GetResponsePrototype(
   }
 }
 
-ConnectionEventService_Stub::ConnectionEventService_Stub(::google::protobuf::RpcChannel* channel)
+ConnectionMiddleware_Stub::ConnectionMiddleware_Stub(::google::protobuf::RpcChannel* channel)
   : channel_(channel), owns_channel_(false) {}
-ConnectionEventService_Stub::ConnectionEventService_Stub(
+ConnectionMiddleware_Stub::ConnectionMiddleware_Stub(
     ::google::protobuf::RpcChannel* channel,
     ::google::protobuf::Service::ChannelOwnership ownership)
   : channel_(channel),
     owns_channel_(ownership == ::google::protobuf::Service::STUB_OWNS_CHANNEL) {}
-ConnectionEventService_Stub::~ConnectionEventService_Stub() {
+ConnectionMiddleware_Stub::~ConnectionMiddleware_Stub() {
   if (owns_channel_) delete channel_;
 }
 
-void ConnectionEventService_Stub::Connected(::google::protobuf::RpcController* controller,
+void ConnectionMiddleware_Stub::Connected(::google::protobuf::RpcController* controller,
                               const ::maid::proto::ConnectionProto* request,
                               ::maid::proto::ConnectionProto* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(0),
                        controller, request, response, done);
 }
-void ConnectionEventService_Stub::Disconnected(::google::protobuf::RpcController* controller,
+void ConnectionMiddleware_Stub::Disconnected(::google::protobuf::RpcController* controller,
                               const ::maid::proto::ConnectionProto* request,
                               ::maid::proto::ConnectionProto* response,
                               ::google::protobuf::Closure* done) {

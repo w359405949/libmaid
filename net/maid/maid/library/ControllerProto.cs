@@ -45,7 +45,7 @@ namespace maid.proto
       { return global::ProtoBuf.Extensible.GetExtensionObject(ref extensionObject, createIfMissing); }
   }
   
-    public interface IConnectionEventService
+    public interface IConnectionMiddleware
     {
       maid.proto.ConnectionProto Connected(maid.proto.ConnectionProto request);
     maid.proto.ConnectionProto Disconnected(maid.proto.ConnectionProto request);
@@ -55,7 +55,6 @@ namespace maid.proto
     
 }
 // Generated from: maid/controller.proto
-// Note: requires additional types generated from: google/protobuf/descriptor.proto
 namespace maid.proto
 {
   [global::System.Serializable, global::ProtoBuf.ProtoContract(Name=@"ControllerProto")]
@@ -210,4 +209,12 @@ namespace maid.proto
       { return global::ProtoBuf.Extensible.GetExtensionObject(ref extensionObject, createIfMissing); }
   }
   
+    public interface ISessionMiddleware
+    {
+      maid.proto.SessionProto PreRequest(maid.proto.SessionProto request);
+    maid.proto.SessionProto PostRequest(maid.proto.SessionProto request);
+    
+    }
+    
+    
 }

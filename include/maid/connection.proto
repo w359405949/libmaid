@@ -18,7 +18,7 @@ extend ControllerProto
 	optional ConnectionProto connection = 1001;
 }
 
-service ConnectionEventService
+service ConnectionMiddleware
 {
 	rpc Connected(ConnectionProto) returns(ConnectionProto);
 	rpc Disconnected(ConnectionProto) returns(ConnectionProto);

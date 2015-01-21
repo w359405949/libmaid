@@ -13,15 +13,13 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-import google.protobuf.descriptor_pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/controller.proto',
   package='maid.proto',
-  serialized_pb=_b('\n\x15maid/controller.proto\x12\nmaid.proto\x1a google/protobuf/descriptor.proto\"\xc9\x01\n\x0f\x43ontrollerProto\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\x04\x12\x0c\n\x04stub\x18\x04 \x01(\x08\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06notify\x18\t \x01(\x08\x12\x0f\n\x07message\x18\n \x01(\x0c\x12\x19\n\x11\x66ull_service_name\x18\x0b \x01(\t*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02')
-  ,
-  dependencies=[google.protobuf.descriptor_pb2.DESCRIPTOR,])
+  serialized_pb=_b('\n\x15maid/controller.proto\x12\nmaid.proto\"\xc9\x01\n\x0f\x43ontrollerProto\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\x04\x12\x0c\n\x04stub\x18\x04 \x01(\x08\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06notify\x18\t \x01(\x08\x12\x0f\n\x07message\x18\n \x01(\x0c\x12\x19\n\x11\x66ull_service_name\x18\x0b \x01(\t*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02')
+)
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
@@ -108,8 +106,8 @@ _CONTROLLERPROTO = _descriptor.Descriptor(
   extension_ranges=[(1000, 536870912), ],
   oneofs=[
   ],
-  serialized_start=72,
-  serialized_end=273,
+  serialized_start=38,
+  serialized_end=239,
 )
 
 DESCRIPTOR.message_types_by_name['ControllerProto'] = _CONTROLLERPROTO

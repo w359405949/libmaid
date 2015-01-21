@@ -17,9 +17,8 @@ extend ControllerProto
 	optional SessionProto session = 1002;
 }
 
-//service SessionEventService
-//{
-//	rpc NewSession(Session) returns(Session);
-//	rpc SessionTimeout(Session) returns(Session);
-//	rpc Session
-//}
+service SessionMiddleware
+{
+	rpc PreRequest(SessionProto) returns(SessionProto);
+	rpc PostRequest(SessionProto) returns(SessionProto);
+}

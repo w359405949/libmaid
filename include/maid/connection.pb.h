@@ -147,16 +147,16 @@ class ConnectionProto : public ::google::protobuf::Message {
 };
 // ===================================================================
 
-class ConnectionEventService_Stub;
+class ConnectionMiddleware_Stub;
 
-class ConnectionEventService : public ::google::protobuf::Service {
+class ConnectionMiddleware : public ::google::protobuf::Service {
  protected:
   // This class should be treated as an abstract interface.
-  inline ConnectionEventService() {};
+  inline ConnectionMiddleware() {};
  public:
-  virtual ~ConnectionEventService();
+  virtual ~ConnectionMiddleware();
 
-  typedef ConnectionEventService_Stub Stub;
+  typedef ConnectionMiddleware_Stub Stub;
 
   static const ::google::protobuf::ServiceDescriptor* descriptor();
 
@@ -183,19 +183,19 @@ class ConnectionEventService : public ::google::protobuf::Service {
     const ::google::protobuf::MethodDescriptor* method) const;
 
  private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionEventService);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionMiddleware);
 };
 
-class ConnectionEventService_Stub : public ConnectionEventService {
+class ConnectionMiddleware_Stub : public ConnectionMiddleware {
  public:
-  ConnectionEventService_Stub(::google::protobuf::RpcChannel* channel);
-  ConnectionEventService_Stub(::google::protobuf::RpcChannel* channel,
+  ConnectionMiddleware_Stub(::google::protobuf::RpcChannel* channel);
+  ConnectionMiddleware_Stub(::google::protobuf::RpcChannel* channel,
                    ::google::protobuf::Service::ChannelOwnership ownership);
-  ~ConnectionEventService_Stub();
+  ~ConnectionMiddleware_Stub();
 
   inline ::google::protobuf::RpcChannel* channel() { return channel_; }
 
-  // implements ConnectionEventService ------------------------------------------
+  // implements ConnectionMiddleware ------------------------------------------
 
   void Connected(::google::protobuf::RpcController* controller,
                        const ::maid::proto::ConnectionProto* request,
@@ -208,7 +208,7 @@ class ConnectionEventService_Stub : public ConnectionEventService {
  private:
   ::google::protobuf::RpcChannel* channel_;
   bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionEventService_Stub);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionMiddleware_Stub);
 };
 
 

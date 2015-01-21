@@ -86,15 +86,13 @@ void protobuf_AddDesc_maid_2fcontroller_2eproto() {
   already_here = true;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  ::google::protobuf::protobuf_AddDesc_google_2fprotobuf_2fdescriptor_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\025maid/controller.proto\022\nmaid.proto\032 goo"
-    "gle/protobuf/descriptor.proto\"\311\001\n\017Contro"
-    "llerProto\022\023\n\013method_name\030\002 \001(\t\022\023\n\013transm"
-    "it_id\030\003 \001(\004\022\014\n\004stub\030\004 \001(\010\022\023\n\013is_canceled"
-    "\030\005 \001(\010\022\016\n\006failed\030\006 \001(\010\022\022\n\nerror_text\030\007 \001"
-    "(\t\022\016\n\006notify\030\t \001(\010\022\017\n\007message\030\n \001(\014\022\031\n\021f"
-    "ull_service_name\030\013 \001(\t*\t\010\350\007\020\200\200\200\200\002", 273);
+    "\n\025maid/controller.proto\022\nmaid.proto\"\311\001\n\017"
+    "ControllerProto\022\023\n\013method_name\030\002 \001(\t\022\023\n\013"
+    "transmit_id\030\003 \001(\004\022\014\n\004stub\030\004 \001(\010\022\023\n\013is_ca"
+    "nceled\030\005 \001(\010\022\016\n\006failed\030\006 \001(\010\022\022\n\nerror_te"
+    "xt\030\007 \001(\t\022\016\n\006notify\030\t \001(\010\022\017\n\007message\030\n \001("
+    "\014\022\031\n\021full_service_name\030\013 \001(\t*\t\010\350\007\020\200\200\200\200\002", 239);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/controller.proto", &protobuf_RegisterTypes);
   ControllerProto::default_instance_ = new ControllerProto();

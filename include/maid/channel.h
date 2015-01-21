@@ -7,6 +7,10 @@
 
 namespace maid
 {
+namespace proto
+{
+class ConnectionMiddleware;
+}
 
 class ChannelImpl;
 
@@ -37,6 +41,15 @@ public:
      */
     void AppendService(google::protobuf::Service* service);
 
+
+    /*
+     *
+     */
+    void AppendConnectionMiddleware(maid::proto::ConnectionMiddleware* middleware);
+
+    /*
+     * *HOT* method
+     */
     void set_default_connection_id(int64_t fd);
 
     int64_t default_connection_id();

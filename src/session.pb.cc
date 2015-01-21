@@ -24,6 +24,7 @@ namespace {
 const ::google::protobuf::Descriptor* SessionProto_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   SessionProto_reflection_ = NULL;
+const ::google::protobuf::ServiceDescriptor* SessionMiddleware_descriptor_ = NULL;
 
 }  // namespace
 
@@ -50,6 +51,7 @@ void protobuf_AssignDesc_maid_2fsession_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(SessionProto));
+  SessionMiddleware_descriptor_ = file->service(0);
 }
 
 namespace {
@@ -83,9 +85,13 @@ void protobuf_AddDesc_maid_2fsession_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\022maid/session.proto\022\nmaid.proto\032\025maid/c"
     "ontroller.proto\";\n\014SessionProto\022\n\n\002id\030\001 "
-    "\001(\t\022\024\n\014expired_time\030\002 \001(\004*\t\010\350\007\020\200\200\200\200\002:G\n\007"
-    "session\022\033.maid.proto.ControllerProto\030\352\007 "
-    "\001(\0132\030.maid.proto.SessionProtoB\003\200\001\001", 194);
+    "\001(\t\022\024\n\014expired_time\030\002 \001(\004*\t\010\350\007\020\200\200\200\200\0022\230\001\n"
+    "\021SessionMiddleware\022@\n\nPreRequest\022\030.maid."
+    "proto.SessionProto\032\030.maid.proto.SessionP"
+    "roto\022A\n\013PostRequest\022\030.maid.proto.Session"
+    "Proto\032\030.maid.proto.SessionProto:G\n\007sessi"
+    "on\022\033.maid.proto.ControllerProto\030\352\007 \001(\0132\030"
+    ".maid.proto.SessionProtoB\003\200\001\001", 349);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/session.proto", &protobuf_RegisterTypes);
   SessionProto::default_instance_ = new SessionProto();
@@ -406,6 +412,115 @@ void SessionProto::Swap(SessionProto* other) {
   return metadata;
 }
 
+
+// ===================================================================
+
+SessionMiddleware::~SessionMiddleware() {}
+
+const ::google::protobuf::ServiceDescriptor* SessionMiddleware::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return SessionMiddleware_descriptor_;
+}
+
+const ::google::protobuf::ServiceDescriptor* SessionMiddleware::GetDescriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return SessionMiddleware_descriptor_;
+}
+
+void SessionMiddleware::PreRequest(::google::protobuf::RpcController* controller,
+                         const ::maid::proto::SessionProto*,
+                         ::maid::proto::SessionProto*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method PreRequest() not implemented.");
+  done->Run();
+}
+
+void SessionMiddleware::PostRequest(::google::protobuf::RpcController* controller,
+                         const ::maid::proto::SessionProto*,
+                         ::maid::proto::SessionProto*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method PostRequest() not implemented.");
+  done->Run();
+}
+
+void SessionMiddleware::CallMethod(const ::google::protobuf::MethodDescriptor* method,
+                             ::google::protobuf::RpcController* controller,
+                             const ::google::protobuf::Message* request,
+                             ::google::protobuf::Message* response,
+                             ::google::protobuf::Closure* done) {
+  GOOGLE_DCHECK_EQ(method->service(), SessionMiddleware_descriptor_);
+  switch(method->index()) {
+    case 0:
+      PreRequest(controller,
+             ::google::protobuf::down_cast<const ::maid::proto::SessionProto*>(request),
+             ::google::protobuf::down_cast< ::maid::proto::SessionProto*>(response),
+             done);
+      break;
+    case 1:
+      PostRequest(controller,
+             ::google::protobuf::down_cast<const ::maid::proto::SessionProto*>(request),
+             ::google::protobuf::down_cast< ::maid::proto::SessionProto*>(response),
+             done);
+      break;
+    default:
+      GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
+      break;
+  }
+}
+
+const ::google::protobuf::Message& SessionMiddleware::GetRequestPrototype(
+    const ::google::protobuf::MethodDescriptor* method) const {
+  GOOGLE_DCHECK_EQ(method->service(), descriptor());
+  switch(method->index()) {
+    case 0:
+      return ::maid::proto::SessionProto::default_instance();
+    case 1:
+      return ::maid::proto::SessionProto::default_instance();
+    default:
+      GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
+      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+  }
+}
+
+const ::google::protobuf::Message& SessionMiddleware::GetResponsePrototype(
+    const ::google::protobuf::MethodDescriptor* method) const {
+  GOOGLE_DCHECK_EQ(method->service(), descriptor());
+  switch(method->index()) {
+    case 0:
+      return ::maid::proto::SessionProto::default_instance();
+    case 1:
+      return ::maid::proto::SessionProto::default_instance();
+    default:
+      GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
+      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+  }
+}
+
+SessionMiddleware_Stub::SessionMiddleware_Stub(::google::protobuf::RpcChannel* channel)
+  : channel_(channel), owns_channel_(false) {}
+SessionMiddleware_Stub::SessionMiddleware_Stub(
+    ::google::protobuf::RpcChannel* channel,
+    ::google::protobuf::Service::ChannelOwnership ownership)
+  : channel_(channel),
+    owns_channel_(ownership == ::google::protobuf::Service::STUB_OWNS_CHANNEL) {}
+SessionMiddleware_Stub::~SessionMiddleware_Stub() {
+  if (owns_channel_) delete channel_;
+}
+
+void SessionMiddleware_Stub::PreRequest(::google::protobuf::RpcController* controller,
+                              const ::maid::proto::SessionProto* request,
+                              ::maid::proto::SessionProto* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(0),
+                       controller, request, response, done);
+}
+void SessionMiddleware_Stub::PostRequest(::google::protobuf::RpcController* controller,
+                              const ::maid::proto::SessionProto* request,
+                              ::maid::proto::SessionProto* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(1),
+                       controller, request, response, done);
+}
 ::google::protobuf::internal::ExtensionIdentifier< ::maid::proto::ControllerProto,
     ::google::protobuf::internal::MessageTypeTraits< ::maid::proto::SessionProto >, 11, false >
   session(kSessionFieldNumber, ::maid::proto::SessionProto::default_instance());
