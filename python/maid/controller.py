@@ -1,9 +1,9 @@
 from google.protobuf.service import RpcController
-from controller_pb2 import ControllerMeta
+from controller_pb2 import ControllerProto
 
 class Controller(RpcController):
     def __init__(self):
-        self.meta_data = ControllerMeta()
+        self.proto = ControllerProto()
         self.fd = 0
         self.sock = None
 
@@ -11,20 +11,20 @@ class Controller(RpcController):
         pass
 
     def Failed(self):
-        return self.meta_data.failed
+        return self.proto.failed
 
     def ErrorText(self):
-        return self.meta_data.error_text
+        return self.proto.error_text
 
     def StartCancel(self):
         pass
 
     def SetFailed(self, reason):
-        self.meta_data.failed = True
-        self.meta_data.error_text = reason
+        self.proto.failed = True
+        self.proto.error_text = reason
 
     def IsCanceled(self):
-        return self.meta_data.is_canceled
+        return self.proto.is_canceled
 
     def NotifyOnCancel(self, callback):
         pass

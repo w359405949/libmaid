@@ -11,7 +11,7 @@ from gevent import socket
 from gevent import core
 from gevent import sleep
 
-from controller_pb2 import ControllerMeta
+from controller_pb2 import ControllerProto
 
 from controller import Controller
 
@@ -41,13 +41,13 @@ class Channel(RpcChannel):
             raise Exception("controller should has type Controller")
 
         controller.response_class = response_class
-        controller.meta_data.full_service_name = method.containing_service.full_name
-        controller.meta_data.method_name = method.name
+        controller.proto.full_service_name = method.containing_service.full_name
+        controller.proto.method_name = method.name
 
         if controller.sock is None:
             controller.sock = self._default_sock
 
-        if controller.meta_data.notify:
+        if controller.proto.notify:
             return self.send_notify(controller, request)
         else:
             return self.send_request(controller, request)
@@ -59,25 +59,25 @@ class Channel(RpcChannel):
 
         self._transmit_id += 1
         controller.async_result = AsyncResult()
-        controller.meta_data.transmit_id = self._transmit_id
+        controller.proto.transmit_id = self._transmit_id
         self._pending_request[self._transmit_id] = controller
 
-        controller.meta_data.stub = True
-        controller.meta_data.message = request.SerializeToString()
+        controller.proto.stub = True
+        controller.proto.message = request.SerializeToString()
         self._send_queue[controller.sock].put(controller)
 
         return controller.async_result.get()
 
     def send_notify(self, controller, request):
-        controller.meta_data.stub = True
-        controller.meta_data.message = request.SerializeToString()
+        controller.proto.stub = True
+        controller.proto.message = request.SerializeToString()
         self._send_queue[controller.sock].put(controller)
         return None
 
     def send_response(self, controller, response):
-        controller.meta_data.stub = False
+        controller.proto.stub = False
         if not controller.Failed:
-            controller.meta_data.message = response.SerializeToString()
+            controller.proto.message = response.SerializeToString()
         self._send_queue[controller.sock].put(controller)
 
     def connect(self, host, port, as_default=False):
@@ -157,25 +157,25 @@ class Channel(RpcChannel):
             controller.sock = sock
 
             try:
-                controller.meta_data.ParseFromString(controller_buffer)
+                controller.proto.ParseFromString(controller_buffer)
             except DecodeError:
                 continue
 
-            if not controller.meta_data.stub:
+            if not controller.proto.stub:
                 self._handle_response(controller)
-            elif controller.meta_data.notify:
+            elif controller.proto.notify:
                 self._handle_notify(controller)
             else:
                 self._handle_request(controller)
 
     def _handle_request(self, controller):
-        service = self._services.get(controller.meta_data.full_service_name, None)
+        service = self._services.get(controller.proto.full_service_name, None)
         if service is None:
             controller.SetFailed("service not exist")
             self.send_response(controller, None)
             return
 
-        method = service.DESCRIPTOR.FindMethodByName(controller.meta_data.method_name)
+        method = service.DESCRIPTOR.FindMethodByName(controller.proto.method_name)
         if method is None:
             controller.SetFailed("method not exist")
             self.send_response(controller, None)
@@ -184,7 +184,7 @@ class Channel(RpcChannel):
         request_class = service.GetRequestClass(method)
         request = request_class()
         try:
-            request.ParseFromString(controller.meta_data.message)
+            request.ParseFromString(controller.proto.message)
         except DecodeError as err:
             return
 
@@ -192,11 +192,11 @@ class Channel(RpcChannel):
         self.send_response(controller, response)
 
     def _handle_notify(self, controller):
-        service = self._services.get(controller.meta_data.full_service_name, None)
+        service = self._services.get(controller.proto.full_service_name, None)
         if service is None:
             return
 
-        method = service.DESCRIPTOR.FindMethodByName(controller.meta_data.method_name)
+        method = service.DESCRIPTOR.FindMethodByName(controller.proto.method_name)
         if method is None:
             return
 
@@ -210,29 +210,29 @@ class Channel(RpcChannel):
         service.CallMethod(method, controller, request, None)
 
     def _handle_response(self, controller_):
-        controller = self._pending_request.get(controller_.meta_data.transmit_id, None)
+        controller = self._pending_request.get(controller_.proto.transmit_id, None)
         if controller is None:
             return
 
-        controller.meta_data = controller_.meta_data
+        controller.proto = controller_.proto
         if controller.Failed():
             controller.async_result.set(None)
             return
 
         response = controller.response_class()
         try:
-            response.ParseFromString(controller_.meta_data.message)
+            response.ParseFromString(controller_.proto.message)
         except DecodeError as err:
             return
 
-        del self._pending_request[controller.meta_data.transmit_id]
+        del self._pending_request[controller.proto.transmit_id]
         controller.async_result.set(response)
 
     def _write(self, sock):
         for controller in self._send_queue[sock]:
             if controller is None:
                 break
-            controller_buffer = controller.meta_data.SerializeToString()
+            controller_buffer = controller.proto.SerializeToString()
             header_buffer = struct.pack(self._header, len(controller_buffer))
 
             sock.sendall(header_buffer)
