@@ -1,7 +1,12 @@
+#pragma once
+
 #include <google/protobuf/service.h>
+
 
 namespace maid
 {
+
+void InitialMaidMock();
 
 class MockController : public google::protobuf::RpcController
 {
@@ -37,6 +42,15 @@ public:
     {
     }
 
+    inline static MockController* default_instance()
+    {
+        return default_instance_;
+    }
+
+private:
+    friend void InitialMaidMock();
+
+    static MockController* default_instance_;
 };
 
 class MockClosure : public google::protobuf::Closure
@@ -45,6 +59,16 @@ public:
     inline void Run()
     {
     }
+
+    inline static MockClosure* default_instance()
+    {
+        return default_instance_;
+    }
+
+private:
+    friend void InitialMaidMock();
+
+    static MockClosure* default_instance_;
 };
 
 } /* namespace maid */

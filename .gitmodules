@@ -3,7 +3,7 @@
 	url = https://github.com/michaelmior/libev.git
 [submodule "deps/leveldb"]
 	path = deps/leveldb
-	url = https://code.google.com/p/leveldb/
+	url = git@github.com:google/leveldb.git
 [submodule "deps/pymaid"]
 	path = deps/pymaid
 	url = https://github.com/Catstyle/pymaid.git

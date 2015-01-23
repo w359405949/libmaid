@@ -23,7 +23,6 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
-#include <google/protobuf/service.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "maid/controller.pb.h"
 // @@protoc_insertion_point(includes)
@@ -145,73 +144,6 @@ class ConnectionProto : public ::google::protobuf::Message {
   void InitAsDefaultInstance();
   static ConnectionProto* default_instance_;
 };
-// ===================================================================
-
-class ConnectionMiddleware_Stub;
-
-class ConnectionMiddleware : public ::google::protobuf::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline ConnectionMiddleware() {};
- public:
-  virtual ~ConnectionMiddleware();
-
-  typedef ConnectionMiddleware_Stub Stub;
-
-  static const ::google::protobuf::ServiceDescriptor* descriptor();
-
-  virtual void Connected(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::ConnectionProto* request,
-                       ::maid::proto::ConnectionProto* response,
-                       ::google::protobuf::Closure* done);
-  virtual void Disconnected(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::ConnectionProto* request,
-                       ::maid::proto::ConnectionProto* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::google::protobuf::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::google::protobuf::MethodDescriptor* method,
-                  ::google::protobuf::RpcController* controller,
-                  const ::google::protobuf::Message* request,
-                  ::google::protobuf::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::google::protobuf::Message& GetRequestPrototype(
-    const ::google::protobuf::MethodDescriptor* method) const;
-  const ::google::protobuf::Message& GetResponsePrototype(
-    const ::google::protobuf::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionMiddleware);
-};
-
-class ConnectionMiddleware_Stub : public ConnectionMiddleware {
- public:
-  ConnectionMiddleware_Stub(::google::protobuf::RpcChannel* channel);
-  ConnectionMiddleware_Stub(::google::protobuf::RpcChannel* channel,
-                   ::google::protobuf::Service::ChannelOwnership ownership);
-  ~ConnectionMiddleware_Stub();
-
-  inline ::google::protobuf::RpcChannel* channel() { return channel_; }
-
-  // implements ConnectionMiddleware ------------------------------------------
-
-  void Connected(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::ConnectionProto* request,
-                       ::maid::proto::ConnectionProto* response,
-                       ::google::protobuf::Closure* done);
-  void Disconnected(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::ConnectionProto* request,
-                       ::maid::proto::ConnectionProto* response,
-                       ::google::protobuf::Closure* done);
- private:
-  ::google::protobuf::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ConnectionMiddleware_Stub);
-};
-
-
 // ===================================================================
 
 static const int kConnectionFieldNumber = 1001;

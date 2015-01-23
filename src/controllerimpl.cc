@@ -1,5 +1,5 @@
+#include "maid/connection.pb.h"
 #include "controllerimpl.h"
-#include "connection.pb.h"
 
 using maid::ControllerImpl;
 
@@ -50,8 +50,8 @@ void ControllerImpl::set_connection_id(int64_t connection_id)
     connection->set_id(connection_id);
 }
 
-int64_t ControllerImpl::connection_id()
+int64_t ControllerImpl::connection_id() const
 {
-    const proto::ConnectionProto connection = proto_.GetExtension(proto::connection);
+    const proto::ConnectionProto& connection = proto_.GetExtension(proto::connection);
     return connection.id();
 }

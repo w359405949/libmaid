@@ -1,5 +1,5 @@
-#ifndef _MAID_CLOSUREIMPL_H_
-#define _MAID_CLOSUREIMPL_H_
+#pragma once
+
 #include <google/protobuf/service.h>
 
 namespace maid
@@ -58,4 +58,3 @@ private:
 };
 
 } /* maid */
-#endif /* _MAID_INTERNAL_CLOSURE_H_*/

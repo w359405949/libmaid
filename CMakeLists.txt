@@ -14,12 +14,13 @@ MESSAGE(STATUS "Project: ${PROJECT_NAME}")
 MESSAGE(STATUS "Project Directory: ${PORJECT_SOURCE_DIR}")
 
 file(GLOB_RECURSE header include/maid/*.h)
-file(GLOB_RECURSE source src/*.cpp src/*.cc)
+file(GLOB_RECURSE source src/*.cc src/middleware/*.cc)
+file(GLOB_RECURSE middleware_header src/middleware/*.h)
+
 message("  -> Prepared: maid")
 
 include_directories(
     ${maid_SOURCE_DIR}/include
-    ${maid_SOURCE_DIR}/include/maid
     ${maid_SOURCE_DIR}/deps/gtest/include
 )
 
@@ -47,6 +48,7 @@ target_link_libraries(maid
 ################################
 INSTALL(FILES libmaid.so DESTINATION lib)
 INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
+INSTALL(FILES ${middleware_header} DESTINATION include/maid/middlware/)
 
 ################################
 # TEST

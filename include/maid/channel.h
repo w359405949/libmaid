@@ -1,5 +1,4 @@
-#ifndef _MAID_CHANNEL_H_
-#define _MAID_CHANNEL_H_
+#pragma once
 
 #include <stdint.h>
 #include <google/protobuf/service.h>
@@ -9,7 +8,7 @@ namespace maid
 {
 namespace proto
 {
-class ConnectionMiddleware;
+class Middleware;
 }
 
 class ChannelImpl;
@@ -45,7 +44,7 @@ public:
     /*
      *
      */
-    void AppendConnectionMiddleware(maid::proto::ConnectionMiddleware* middleware);
+    void AppendMiddleware(maid::proto::Middleware* middleware);
 
     /*
      * *HOT* method
@@ -65,5 +64,3 @@ private:
 };
 
 } /* namespace maid */
-
-#endif /*_MAID_CHANNEL_H_*/

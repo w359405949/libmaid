@@ -1,5 +1,4 @@
-#ifndef _MAID_BUFFER_H_
-#define _MAID_BUFFER_H_
+#pragma once
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -9,25 +8,30 @@ namespace maid
 
 struct Buffer
 {
-    void* base;
-    size_t len;
-    size_t total;
+    int8_t* start;
+    int8_t* end;
 
     Buffer()
-        :base(NULL),
-        len(0),
-        total(0)
+        :start(NULL),
+        end(NULL),
+        base_(NULL),
+        size(0)
     {
     }
 
     ~Buffer()
     {
-        free(base);
+        free(base_);
+        start = NULL;
+        end = NULL;
+        base_ = NULL;
     }
 
-    void Expend(size_t expect_length);
+    size_t Expend(size_t expect_length);
+
+private:
+    int8_t* base_;
+    size_t size;
 };
 
 }
-
-#endif /*_MAID_BUFFER_H_*/

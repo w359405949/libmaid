@@ -23,7 +23,6 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
-#include <google/protobuf/service.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "maid/controller.pb.h"
 // @@protoc_insertion_point(includes)
@@ -135,73 +134,6 @@ class SessionProto : public ::google::protobuf::Message {
   void InitAsDefaultInstance();
   static SessionProto* default_instance_;
 };
-// ===================================================================
-
-class SessionMiddleware_Stub;
-
-class SessionMiddleware : public ::google::protobuf::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline SessionMiddleware() {};
- public:
-  virtual ~SessionMiddleware();
-
-  typedef SessionMiddleware_Stub Stub;
-
-  static const ::google::protobuf::ServiceDescriptor* descriptor();
-
-  virtual void PreRequest(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::SessionProto* request,
-                       ::maid::proto::SessionProto* response,
-                       ::google::protobuf::Closure* done);
-  virtual void PostRequest(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::SessionProto* request,
-                       ::maid::proto::SessionProto* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::google::protobuf::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::google::protobuf::MethodDescriptor* method,
-                  ::google::protobuf::RpcController* controller,
-                  const ::google::protobuf::Message* request,
-                  ::google::protobuf::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::google::protobuf::Message& GetRequestPrototype(
-    const ::google::protobuf::MethodDescriptor* method) const;
-  const ::google::protobuf::Message& GetResponsePrototype(
-    const ::google::protobuf::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SessionMiddleware);
-};
-
-class SessionMiddleware_Stub : public SessionMiddleware {
- public:
-  SessionMiddleware_Stub(::google::protobuf::RpcChannel* channel);
-  SessionMiddleware_Stub(::google::protobuf::RpcChannel* channel,
-                   ::google::protobuf::Service::ChannelOwnership ownership);
-  ~SessionMiddleware_Stub();
-
-  inline ::google::protobuf::RpcChannel* channel() { return channel_; }
-
-  // implements SessionMiddleware ------------------------------------------
-
-  void PreRequest(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::SessionProto* request,
-                       ::maid::proto::SessionProto* response,
-                       ::google::protobuf::Closure* done);
-  void PostRequest(::google::protobuf::RpcController* controller,
-                       const ::maid::proto::SessionProto* request,
-                       ::maid::proto::SessionProto* response,
-                       ::google::protobuf::Closure* done);
- private:
-  ::google::protobuf::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SessionMiddleware_Stub);
-};
-
-
 // ===================================================================
 
 static const int kSessionFieldNumber = 1002;

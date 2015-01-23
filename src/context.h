@@ -1,5 +1,4 @@
-#ifndef _MAID_CONTEXT_H_
-#define _MAID_CONTEXT_H_
+#pragma once
 
 #include <google/protobuf/service.h>
 
@@ -16,5 +15,3 @@ struct Context
 };
 
 } /* maid */
-
-#endif /* _MAID_CONTEXT_H_ */

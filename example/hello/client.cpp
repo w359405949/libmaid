@@ -22,7 +22,7 @@ public:
     {
         if (!controller_->Failed()) {
             ++count;
-            //printf("count:%d\n", count);
+            printf("count:%d\n", count);
         }
         if(count + 1 >= MAX_CONNECTION){
             uv_stop(uv_default_loop());

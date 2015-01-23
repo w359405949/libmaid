@@ -1,5 +1,5 @@
-#ifndef _MAID_CHANNELIMPL_H_
-#define _MAID_CHANNELIMPL_H_
+#pragma once
+
 #include <map>
 #include <set>
 #include <stack>
@@ -19,7 +19,8 @@ class Context;
 
 namespace proto
 {
-class ConnectionMiddleware;
+class Middleware;
+class ControllerProto;
 }
 
 class ChannelImpl : public google::protobuf::RpcChannel
@@ -48,10 +49,17 @@ public:
      * service for remote request
      */
     void AppendService(google::protobuf::Service* service);
-    void AppendConnectionMiddleware(maid::proto::ConnectionMiddleware* middleware);
+    void AppendMiddleware(maid::proto::Middleware* middleware);
 
     void set_default_connection_id(int64_t connection_id);
     int64_t default_connection_id();
+
+    inline uv_loop_t* loop()
+    {
+        return loop_;
+    }
+
+    uv_stream_t* connected_handle(Controller* controller);
 
     inline void Update()
     {
@@ -63,22 +71,13 @@ public:
         uv_run(loop_, UV_RUN_DEFAULT);
     }
 
-    inline uv_loop_t* loop()
-    {
-        return loop_;
-    }
-
-    uv_stream_t* connected_handle(Controller* controller);
-
 public:
-    virtual void SendRequest(Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done);
+    virtual void SendRequest(const google::protobuf::MethodDescriptor* method, Controller* controller);
     virtual void SendResponse(Controller* controller, const google::protobuf::Message* response);
-    virtual void SendNotify(Controller* controller, const google::protobuf::Message* request);
 
-    virtual int32_t Handle(uv_stream_t* handle, Buffer& buffer);
-    virtual int32_t HandleRequest(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method);
-    virtual int32_t HandleNotify(Controller* controller, google::protobuf::Service* service, const google::protobuf::MethodDescriptor* method);
-    virtual int32_t HandleResponse(Controller* controller);
+    virtual int32_t Handle(int64_t connection_id);
+    virtual int32_t HandleRequest(proto::ControllerProto* proto, int64_t connection_id);
+    virtual int32_t HandleResponse(proto::ControllerProto* proto, int64_t connection_id);
 
     virtual void AddConnection(uv_stream_t* handle);
     virtual void RemoveConnection(uv_stream_t* handle);
@@ -91,35 +90,39 @@ public:
     static void OnAccept(uv_stream_t* handle, int32_t status);
     static void OnConnect(uv_connect_t* handle, int32_t status);
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+    static void OnCloseConnection(uv_handle_t* handle);
+    static void OnCloseListen(uv_handle_t* handle);
+    static void OnCheck(uv_check_t* handle);
+    static void OnIdle(uv_idle_t* handle);
+    static void OnTimer(uv_timer_t* timer);
     static void AfterSendRequest(uv_write_t* req, int32_t status);
     static void AfterSendResponse(uv_write_t* req, int32_t status);
-    static void AfterSendNotify(uv_write_t* req, int32_t status);
-    static void OnClose(uv_handle_t* handle);
 
 public:
     std::map<std::string, google::protobuf::Service*> service_; //<full_service_name, service>
-    std::vector<proto::ConnectionMiddleware*> connection_middleware_; //
-    std::map<int64_t, uv_stream_t*> connected_handle_; //<connection_id, stream>
-    std::map<int64_t, uv_stream_t*> listen_handle_; //<connection_id, stream>
-    std::map<int64_t, Buffer> buffer_;//<connection_id, buffer>
-    std::map<int64_t, Context> async_result_; //<transmit_id, Context>
-    std::map<int64_t, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
-    std::map<uv_write_t*, std::string*> sending_buffer_; //
+    std::vector<proto::Middleware*> middleware_; //
+    std::map<int64_t/* connection_id */, uv_stream_t*> connected_handle_;
+    std::map<int64_t/* connection_id */, uv_stream_t*> listen_handle_;
+    std::map<int64_t/* connection_id */, uv_check_t> check_handle_; //
+    std::map<int64_t/* connection_id */, uv_timer_t> timer_handle_; //
+    std::map<int64_t/* connection_id */, uv_idle_t> idle_handle_; //
+    std::map<int64_t/* connection_id */, Buffer> buffer_;
+    std::map<int64_t/* connection_id */, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
+    std::map<int64_t/* transmit_id */, Context> async_result_; //<transmit_id, Context>
+    std::map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
+
     std::stack<RemoteClosure*> remote_closure_pool_;
 
 public:
     // libuv
     uv_loop_t* loop_;
-    uv_idle_t remote_closure_gc_;
-    uv_stream_t* default_handle_;
+    uv_stream_t* default_stream_;
 
     // packet
-    const int32_t controller_max_length_;
+    const int32_t controller_max_size_;
 
     //
     int64_t transmit_id_max_;
 };
 
 } /* namespace maid */
-
-#endif /*_MAID_INTERNAL_CHANNEL_H_*/

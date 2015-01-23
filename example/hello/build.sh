@@ -1,4 +1,4 @@
-protoc --cpp_out=. *.proto --proto_path=/home/wcq/.local/include/ --proto_path=.
+protoc --cpp_out=. *.proto --proto_path=$HOME/.local/include/ --proto_path=.
 
-g++ client.cpp *.cc -o client -lmaid
-g++ server.cpp *.cc -o server -lmaid
+g++ client.cpp *.cc -o client -lmaid -luv -lprotobuf
+g++ server.cpp *.cc -o server -lmaid -luv -lprotobuf
