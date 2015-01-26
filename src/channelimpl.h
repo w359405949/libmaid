@@ -102,9 +102,7 @@ public:
     std::vector<proto::Middleware*> middleware_; //
     std::map<int64_t/* connection_id */, uv_stream_t*> connected_handle_;
     std::map<int64_t/* connection_id */, uv_stream_t*> listen_handle_;
-    std::map<int64_t/* connection_id */, uv_check_t> check_handle_; //
     std::map<int64_t/* connection_id */, uv_timer_t> timer_handle_; //
-    std::map<int64_t/* connection_id */, uv_prepare_t> prepare_handle_; //
     std::map<int64_t/* connection_id */, uv_idle_t> idle_handle_; //
     std::map<int64_t/* connection_id */, Buffer> buffer_;
     std::map<int64_t/* connection_id */, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
