@@ -345,10 +345,10 @@ void ChannelImpl::OnTimer(uv_timer_t* timer)
         case ERROR_OTHER:
             break;
         default:
+            uv_timer_again(timer);
             break;
     }
 
-    uv_timer_again(timer);
     //uv_timer_stop(timer);
     //uv_timer_start(timer, OnTimer, 1, 1);
 }
