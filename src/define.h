@@ -1,14 +1,9 @@
-#ifndef _MAID_INTERNAL_DEFINE_H_
-#define _MAID_INTERNAL_DEFINE_H_
+#pragma once
 
-#define ERROR_OUT_OF_LENGTH -1
+#define ERROR_OUT_OF_SIZE -1
 #define ERROR_LACK_DATA     -2
 #define ERROR_BUSY          -3
 #define ERROR_PARSE_FAILED  -4
 #define ERROR_OTHER         -5
 
-#define CONTROLLERMETA_MAX_LENGTH 200000
-#define RESERVED_METHOD_CONNECT "Connect"
-#define RESERVED_METHOD_DISCONNECT "Disconnect"
-
-#endif /* _MAID_INTERNAL_DEFINE_H_ */
+#define CONTROLLERMETA_MAX_SIZE 200000

@@ -21,6 +21,9 @@ namespace proto {
 
 namespace {
 
+const ::google::protobuf::Descriptor* MaidServiceOptions_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  MaidServiceOptions_reflection_ = NULL;
 const ::google::protobuf::Descriptor* MaidMethodOptions_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   MaidMethodOptions_reflection_ = NULL;
@@ -34,9 +37,25 @@ void protobuf_AssignDesc_maid_2foptions_2eproto() {
     ::google::protobuf::DescriptorPool::generated_pool()->FindFileByName(
       "maid/options.proto");
   GOOGLE_CHECK(file != NULL);
-  MaidMethodOptions_descriptor_ = file->message_type(0);
-  static const int MaidMethodOptions_offsets_[1] = {
+  MaidServiceOptions_descriptor_ = file->message_type(0);
+  static const int MaidServiceOptions_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, notify_),
+  };
+  MaidServiceOptions_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      MaidServiceOptions_descriptor_,
+      MaidServiceOptions::default_instance_,
+      MaidServiceOptions_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(MaidServiceOptions));
+  MaidMethodOptions_descriptor_ = file->message_type(1);
+  static const int MaidMethodOptions_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, notify_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, time_out_),
   };
   MaidMethodOptions_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -62,12 +81,16 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    MaidServiceOptions_descriptor_, &MaidServiceOptions::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     MaidMethodOptions_descriptor_, &MaidMethodOptions::default_instance());
 }
 
 }  // namespace
 
 void protobuf_ShutdownFile_maid_2foptions_2eproto() {
+  delete MaidServiceOptions::default_instance_;
+  delete MaidServiceOptions_reflection_;
   delete MaidMethodOptions::default_instance_;
   delete MaidMethodOptions_reflection_;
 }
@@ -81,17 +104,27 @@ void protobuf_AddDesc_maid_2foptions_2eproto() {
   ::google::protobuf::protobuf_AddDesc_google_2fprotobuf_2fdescriptor_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\022maid/options.proto\022\nmaid.proto\032 google"
-    "/protobuf/descriptor.proto\"#\n\021MaidMethod"
-    "Options\022\016\n\006notify\030\001 \001(\010:V\n\016method_option"
-    "s\022\036.google.protobuf.MethodOptions\030\351\007 \001(\013"
-    "2\035.maid.proto.MaidMethodOptions", 191);
+    "/protobuf/descriptor.proto\"$\n\022MaidServic"
+    "eOptions\022\016\n\006notify\030\001 \001(\010\"9\n\021MaidMethodOp"
+    "tions\022\016\n\006notify\030\001 \001(\010\022\024\n\010time_out\030\002 \001(\003:"
+    "\002-1:Y\n\017service_options\022\037.google.protobuf"
+    ".ServiceOptions\030\351\007 \001(\0132\036.maid.proto.Maid"
+    "ServiceOptions:V\n\016method_options\022\036.googl"
+    "e.protobuf.MethodOptions\030\351\007 \001(\0132\035.maid.p"
+    "roto.MaidMethodOptions", 342);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/options.proto", &protobuf_RegisterTypes);
+  MaidServiceOptions::default_instance_ = new MaidServiceOptions();
   MaidMethodOptions::default_instance_ = new MaidMethodOptions();
+  ::google::protobuf::internal::ExtensionSet::RegisterMessageExtension(
+    &::google::protobuf::ServiceOptions::default_instance(),
+    1001, 11, false, false,
+    &::maid::proto::MaidServiceOptions::default_instance());
   ::google::protobuf::internal::ExtensionSet::RegisterMessageExtension(
     &::google::protobuf::MethodOptions::default_instance(),
     1001, 11, false, false,
     &::maid::proto::MaidMethodOptions::default_instance());
+  MaidServiceOptions::default_instance_->InitAsDefaultInstance();
   MaidMethodOptions::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_maid_2foptions_2eproto);
 }
@@ -106,7 +139,228 @@ struct StaticDescriptorInitializer_maid_2foptions_2eproto {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int MaidServiceOptions::kNotifyFieldNumber;
+#endif  // !_MSC_VER
+
+MaidServiceOptions::MaidServiceOptions()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  // @@protoc_insertion_point(constructor:maid.proto.MaidServiceOptions)
+}
+
+void MaidServiceOptions::InitAsDefaultInstance() {
+}
+
+MaidServiceOptions::MaidServiceOptions(const MaidServiceOptions& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+  // @@protoc_insertion_point(copy_constructor:maid.proto.MaidServiceOptions)
+}
+
+void MaidServiceOptions::SharedCtor() {
+  _cached_size_ = 0;
+  notify_ = false;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+MaidServiceOptions::~MaidServiceOptions() {
+  // @@protoc_insertion_point(destructor:maid.proto.MaidServiceOptions)
+  SharedDtor();
+}
+
+void MaidServiceOptions::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void MaidServiceOptions::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* MaidServiceOptions::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return MaidServiceOptions_descriptor_;
+}
+
+const MaidServiceOptions& MaidServiceOptions::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_maid_2foptions_2eproto();
+  return *default_instance_;
+}
+
+MaidServiceOptions* MaidServiceOptions::default_instance_ = NULL;
+
+MaidServiceOptions* MaidServiceOptions::New() const {
+  return new MaidServiceOptions;
+}
+
+void MaidServiceOptions::Clear() {
+  notify_ = false;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool MaidServiceOptions::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) goto failure
+  ::google::protobuf::uint32 tag;
+  // @@protoc_insertion_point(parse_start:maid.proto.MaidServiceOptions)
+  for (;;) {
+    ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
+    tag = p.first;
+    if (!p.second) goto handle_unusual;
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional bool notify = 1;
+      case 1: {
+        if (tag == 8) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &notify_)));
+          set_has_notify();
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectAtEnd()) goto success;
+        break;
+      }
+
+      default: {
+      handle_unusual:
+        if (tag == 0 ||
+            ::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          goto success;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+success:
+  // @@protoc_insertion_point(parse_success:maid.proto.MaidServiceOptions)
+  return true;
+failure:
+  // @@protoc_insertion_point(parse_failure:maid.proto.MaidServiceOptions)
+  return false;
+#undef DO_
+}
+
+void MaidServiceOptions::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // @@protoc_insertion_point(serialize_start:maid.proto.MaidServiceOptions)
+  // optional bool notify = 1;
+  if (has_notify()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->notify(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+  // @@protoc_insertion_point(serialize_end:maid.proto.MaidServiceOptions)
+}
+
+::google::protobuf::uint8* MaidServiceOptions::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // @@protoc_insertion_point(serialize_to_array_start:maid.proto.MaidServiceOptions)
+  // optional bool notify = 1;
+  if (has_notify()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->notify(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:maid.proto.MaidServiceOptions)
+  return target;
+}
+
+int MaidServiceOptions::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional bool notify = 1;
+    if (has_notify()) {
+      total_size += 1 + 1;
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void MaidServiceOptions::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const MaidServiceOptions* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const MaidServiceOptions*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void MaidServiceOptions::MergeFrom(const MaidServiceOptions& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_notify()) {
+      set_notify(from.notify());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void MaidServiceOptions::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void MaidServiceOptions::CopyFrom(const MaidServiceOptions& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool MaidServiceOptions::IsInitialized() const {
+
+  return true;
+}
+
+void MaidServiceOptions::Swap(MaidServiceOptions* other) {
+  if (other != this) {
+    std::swap(notify_, other->notify_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata MaidServiceOptions::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = MaidServiceOptions_descriptor_;
+  metadata.reflection = MaidServiceOptions_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int MaidMethodOptions::kNotifyFieldNumber;
+const int MaidMethodOptions::kTimeOutFieldNumber;
 #endif  // !_MSC_VER
 
 MaidMethodOptions::MaidMethodOptions()
@@ -128,6 +382,7 @@ MaidMethodOptions::MaidMethodOptions(const MaidMethodOptions& from)
 void MaidMethodOptions::SharedCtor() {
   _cached_size_ = 0;
   notify_ = false;
+  time_out_ = GOOGLE_LONGLONG(-1);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -163,7 +418,10 @@ MaidMethodOptions* MaidMethodOptions::New() const {
 }
 
 void MaidMethodOptions::Clear() {
-  notify_ = false;
+  if (_has_bits_[0 / 32] & 3) {
+    notify_ = false;
+    time_out_ = GOOGLE_LONGLONG(-1);
+  }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -185,6 +443,21 @@ bool MaidMethodOptions::MergePartialFromCodedStream(
                    bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
                  input, &notify_)));
           set_has_notify();
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectTag(16)) goto parse_time_out;
+        break;
+      }
+
+      // optional int64 time_out = 2 [default = -1];
+      case 2: {
+        if (tag == 16) {
+         parse_time_out:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &time_out_)));
+          set_has_time_out();
         } else {
           goto handle_unusual;
         }
@@ -222,6 +495,11 @@ void MaidMethodOptions::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->notify(), output);
   }
 
+  // optional int64 time_out = 2 [default = -1];
+  if (has_time_out()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(2, this->time_out(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -235,6 +513,11 @@ void MaidMethodOptions::SerializeWithCachedSizes(
   // optional bool notify = 1;
   if (has_notify()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->notify(), target);
+  }
+
+  // optional int64 time_out = 2 [default = -1];
+  if (has_time_out()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(2, this->time_out(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -252,6 +535,13 @@ int MaidMethodOptions::ByteSize() const {
     // optional bool notify = 1;
     if (has_notify()) {
       total_size += 1 + 1;
+    }
+
+    // optional int64 time_out = 2 [default = -1];
+    if (has_time_out()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->time_out());
     }
 
   }
@@ -284,6 +574,9 @@ void MaidMethodOptions::MergeFrom(const MaidMethodOptions& from) {
     if (from.has_notify()) {
       set_notify(from.notify());
     }
+    if (from.has_time_out()) {
+      set_time_out(from.time_out());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -308,6 +601,7 @@ bool MaidMethodOptions::IsInitialized() const {
 void MaidMethodOptions::Swap(MaidMethodOptions* other) {
   if (other != this) {
     std::swap(notify_, other->notify_);
+    std::swap(time_out_, other->time_out_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -322,6 +616,9 @@ void MaidMethodOptions::Swap(MaidMethodOptions* other) {
   return metadata;
 }
 
+::google::protobuf::internal::ExtensionIdentifier< ::google::protobuf::ServiceOptions,
+    ::google::protobuf::internal::MessageTypeTraits< ::maid::proto::MaidServiceOptions >, 11, false >
+  service_options(kServiceOptionsFieldNumber, ::maid::proto::MaidServiceOptions::default_instance());
 ::google::protobuf::internal::ExtensionIdentifier< ::google::protobuf::MethodOptions,
     ::google::protobuf::internal::MessageTypeTraits< ::maid::proto::MaidMethodOptions >, 11, false >
   method_options(kMethodOptionsFieldNumber, ::maid::proto::MaidMethodOptions::default_instance());

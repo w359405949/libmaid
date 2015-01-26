@@ -1,5 +1,4 @@
-#ifndef _MAID_CONTROLLER_H_
-#define _MAID_CONTROLLER_H_
+#pragma once
 #include <google/protobuf/service.h>
 #include <google/protobuf/stubs/common.h>
 
@@ -45,5 +44,3 @@ private:
 };
 
 } /* maid */
-
-#endif /*_MAID_CONTROLLER_H_*/

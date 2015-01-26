@@ -1,16 +1,12 @@
-#ifndef _MAID_CONTROLLERIMPL_H_
-#define _MAID_CONTROLLERIMPL_H_
+#pragma once
+
 #include <google/protobuf/service.h>
 #include <google/protobuf/stubs/common.h>
 
-#include "controller.pb.h"
+#include "maid/controller.pb.h"
 
 namespace maid
 {
-namespace proto
-{
-class ControllerProto;
-}
 
 class ControllerImpl : public google::protobuf::RpcController
 {
@@ -43,12 +39,10 @@ public:
     }
 
     void set_connection_id(int64_t connection_id);
-    int64_t connection_id();
+    int64_t connection_id() const;
 
 public:
     proto::ControllerProto proto_;
 };
 
 } /* maid */
-
-#endif /*_MAID_CONTROLLERIMPL_H_*/

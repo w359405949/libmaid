@@ -1,5 +1,4 @@
-#ifndef _MAID_CHANNEL_H_
-#define _MAID_CHANNEL_H_
+#pragma once
 
 #include <stdint.h>
 #include <google/protobuf/service.h>
@@ -7,6 +6,10 @@
 
 namespace maid
 {
+namespace proto
+{
+class Middleware;
+}
 
 class ChannelImpl;
 
@@ -37,6 +40,15 @@ public:
      */
     void AppendService(google::protobuf::Service* service);
 
+
+    /*
+     *
+     */
+    void AppendMiddleware(maid::proto::Middleware* middleware);
+
+    /*
+     * *HOT* method
+     */
     void set_default_connection_id(int64_t fd);
 
     int64_t default_connection_id();
@@ -52,5 +64,3 @@ private:
 };
 
 } /* namespace maid */
-
-#endif /*_MAID_CHANNEL_H_*/

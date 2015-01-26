@@ -35,9 +35,89 @@ void  protobuf_AddDesc_maid_2foptions_2eproto();
 void protobuf_AssignDesc_maid_2foptions_2eproto();
 void protobuf_ShutdownFile_maid_2foptions_2eproto();
 
+class MaidServiceOptions;
 class MaidMethodOptions;
 
 // ===================================================================
+
+class MaidServiceOptions : public ::google::protobuf::Message {
+ public:
+  MaidServiceOptions();
+  virtual ~MaidServiceOptions();
+
+  MaidServiceOptions(const MaidServiceOptions& from);
+
+  inline MaidServiceOptions& operator=(const MaidServiceOptions& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const MaidServiceOptions& default_instance();
+
+  void Swap(MaidServiceOptions* other);
+
+  // implements Message ----------------------------------------------
+
+  MaidServiceOptions* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const MaidServiceOptions& from);
+  void MergeFrom(const MaidServiceOptions& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional bool notify = 1;
+  inline bool has_notify() const;
+  inline void clear_notify();
+  static const int kNotifyFieldNumber = 1;
+  inline bool notify() const;
+  inline void set_notify(bool value);
+
+  // @@protoc_insertion_point(class_scope:maid.proto.MaidServiceOptions)
+ private:
+  inline void set_has_notify();
+  inline void clear_has_notify();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint32 _has_bits_[1];
+  mutable int _cached_size_;
+  bool notify_;
+  friend void  protobuf_AddDesc_maid_2foptions_2eproto();
+  friend void protobuf_AssignDesc_maid_2foptions_2eproto();
+  friend void protobuf_ShutdownFile_maid_2foptions_2eproto();
+
+  void InitAsDefaultInstance();
+  static MaidServiceOptions* default_instance_;
+};
+// -------------------------------------------------------------------
 
 class MaidMethodOptions : public ::google::protobuf::Message {
  public:
@@ -99,15 +179,25 @@ class MaidMethodOptions : public ::google::protobuf::Message {
   inline bool notify() const;
   inline void set_notify(bool value);
 
+  // optional int64 time_out = 2 [default = -1];
+  inline bool has_time_out() const;
+  inline void clear_time_out();
+  static const int kTimeOutFieldNumber = 2;
+  inline ::google::protobuf::int64 time_out() const;
+  inline void set_time_out(::google::protobuf::int64 value);
+
   // @@protoc_insertion_point(class_scope:maid.proto.MaidMethodOptions)
  private:
   inline void set_has_notify();
   inline void clear_has_notify();
+  inline void set_has_time_out();
+  inline void clear_has_time_out();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint32 _has_bits_[1];
   mutable int _cached_size_;
+  ::google::protobuf::int64 time_out_;
   bool notify_;
   friend void  protobuf_AddDesc_maid_2foptions_2eproto();
   friend void protobuf_AssignDesc_maid_2foptions_2eproto();
@@ -118,12 +208,44 @@ class MaidMethodOptions : public ::google::protobuf::Message {
 };
 // ===================================================================
 
+static const int kServiceOptionsFieldNumber = 1001;
+extern ::google::protobuf::internal::ExtensionIdentifier< ::google::protobuf::ServiceOptions,
+    ::google::protobuf::internal::MessageTypeTraits< ::maid::proto::MaidServiceOptions >, 11, false >
+  service_options;
 static const int kMethodOptionsFieldNumber = 1001;
 extern ::google::protobuf::internal::ExtensionIdentifier< ::google::protobuf::MethodOptions,
     ::google::protobuf::internal::MessageTypeTraits< ::maid::proto::MaidMethodOptions >, 11, false >
   method_options;
 
 // ===================================================================
+
+// MaidServiceOptions
+
+// optional bool notify = 1;
+inline bool MaidServiceOptions::has_notify() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void MaidServiceOptions::set_has_notify() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void MaidServiceOptions::clear_has_notify() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void MaidServiceOptions::clear_notify() {
+  notify_ = false;
+  clear_has_notify();
+}
+inline bool MaidServiceOptions::notify() const {
+  // @@protoc_insertion_point(field_get:maid.proto.MaidServiceOptions.notify)
+  return notify_;
+}
+inline void MaidServiceOptions::set_notify(bool value) {
+  set_has_notify();
+  notify_ = value;
+  // @@protoc_insertion_point(field_set:maid.proto.MaidServiceOptions.notify)
+}
+
+// -------------------------------------------------------------------
 
 // MaidMethodOptions
 
@@ -149,6 +271,30 @@ inline void MaidMethodOptions::set_notify(bool value) {
   set_has_notify();
   notify_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.MaidMethodOptions.notify)
+}
+
+// optional int64 time_out = 2 [default = -1];
+inline bool MaidMethodOptions::has_time_out() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void MaidMethodOptions::set_has_time_out() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void MaidMethodOptions::clear_has_time_out() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void MaidMethodOptions::clear_time_out() {
+  time_out_ = GOOGLE_LONGLONG(-1);
+  clear_has_time_out();
+}
+inline ::google::protobuf::int64 MaidMethodOptions::time_out() const {
+  // @@protoc_insertion_point(field_get:maid.proto.MaidMethodOptions.time_out)
+  return time_out_;
+}
+inline void MaidMethodOptions::set_time_out(::google::protobuf::int64 value) {
+  set_has_time_out();
+  time_out_ = value;
+  // @@protoc_insertion_point(field_set:maid.proto.MaidMethodOptions.time_out)
 }
 
 

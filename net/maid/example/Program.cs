@@ -16,10 +16,17 @@ namespace Example
             HelloService service = new HelloService();
             channel.AddMethod<HelloRequest, HelloSerializer>("maid.example.HelloService.HelloNotify", service.HelloNotify);
             channel.AddMethod<HelloRequest, HelloSerializer, HelloResponse, HelloSerializer>("maid.example.HelloService.HelloRpc", service.HelloRpc);
+            channel.ConnectedEvent += () =>
+            {
+                Console.WriteLine("连接上了");
+            };
+
             channel.Connect("192.168.0.99", 5555);
 
             while (true)
             {
+                channel.Update();
+
                 HelloRequest request = new HelloRequest();
                 request.message = "this message from protobuf-net";
                 try
@@ -28,12 +35,10 @@ namespace Example
                     channel.CallMethod("maid.example.HelloService.HelloRpc", request);
                 }
                 catch (Exception ){ }
-                if (!channel.Connected && channel.Connecting)
+                if (channel.Connecting)
                 {
-                    Console.WriteLine("断线了，重连中");
+                    Console.WriteLine("连接中");
                 }
-
-                channel.Update();
             }
         }
     }

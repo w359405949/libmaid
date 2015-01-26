@@ -73,10 +73,10 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ControllerProto">
-      <HintPath>..\maid\library\ControllerProto.dll</HintPath>
+      <HintPath>..\maid\bin\Debug\ControllerProto.dll</HintPath>
     </Reference>
     <Reference Include="ControllerProtoSerializer">
-      <HintPath>..\maid\library\ControllerProtoSerializer.dll</HintPath>
+      <HintPath>..\maid\bin\Debug\ControllerProtoSerializer.dll</HintPath>
     </Reference>
     <Reference Include="Hello">
       <HintPath>library\Hello.dll</HintPath>
@@ -88,30 +88,7 @@
       <HintPath>..\maid\bin\Debug\maid.dll</HintPath>
     </Reference>
     <Reference Include="protobuf-net">
-      <HintPath>..\maid\library\protobuf-net.dll</HintPath>
-    <Reference Include="ControllerProto, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\library\ControllerProto.dll</HintPath>
-    </Reference>
-    <Reference Include="ControllerProtoSerializer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\library\ControllerProtoSerializer.dll</HintPath>
-    </Reference>
-    <Reference Include="Hello, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>library\Hello.dll</HintPath>
-    </Reference>
-    <Reference Include="HelloSerializer, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>library\HelloSerializer.dll</HintPath>
-    </Reference>
-    <Reference Include="maid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\maid\bin\Debug\maid.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net, Version=2.0.0.668, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>library\protobuf-net.dll</HintPath>
+      <HintPath>..\maid\bin\Debug\protobuf-net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
   </ItemGroup>

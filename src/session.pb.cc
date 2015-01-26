@@ -85,7 +85,7 @@ void protobuf_AddDesc_maid_2fsession_2eproto() {
     "ontroller.proto\";\n\014SessionProto\022\n\n\002id\030\001 "
     "\001(\t\022\024\n\014expired_time\030\002 \001(\004*\t\010\350\007\020\200\200\200\200\002:G\n\007"
     "session\022\033.maid.proto.ControllerProto\030\352\007 "
-    "\001(\0132\030.maid.proto.SessionProtoB\003\200\001\001", 194);
+    "\001(\0132\030.maid.proto.SessionProto", 189);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/session.proto", &protobuf_RegisterTypes);
   SessionProto::default_instance_ = new SessionProto();

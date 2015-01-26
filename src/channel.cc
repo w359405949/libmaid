@@ -32,6 +32,11 @@ void Channel::AppendService(google::protobuf::Service* service)
     channel_->AppendService(service);
 }
 
+void Channel::AppendMiddleware(maid::proto::Middleware* middleware)
+{
+    channel_->AppendMiddleware(middleware);
+}
+
 void Channel::set_default_connection_id(int64_t connection_id)
 {
     channel_->set_default_connection_id(connection_id);

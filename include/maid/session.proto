@@ -1,7 +1,5 @@
 import "maid/controller.proto";
 
-option cc_generic_services = true;
-
 package maid.proto;
 
 message SessionProto
@@ -16,10 +14,3 @@ extend ControllerProto
 {
 	optional SessionProto session = 1002;
 }
-
-//service SessionEventService
-//{
-//	rpc NewSession(Session) returns(Session);
-//	rpc SessionTimeout(Session) returns(Session);
-//	rpc Session
-//}
