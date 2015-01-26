@@ -92,7 +92,6 @@ public:
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
     static void OnCloseConnection(uv_handle_t* handle);
     static void OnCloseListen(uv_handle_t* handle);
-    static void OnCheck(uv_check_t* handle);
     static void OnIdle(uv_idle_t* handle);
     static void OnTimer(uv_timer_t* timer);
     static void AfterSendRequest(uv_write_t* req, int32_t status);
@@ -105,6 +104,7 @@ public:
     std::map<int64_t/* connection_id */, uv_stream_t*> listen_handle_;
     std::map<int64_t/* connection_id */, uv_check_t> check_handle_; //
     std::map<int64_t/* connection_id */, uv_timer_t> timer_handle_; //
+    std::map<int64_t/* connection_id */, uv_prepare_t> prepare_handle_; //
     std::map<int64_t/* connection_id */, uv_idle_t> idle_handle_; //
     std::map<int64_t/* connection_id */, Buffer> buffer_;
     std::map<int64_t/* connection_id */, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >

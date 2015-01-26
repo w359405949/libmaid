@@ -290,14 +290,11 @@ void ChannelImpl::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf
     self->buffer_[(int64_t)stream].end += nread;
 
     uv_read_stop(stream);
-    //uv_timer_t& timer = self->timer_handle_[(int64_t)stream];
-    //uv_timer_start(&timer, OnTimer, 0, 0);
-    //uv_check_t& check = self->check_handle_[(int64_t)stream];
-    //uv_check_start(&check, OnCheck);
-    uv_idle_t& idle = self->idle_handle_[(int64_t)stream];
-    uv_idle_start(&idle, OnIdle);
+    uv_timer_t& timer = self->timer_handle_[(int64_t)stream];
+    uv_timer_start(&timer, OnTimer, 1, 1);
+    //uv_idle_t& idle = self->idle_handle_[(int64_t)stream];
+    //uv_idle_start(&idle, OnIdle);
 }
-
 
 void ChannelImpl::OnIdle(uv_idle_t* idle)
 {
@@ -325,41 +322,13 @@ void ChannelImpl::OnIdle(uv_idle_t* idle)
     }
 }
 
-
-
-void ChannelImpl::OnCheck(uv_check_t* check)
-{
-    uv_stream_t* stream = (uv_stream_t*)check->data;
-    ChannelImpl* self = (ChannelImpl*)stream->data;
-    int32_t result = self->Handle((int64_t)stream);
-
-    // scheduler
-    switch (result) {
-        case ERROR_OUT_OF_SIZE:
-            break;
-        case ERROR_LACK_DATA:
-            uv_check_stop(check);
-            uv_read_start(stream, OnAlloc, OnRead);
-            break;
-        case ERROR_BUSY:
-            break;
-        case ERROR_PARSE_FAILED:
-            break;
-        case ERROR_OTHER:
-            break;
-        default:
-            break;
-    }
-
-    uv_check_stop(check);
-    uv_check_start(check, OnCheck);
-}
-
 void ChannelImpl::OnTimer(uv_timer_t* timer)
 {
     uv_stream_t* stream = (uv_stream_t*)timer->data;
     ChannelImpl* self = (ChannelImpl*)stream->data;
     int32_t result = self->Handle((int64_t)stream);
+
+    DLOG(INFO)<< " uv_now:" << uv_now(self->loop_) << " uv_hrtime:" << uv_hrtime();
 
     // scheduler
     switch (result) {
@@ -379,8 +348,9 @@ void ChannelImpl::OnTimer(uv_timer_t* timer)
             break;
     }
 
-    uv_timer_stop(timer);
-    uv_timer_start(timer, OnTimer, 0, 0);
+    uv_timer_again(timer);
+    //uv_timer_stop(timer);
+    //uv_timer_start(timer, OnTimer, 1, 1);
 }
 
 int32_t ChannelImpl::Handle(int64_t connection_id)
@@ -695,6 +665,9 @@ void ChannelImpl::RemoveConnection(uv_stream_t* stream)
     uv_timer_stop(&timer_handle_[(int64_t)stream]);
     timer_handle_.erase((int64_t)stream);
 
+    uv_prepare_stop(&prepare_handle_[(int64_t)stream]);
+    prepare_handle_.erase((int64_t)stream);
+
     if (default_stream_ == stream) {
         default_stream_ = NULL;
     }
@@ -726,6 +699,10 @@ void ChannelImpl::AddConnection(uv_stream_t* stream)
     uv_idle_t& idle = idle_handle_[(int64_t)stream];
     idle.data = stream;
     uv_idle_init(loop_, &idle);
+
+    uv_prepare_t& prepare = prepare_handle_[(int64_t)stream];
+    prepare.data = stream;
+    uv_prepare_init(loop_, &prepare);
 
     uv_timer_t& timer = timer_handle_[(int64_t)stream];
     timer.data = stream;
