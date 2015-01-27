@@ -107,7 +107,7 @@ public:
     std::map<int64_t/* connection_id */, Buffer> buffer_;
     std::map<int64_t/* connection_id */, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
     std::map<int64_t/* transmit_id */, Context> async_result_; //<transmit_id, Context>
-    std::map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
+    std::map<uv_write_t*, int8_t* /* send_buffer */> sending_buffer_; //
 
     std::stack<RemoteClosure*> remote_closure_pool_;
 
