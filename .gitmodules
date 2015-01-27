@@ -1,18 +1,15 @@
-[submodule "deps/libev"]
-	path = deps/libev
-	url = https://github.com/michaelmior/libev.git
 [submodule "deps/leveldb"]
 	path = deps/leveldb
 	url = git@github.com:google/leveldb.git
 [submodule "deps/pymaid"]
 	path = deps/pymaid
 	url = https://github.com/Catstyle/pymaid.git
-[submodule "deps/libuv"]
-	path = deps/libuv
-	url = https://github.com/joyent/libuv.git
 [submodule "deps/protobuf"]
 	path = deps/protobuf
 	url = https://github.com/google/protobuf.git
 [submodule "deps/protobuf-net"]
 	path = deps/protobuf-net
 	url = git@github.com:mgravell/protobuf-net.git
+[submodule "deps/libuv"]
+	path = deps/libuv
+	url = git@github.com:libuv/libuv.git
