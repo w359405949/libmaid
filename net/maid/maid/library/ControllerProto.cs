@@ -45,14 +45,6 @@ namespace maid.proto
       { return global::ProtoBuf.Extensible.GetExtensionObject(ref extensionObject, createIfMissing); }
   }
   
-    public interface IConnectionMiddleware
-    {
-      maid.proto.ConnectionProto Connected(maid.proto.ConnectionProto request);
-    maid.proto.ConnectionProto Disconnected(maid.proto.ConnectionProto request);
-    
-    }
-    
-    
 }
 // Generated from: maid/controller.proto
 namespace maid.proto
@@ -156,10 +148,46 @@ namespace maid.proto
   }
   
 }
+// Generated from: maid/middleware.proto
+// Note: requires additional types generated from: maid/controller.proto
+// Note: requires additional types generated from: maid/connection.proto
+namespace maid.proto
+{
+    public interface IMiddleware
+    {
+      maid.proto.ConnectionProto Connected(maid.proto.ConnectionProto request);
+    maid.proto.ConnectionProto Disconnected(maid.proto.ConnectionProto request);
+    maid.proto.ControllerProto ProcessRequest(maid.proto.ControllerProto request);
+    maid.proto.ControllerProto ProcessResponse(maid.proto.ControllerProto request);
+    maid.proto.ControllerProto ProcessRequestStub(maid.proto.ControllerProto request);
+    maid.proto.ControllerProto ProcessResponseStub(maid.proto.ControllerProto request);
+    
+    }
+    
+    
+}
 // Generated from: maid/options.proto
 // Note: requires additional types generated from: google/protobuf/descriptor.proto
 namespace maid.proto
 {
+  [global::System.Serializable, global::ProtoBuf.ProtoContract(Name=@"MaidServiceOptions")]
+  public partial class MaidServiceOptions : global::ProtoBuf.IExtensible
+  {
+    public MaidServiceOptions() {}
+    
+    private bool _notify = default(bool);
+    [global::ProtoBuf.ProtoMember(1, IsRequired = false, Name=@"notify", DataFormat = global::ProtoBuf.DataFormat.Default)]
+    [global::System.ComponentModel.DefaultValue(default(bool))]
+    public bool notify
+    {
+      get { return _notify; }
+      set { _notify = value; }
+    }
+    private global::ProtoBuf.IExtension extensionObject;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+      { return global::ProtoBuf.Extensible.GetExtensionObject(ref extensionObject, createIfMissing); }
+  }
+  
   [global::System.Serializable, global::ProtoBuf.ProtoContract(Name=@"MaidMethodOptions")]
   public partial class MaidMethodOptions : global::ProtoBuf.IExtensible
   {
@@ -172,6 +200,14 @@ namespace maid.proto
     {
       get { return _notify; }
       set { _notify = value; }
+    }
+    private long _time_out = (long)-1;
+    [global::ProtoBuf.ProtoMember(2, IsRequired = false, Name=@"time_out", DataFormat = global::ProtoBuf.DataFormat.TwosComplement)]
+    [global::System.ComponentModel.DefaultValue((long)-1)]
+    public long time_out
+    {
+      get { return _time_out; }
+      set { _time_out = value; }
     }
     private global::ProtoBuf.IExtension extensionObject;
     global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -209,12 +245,4 @@ namespace maid.proto
       { return global::ProtoBuf.Extensible.GetExtensionObject(ref extensionObject, createIfMissing); }
   }
   
-    public interface ISessionMiddleware
-    {
-      maid.proto.SessionProto PreRequest(maid.proto.SessionProto request);
-    maid.proto.SessionProto PostRequest(maid.proto.SessionProto request);
-    
-    }
-    
-    
 }
