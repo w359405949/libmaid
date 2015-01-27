@@ -92,7 +92,6 @@ public:
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
     static void OnCloseConnection(uv_handle_t* handle);
     static void OnCloseListen(uv_handle_t* handle);
-    static void OnCheck(uv_check_t* handle);
     static void OnIdle(uv_idle_t* handle);
     static void OnTimer(uv_timer_t* timer);
     static void AfterSendRequest(uv_write_t* req, int32_t status);
@@ -103,13 +102,12 @@ public:
     std::vector<proto::Middleware*> middleware_; //
     std::map<int64_t/* connection_id */, uv_stream_t*> connected_handle_;
     std::map<int64_t/* connection_id */, uv_stream_t*> listen_handle_;
-    std::map<int64_t/* connection_id */, uv_check_t> check_handle_; //
     std::map<int64_t/* connection_id */, uv_timer_t> timer_handle_; //
     std::map<int64_t/* connection_id */, uv_idle_t> idle_handle_; //
     std::map<int64_t/* connection_id */, Buffer> buffer_;
     std::map<int64_t/* connection_id */, std::set<int64_t> > transactions_; //<connect_id, <transmit_id> >
     std::map<int64_t/* transmit_id */, Context> async_result_; //<transmit_id, Context>
-    std::map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
+    std::map<uv_write_t*, int8_t* /* send_buffer */> sending_buffer_; //
 
     std::stack<RemoteClosure*> remote_closure_pool_;
 

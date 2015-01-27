@@ -134,6 +134,15 @@ void ChannelImpl::SendRequest(const google::protobuf::MethodDescriptor* method, 
         notify = service_options.notify();
     }
 
+    uv_stream_t* stream = connected_handle(controller);
+    if (NULL == stream) {
+        controller->SetFailed("not connected");
+        HandleResponse(controller->mutable_proto(), controller->connection_id());
+        LOG(ERROR) << " connection: " << controller->connection_id() << " not connected";
+        return;
+    }
+    controller->set_connection_id((int64_t)stream);
+
     /*
      * middleware
      */
@@ -142,47 +151,41 @@ void ChannelImpl::SendRequest(const google::protobuf::MethodDescriptor* method, 
         (*it)->ProcessRequest(MockController::default_instance(), controller->mutable_proto(), controller->mutable_proto(), MockClosure::default_instance());
     }
 
-    std::string* send_buffer = NULL;
-    try {
-        send_buffer = new std::string();
-        int32_t controller_size_nl = htonl(controller->proto().ByteSize());
-        send_buffer->append((const char*)&controller_size_nl, sizeof(controller_size_nl));
-        controller->proto().AppendToString(send_buffer);
-    } catch (std::bad_alloc) {
-        delete send_buffer;
+    int32_t controller_nl = htonl(controller->proto().ByteSize());
+    int32_t send_buffer_size = sizeof(controller_nl) + controller->proto().ByteSize();
+    int8_t* send_buffer = (int8_t*)malloc(send_buffer_size);
+    if (NULL == send_buffer) {
+        free(send_buffer);
+        LOG(ERROR) << " no more memory";
         controller->SetFailed("busy");
         HandleResponse(controller->mutable_proto(), controller->connection_id());
         return;
     }
-
-    uv_stream_t* stream = connected_handle(controller);
-    if (NULL == stream) {
-        delete send_buffer;
-        controller->SetFailed("not connected");
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
-        return;
-    }
-
-    controller->set_connection_id((int64_t)stream);
+    memcpy(send_buffer, &controller_nl, sizeof(controller_nl));
+    controller->proto().SerializeToArray(send_buffer + sizeof(controller_nl), controller->proto().ByteSize());
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (NULL == req) {
-        delete send_buffer;
+        free(send_buffer);
         controller->SetFailed("busy");
         HandleResponse(controller->mutable_proto(), controller->connection_id());
+        LOG(ERROR) << " no more memory";
         return;
     }
+
     req->data = notify ? NULL : controller;
 
     uv_buf_t uv_buf;
-    uv_buf.base = (char*)send_buffer->data();
-    uv_buf.len = send_buffer->size();
-    int error = uv_write(req, stream, &uv_buf, 1, AfterSendRequest);
+    uv_buf.base = (char*)send_buffer;
+    uv_buf.len = send_buffer_size;
+    DLOG(INFO) << " uv_buf.len: " << uv_buf.len;
+    int error = uv_write(req, stream, &uv_buf, 1, AfterSendResponse);
     if (error) {
         free(req);
-        delete send_buffer;
+        free(send_buffer);
         controller->SetFailed(uv_strerror(error));
         HandleResponse(controller->mutable_proto(), controller->connection_id());
+        DLOG(FATAL) << uv_strerror(error);
         return;
     }
 
@@ -207,9 +210,9 @@ void ChannelImpl::AfterSendResponse(uv_write_t* req, int32_t status)
 {
     ChannelImpl* self = (ChannelImpl*)req->handle->data;
 
-    delete self->sending_buffer_[req];
+    free(self->sending_buffer_[req]);
     self->sending_buffer_.erase(req);
-    delete req;
+    free(req);
 }
 
 void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::Message* response)
@@ -228,50 +231,47 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
     /*
      * middleware
      */
-    std::vector<proto::Middleware*>::iterator it = middleware_.begin();
-    for (; it != middleware_.end(); it++) {
+    std::vector<proto::Middleware*>::reverse_iterator it = middleware_.rbegin();
+    for (; it != middleware_.rend(); it++) {
         (*it)->ProcessResponseStub(MockController::default_instance(), controller->mutable_proto(), controller->mutable_proto(), MockClosure::default_instance());
     }
 
-    std::string* buffer = NULL;
-    try {
-        buffer = new std::string();
-        int32_t controller_nl = htonl(controller->proto().ByteSize());
-        buffer->append((char*)&controller_nl, sizeof(controller_nl));
-        controller->proto().AppendToString(buffer);
-    } catch (std::bad_alloc) {
-        delete buffer;
+    int32_t controller_nl = htonl(controller->proto().ByteSize());
+    int32_t send_buffer_size = sizeof(controller_nl) + controller->proto().ByteSize();
+    int8_t* send_buffer = (int8_t*)malloc(send_buffer_size);
+    if (NULL == send_buffer) {
         LOG(ERROR) << " no more memory";
         return;
     }
-
+    memcpy(send_buffer, &controller_nl, sizeof(controller_nl));
+    controller->proto().SerializeToArray(send_buffer + sizeof(controller_nl), controller->proto().ByteSize());
 
     uv_stream_t* stream = connected_handle(controller);
     if (NULL == stream) {
-        delete buffer;
+        free(send_buffer);
         LOG(ERROR) << " connection: " << controller->connection_id() << " not connected";
         return;
     }
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (NULL == req) {
-        delete buffer;
+        free(send_buffer);
         LOG(ERROR) << " no more memory";
         return;
     }
 
     uv_buf_t uv_buf;
-    uv_buf.base = (char*)buffer->data();
-    uv_buf.len = buffer->size();
+    uv_buf.len = send_buffer_size;
+    uv_buf.base = (char*)send_buffer;
     int error = uv_write(req, stream, &uv_buf, 1, AfterSendResponse);
     if (error) {
         free(req);
-        delete buffer;
+        free(send_buffer);
         DLOG(FATAL) << uv_strerror(error);
         return;
     }
 
-    sending_buffer_[req] = buffer;
+    sending_buffer_[req] = send_buffer;
 }
 
 void ChannelImpl::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
@@ -290,20 +290,19 @@ void ChannelImpl::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf
     self->buffer_[(int64_t)stream].end += nread;
 
     uv_read_stop(stream);
-    //uv_timer_t& timer = self->timer_handle_[(int64_t)stream];
-    //uv_timer_start(&timer, OnTimer, 0, 0);
-    //uv_check_t& check = self->check_handle_[(int64_t)stream];
-    //uv_check_start(&check, OnCheck);
-    uv_idle_t& idle = self->idle_handle_[(int64_t)stream];
-    uv_idle_start(&idle, OnIdle);
+    uv_timer_t& timer = self->timer_handle_[(int64_t)stream];
+    uv_timer_start(&timer, OnTimer, 1, 1);
+    //uv_idle_t& idle = self->idle_handle_[(int64_t)stream];
+    //uv_idle_start(&idle, OnIdle);
 }
-
 
 void ChannelImpl::OnIdle(uv_idle_t* idle)
 {
     uv_stream_t* stream = (uv_stream_t*)idle->data;
     ChannelImpl* self = (ChannelImpl*)stream->data;
     int32_t result = self->Handle((int64_t)stream);
+
+    DLOG(INFO)<< " uv_now:" << uv_now(self->loop_) << " uv_hrtime:" << uv_hrtime() << " idle result: " << result;
 
     // scheduler
     switch (result) {
@@ -325,41 +324,13 @@ void ChannelImpl::OnIdle(uv_idle_t* idle)
     }
 }
 
-
-
-void ChannelImpl::OnCheck(uv_check_t* check)
-{
-    uv_stream_t* stream = (uv_stream_t*)check->data;
-    ChannelImpl* self = (ChannelImpl*)stream->data;
-    int32_t result = self->Handle((int64_t)stream);
-
-    // scheduler
-    switch (result) {
-        case ERROR_OUT_OF_SIZE:
-            break;
-        case ERROR_LACK_DATA:
-            uv_check_stop(check);
-            uv_read_start(stream, OnAlloc, OnRead);
-            break;
-        case ERROR_BUSY:
-            break;
-        case ERROR_PARSE_FAILED:
-            break;
-        case ERROR_OTHER:
-            break;
-        default:
-            break;
-    }
-
-    uv_check_stop(check);
-    uv_check_start(check, OnCheck);
-}
-
 void ChannelImpl::OnTimer(uv_timer_t* timer)
 {
     uv_stream_t* stream = (uv_stream_t*)timer->data;
     ChannelImpl* self = (ChannelImpl*)stream->data;
     int32_t result = self->Handle((int64_t)stream);
+
+    DLOG(INFO)<< " uv_now:" << uv_now(self->loop_) << " uv_hrtime:" << uv_hrtime() << " timer result: " << result;
 
     // scheduler
     switch (result) {
@@ -376,11 +347,9 @@ void ChannelImpl::OnTimer(uv_timer_t* timer)
         case ERROR_OTHER:
             break;
         default:
+            uv_timer_again(timer);
             break;
     }
-
-    uv_timer_stop(timer);
-    uv_timer_start(timer, OnTimer, 0, 0);
 }
 
 int32_t ChannelImpl::Handle(int64_t connection_id)
@@ -432,8 +401,8 @@ int32_t ChannelImpl::HandleRequest(proto::ControllerProto* proto, int64_t connec
     /*
      * middleware
      */
-    std::vector<proto::Middleware*>::iterator middleware_it = middleware_.begin();
-    for (; middleware_it != middleware_.end(); middleware_it++) {
+    std::vector<proto::Middleware*>::reverse_iterator middleware_it = middleware_.rbegin();
+    for (; middleware_it != middleware_.rend(); middleware_it++) {
         (*middleware_it)->ProcessRequestStub(MockController::default_instance(), proto, proto, MockClosure::default_instance());
     }
 
@@ -530,7 +499,11 @@ int32_t ChannelImpl::HandleResponse(proto::ControllerProto* proto, int64_t conne
     if (it == async_result_.end() || context.controller->connection_id() != connection_id) {
         return 0;
     }
-    it->second.response->ParseFromString(proto->message());
+
+    if (!proto->failed()) {
+        it->second.response->ParseFromString(proto->message());
+    }
+
     proto->clear_message();
     it->second.controller->mutable_proto()->CopyFrom(*proto);
     it->second.done->Run();
@@ -590,12 +563,13 @@ int64_t ChannelImpl::Connect(const char* host, int32_t port, bool as_default)
     struct sockaddr_in address;
     uv_ip4_addr(host, port, &address);
     req->data = this;
+    handle->data = this;
 
     int result = uv_tcp_connect(req, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
-        uv_close((uv_handle_t*)handle, OnCloseConnection);
-        free(req);
         DLOG(WARNING) << uv_strerror(result);
+        free(req);
+        uv_close((uv_handle_t*)handle, OnCloseConnection);
         return ERROR_OTHER;
     }
 
@@ -622,6 +596,7 @@ void ChannelImpl::OnAccept(uv_stream_t* handle, int32_t status)
     int result = uv_accept(handle, (uv_stream_t*)peer_handle);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
+        peer_handle->data = handle->data;
         uv_close((uv_handle_t*)peer_handle, OnCloseConnection);
         return;
     }
@@ -689,9 +664,6 @@ void ChannelImpl::RemoveConnection(uv_stream_t* stream)
     uv_idle_stop(&idle_handle_[(int64_t)stream]);
     idle_handle_.erase((int64_t)stream);
 
-    uv_check_stop(&check_handle_[(int64_t)stream]);
-    check_handle_.erase((int64_t)stream);
-
     uv_timer_stop(&timer_handle_[(int64_t)stream]);
     timer_handle_.erase((int64_t)stream);
 
@@ -718,10 +690,6 @@ void ChannelImpl::AddConnection(uv_stream_t* stream)
     stream->data = this;
     connected_handle_[(int64_t)stream] = stream;
     uv_read_start(stream, OnAlloc, OnRead);
-
-    uv_check_t& check = check_handle_[(int64_t)stream];
-    check.data = stream;
-    uv_check_init(loop_, &check);
 
     uv_idle_t& idle = idle_handle_[(int64_t)stream];
     idle.data = stream;

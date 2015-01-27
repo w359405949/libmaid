@@ -21,8 +21,9 @@ namespace maid
         private Dictionary<string, SendRequestFunc> sendRequestFunc_;
         private Dictionary<string, HandleRequestFunc> handleRequestFunc_;
         private Dictionary<string, HandleResponseFunc> handleResponseFunc_;
-        private event ConnectionFunc connected_;
-        private event ConnectionFunc disconnected_;
+        private List<ConnectionFunc> ConnectedCallback_;
+        private List<ConnectionFunc> DisconnectedCallback_;
+
 
         private int reconnect_ = -1;
         private string host_ = "";
@@ -56,6 +57,9 @@ namespace maid
             sendRequestFunc_ = new Dictionary<string, SendRequestFunc>();
             handleRequestFunc_ = new Dictionary<string, HandleRequestFunc>();
             handleResponseFunc_ = new Dictionary<string, HandleResponseFunc>();
+
+            ConnectedCallback_ = new List<ConnectionFunc>();
+            DisconnectedCallback_ = new List<ConnectionFunc>();
         }
 
         public void AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RpcCallFunc<RequestType, ResponseType> callback)
@@ -149,15 +153,16 @@ namespace maid
                 };
             }
 
-            connected_ += () =>
+            ConnectedCallback_.Add(() =>
             {
                 requests.Clear();
-            };
+            });
 
-            disconnected_ += () =>
+            DisconnectedCallback_.Add(() =>
             {
                 requests.Clear();
-            };
+            });
+
         }
 
         /*
@@ -227,30 +232,6 @@ namespace maid
             sendRequestFunc_[fullMethodName](controller, request);
         }
 
-        public ConnectionFunc ConnectedEvent
-        {
-            get
-            {
-                return connected_;
-            }
-            set
-            {
-                connected_ = value;
-            }
-        }
-
-        public ConnectionFunc DisconnectedEvent
-        {
-            get
-            {
-                return disconnected_;
-            }
-            set
-            {
-                disconnected_ = value;
-            }
-        }
-
         public bool Connected
         {
             get
@@ -298,7 +279,6 @@ namespace maid
             if (asyncConnect_ != null)
             {
                 Socket connection = asyncConnect_.AsyncState as Socket;
-
                 try
                 {
                     connection.EndConnect(asyncConnect_);
@@ -316,7 +296,6 @@ namespace maid
                     asyncConnect_ = null;
                 }
             }
-
 
             if (asyncConnect_ == null)
             {
@@ -349,7 +328,10 @@ namespace maid
             buffer_ = new byte[connection.ReceiveBufferSize];
             connection_ = connection;
 
-            connected_();
+            foreach (ConnectionFunc callback in ConnectedCallback_)
+            {
+                callback();
+            }
         }
 
         public void CloseConnection()
@@ -380,7 +362,10 @@ namespace maid
             asyncRead_ = null;
             connection_ = null;
 
-            disconnected_();
+            foreach (ConnectionFunc callback in DisconnectedCallback_)
+            {
+                callback();
+            }
         }
 
 
