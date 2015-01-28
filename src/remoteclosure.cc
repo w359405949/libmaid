@@ -17,18 +17,25 @@ RemoteClosure::RemoteClosure(ChannelImpl* channel)
 
 RemoteClosure::~RemoteClosure()
 {
+    Reset();
 }
 
-void RemoteClosure::Run()
+void RemoteClosure::Reset()
 {
-    channel_->SendResponse(controller_, response_);
-
-    delete request_;
     delete controller_;
+    delete request_;
     delete response_;
+
     controller_ = NULL;
     response_ = NULL;
     request_ = NULL;
 
+}
+
+void RemoteClosure::Run()
+{
+    if (controller_ != NULL ) {
+        channel_->SendResponse(controller_->mutable_proto(), response_);
+    }
     channel_->DeleteRemoteClosure(this);
 }

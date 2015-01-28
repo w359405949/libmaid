@@ -2,12 +2,13 @@
 #include "remoteclosure.h"
 #include "channelimpl.h"
 #include "maid/controller.h"
+#include "maid/controller.pb.h"
 #include "test.pb.h"
 
 class ChannelMock: public maid::ChannelImpl
 {
 public:
-    void SendResponse(maid::Controller* controller, const google::protobuf::Message* response)
+    virtual void SendResponse(maid::proto::ControllerProto* controller_proto, const google::protobuf::Message* response)
     {
     }
 
@@ -61,6 +62,7 @@ TEST(RemoteClosure, Run)
 {
     ChannelMock channel;
     maid::RemoteClosure remote_closure(&channel);
+    remote_closure.set_controller(new maid::Controller());
     remote_closure.Run();
 
     ASSERT_EQ(NULL, remote_closure.controller());

@@ -50,6 +50,8 @@ public:
 
     virtual void Run();
 
+    void Reset();
+
 private:
     ChannelImpl* channel_;
     Controller* controller_;

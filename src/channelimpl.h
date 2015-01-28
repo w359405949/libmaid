@@ -21,6 +21,7 @@ namespace proto
 {
 class Middleware;
 class ControllerProto;
+class ConnectionProto;
 }
 
 class ChannelImpl : public google::protobuf::RpcChannel
@@ -59,7 +60,7 @@ public:
         return loop_;
     }
 
-    uv_stream_t* connected_handle(Controller* controller);
+    uv_stream_t* connected_handle(const proto::ConnectionProto& connection_proto, uv_stream_t* stream);
 
     inline void Update()
     {
@@ -72,12 +73,12 @@ public:
     }
 
 public:
-    virtual void SendRequest(const google::protobuf::MethodDescriptor* method, Controller* controller);
-    virtual void SendResponse(Controller* controller, const google::protobuf::Message* response);
+    virtual void SendRequest(proto::ControllerProto* controller_proto);
+    virtual void SendResponse(proto::ControllerProto* controller_proto, const google::protobuf::Message* response);
 
     virtual int32_t Handle(int64_t connection_id);
-    virtual int32_t HandleRequest(proto::ControllerProto* proto, int64_t connection_id);
-    virtual int32_t HandleResponse(proto::ControllerProto* proto, int64_t connection_id);
+    virtual int32_t HandleRequest(proto::ControllerProto* controller_proto);
+    virtual int32_t HandleResponse(proto::ControllerProto* controller_proto);
 
     virtual void AddConnection(uv_stream_t* handle);
     virtual void RemoveConnection(uv_stream_t* handle);

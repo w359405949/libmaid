@@ -4,7 +4,7 @@
 #include "test.pb.h"
 #include "channelimpl.h"
 #include "maid/controller.h"
-#include "controller.pb.h"
+#include "maid/controller.pb.h"
 #include "define.h"
 
 class TestServiceImpl : public TestService
@@ -45,6 +45,7 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              const struct sockaddr* addr,
                              uv_connect_cb cb)
 {
+    //cb(req, 0);
     return 0;
 }
 
@@ -66,6 +67,7 @@ UV_EXTERN int uv_read_start(uv_stream_t*,
                             uv_alloc_cb alloc_cb,
                             uv_read_cb read_cb)
 {
+
     return 0;
 }
 
@@ -86,33 +88,53 @@ UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle,
     return 0;
 }
 
+UV_EXTERN int uv_timer_start(uv_timer_t* handle,
+                             uv_timer_cb cb,
+                             uint64_t timeout,
+                             uint64_t repeat)
+{
+    return 0;
+}
+
+UV_EXTERN int uv_timer_stop(uv_timer_t* handle)
+{
+    return 0;
+}
+
 TEST(ChannelImpl, Constructor)
 {
     maid::ChannelImpl channelimpl;
 
-    ASSERT_EQ(0u, channelimpl.default_connect_);
-    ASSERT_TRUE(NULL != channelimpl.loop_);
+    ASSERT_EQ(NULL, channelimpl.default_stream_);
+    ASSERT_EQ(uv_default_loop(), channelimpl.loop_);
     ASSERT_EQ(0u, channelimpl.service_.size());
-    ASSERT_EQ(0u, channelimpl.async_result_.size());
+    ASSERT_EQ(0u, channelimpl.middleware_.size());
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
     ASSERT_EQ(0u, channelimpl.listen_handle_.size());
+    ASSERT_EQ(0u, channelimpl.timer_handle_.size());
+    ASSERT_EQ(0u, channelimpl.idle_handle_.size());
     ASSERT_EQ(0u, channelimpl.buffer_.size());
     ASSERT_EQ(0u, channelimpl.transactions_.size());
+    ASSERT_EQ(0u, channelimpl.async_result_.size());
+    ASSERT_EQ(0u, channelimpl.sending_buffer_.size());
     ASSERT_EQ(0u, channelimpl.remote_closure_pool_.size());
-
 
     uv_loop_t* loop = uv_loop_new();
     maid::ChannelImpl channelimpl1(loop);
 
-    ASSERT_EQ(0u, channelimpl1.default_connect_);
-    ASSERT_EQ(loop, channelimpl1.loop_);
-    ASSERT_EQ(0u, channelimpl1.service_.size());
-    ASSERT_EQ(0u, channelimpl1.async_result_.size());
-    ASSERT_EQ(0u, channelimpl1.connected_handle_.size());
-    ASSERT_EQ(0u, channelimpl1.listen_handle_.size());
-    ASSERT_EQ(0u, channelimpl1.buffer_.size());
-    ASSERT_EQ(0u, channelimpl1.transactions_.size());
-    ASSERT_EQ(0u, channelimpl1.remote_closure_pool_.size());
+    ASSERT_EQ(NULL, channelimpl.default_stream_);
+    ASSERT_EQ(uv_default_loop(), channelimpl.loop_);
+    ASSERT_EQ(0u, channelimpl.service_.size());
+    ASSERT_EQ(0u, channelimpl.middleware_.size());
+    ASSERT_EQ(0u, channelimpl.connected_handle_.size());
+    ASSERT_EQ(0u, channelimpl.listen_handle_.size());
+    ASSERT_EQ(0u, channelimpl.timer_handle_.size());
+    ASSERT_EQ(0u, channelimpl.idle_handle_.size());
+    ASSERT_EQ(0u, channelimpl.buffer_.size());
+    ASSERT_EQ(0u, channelimpl.transactions_.size());
+    ASSERT_EQ(0u, channelimpl.async_result_.size());
+    ASSERT_EQ(0u, channelimpl.sending_buffer_.size());
+    ASSERT_EQ(0u, channelimpl.remote_closure_pool_.size());
 }
 
 TEST(ChannelImpl, CallMethod)
@@ -125,61 +147,64 @@ TEST(ChannelImpl, CallMethod)
 TEST(ChannelImpl, Listen)
 {
     maid::ChannelImpl channelimpl;
-    int64_t fd = channelimpl.Listen("0.0.0.0", 8888);
+    int64_t listen_id = channelimpl.Listen("0.0.0.0", 8888);
 
     ASSERT_EQ(1u, channelimpl.listen_handle_.size());
-    ASSERT_TRUE(channelimpl.listen_handle_.end() != channelimpl.listen_handle_.find(fd));
-    ASSERT_LT(0, fd);
+    ASSERT_TRUE(channelimpl.listen_handle_.end() != channelimpl.listen_handle_.find(listen_id));
+    ASSERT_LT(0, listen_id);
 }
 
 TEST(ChannelImpl, ListenNULL)
 {
     maid::ChannelImpl channelimpl;
-    int64_t fd = channelimpl.Listen(NULL, 8888);
+    int64_t listen_id = channelimpl.Listen(NULL, 8888);
 
     ASSERT_EQ(0u, channelimpl.listen_handle_.size());
-    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(fd));
-    ASSERT_GT(0, fd);
+    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(listen_id));
+    ASSERT_GT(0, listen_id);
 }
 
 TEST(ChannelImpl, ListenInvalidHost)
 {
     maid::ChannelImpl channelimpl;
-    int64_t fd = channelimpl.Listen("abcdef", 8888);
+    int64_t listen_id = channelimpl.Listen("abcdef", 8888);
 
     ASSERT_EQ(0u, channelimpl.listen_handle_.size());
-    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(fd));
-    ASSERT_GT(0, fd);
+    ASSERT_TRUE(channelimpl.listen_handle_.end() == channelimpl.listen_handle_.find(listen_id));
+    ASSERT_GT(0, listen_id);
 }
 
 /*
- *
  * uv_ip4_addr return success while port invalid(large than  65535)
  */
 TEST(ChannelImpl, ListenInvalidPort)
 {
     maid::ChannelImpl channelimpl;
-    int64_t fd = channelimpl.Listen("0.0.0.0", 88888);
+    int64_t listen_id = channelimpl.Listen("0.0.0.0", 88888);
 
     ASSERT_EQ(1u, channelimpl.listen_handle_.size());
-    ASSERT_TRUE(channelimpl.listen_handle_.end() != channelimpl.listen_handle_.find(fd));
-    ASSERT_LT(0, fd);
+    ASSERT_TRUE(channelimpl.listen_handle_.end() != channelimpl.listen_handle_.find(listen_id));
+    ASSERT_LT(0, listen_id);
 }
 
 TEST(ChannelImpl, Connect)
 {
     maid::ChannelImpl channelimpl;
-    int64_t fd = channelimpl.Connect("0.0.0.0", 8888);
+    int64_t connection_id = channelimpl.Connect("0.0.0.0", 8888);
 
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
-    ASSERT_EQ(0, channelimpl.default_connect_);
-    ASSERT_NE(0, fd);
+    ASSERT_EQ(NULL, channelimpl.default_stream_);
+    ASSERT_NE(0, connection_id);
+}
 
-    int64_t fd1 = channelimpl.Connect("0.0.0.0", 8888, true);
+TEST(ChannelImpl, ConnectAsDefault)
+{
+    maid::ChannelImpl channelimpl;
+    int64_t connection_id = channelimpl.Connect("0.0.0.0", 8888, true);
 
     ASSERT_EQ(0u, channelimpl.connected_handle_.size());
-    ASSERT_EQ(fd1, channelimpl.default_connect_);
-    ASSERT_NE(0, fd1);
+    ASSERT_EQ(connection_id, (int64_t)channelimpl.default_stream_);
+    ASSERT_NE(0, connection_id);
 }
 
 TEST(ChannelImpl, AppendService)
@@ -192,6 +217,26 @@ TEST(ChannelImpl, AppendService)
     ASSERT_TRUE(channelimpl.service_.end() != channelimpl.service_.find(service->GetDescriptor()->full_name()));
 }
 
+TEST(ChannelImpl, SendRequest)
+{
+    maid::ChannelImpl channelimpl;
+    int64_t connection_id = channelimpl.Connect("0.0.0.0", 8888, true);
+
+    maid::Controller controller;
+    Request request;
+    Response response;
+    ClosureMock done;
+
+    //channelimpl.SendRequest(&controller, &request, &response, &done);
+    ASSERT_FALSE(controller.Failed());
+    ASSERT_TRUE(controller.proto().stub());
+    ASSERT_GE(1u, controller.proto().transmit_id());
+    ASSERT_EQ(1u, channelimpl.transactions_.size());
+    ASSERT_EQ(1u, channelimpl.transactions_[connection_id].size());
+    ASSERT_EQ(1u, channelimpl.async_result_.size());
+
+}
+
 TEST(ChannelImpl, SendRequestNotConnected)
 {
     maid::ChannelImpl channelimpl;
@@ -201,32 +246,10 @@ TEST(ChannelImpl, SendRequestNotConnected)
     ClosureMock done;
     maid::Controller controller;
 
-    channelimpl.SendRequest(&controller, &request, &response, &done);
+    //channelimpl.SendRequest(&controller, &request, &response, &done);
     ASSERT_TRUE(controller.Failed());
     ASSERT_STREQ("not connected", controller.ErrorText().c_str());
-    ASSERT_TRUE(controller.meta_data().stub());
-}
-
-TEST(ChannelImpl, SendRequest)
-{
-    maid::ChannelImpl channelimpl;
-    uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
-    channelimpl.AddConnection(handle);
-
-    maid::Controller controller;
-    controller.set_fd((int64_t)handle);
-    Request request;
-    Response response;
-    ClosureMock done;
-
-    channelimpl.SendRequest(&controller, &request, &response, &done);
-    ASSERT_FALSE(controller.Failed());
-    ASSERT_TRUE(controller.meta_data().stub());
-    ASSERT_GE(1u, controller.meta_data().transmit_id());
-    ASSERT_EQ(1u, channelimpl.transactions_.size());
-    ASSERT_EQ(1u, channelimpl.transactions_[(int64_t)handle].size());
-    ASSERT_EQ(1u, channelimpl.async_result_.size());
-
+    ASSERT_TRUE(controller.proto().stub());
 }
 
 TEST(ChannelImpl, SendResponse)
@@ -235,27 +258,26 @@ TEST(ChannelImpl, SendResponse)
     maid::Controller controller;
     Response response;
 
-    channelimpl.SendResponse(&controller, &response);
-    ASSERT_FALSE(controller.meta_data().stub());
+    channelimpl.SendResponse(controller.mutable_proto(), &response);
+    ASSERT_FALSE(controller.proto().stub());
 }
 
-TEST(ChannelImpl, SendNotify)
+TEST(ChannelImpl, DefaultConnectionGetSet)
 {
     maid::ChannelImpl channelimpl;
-    maid::Controller controller;
-    Request request;
+    ASSERT_EQ(0, channelimpl.default_connection_id());
 
-    channelimpl.SendNotify(&controller, &request);
-    ASSERT_TRUE(controller.meta_data().stub());
-}
+    int64_t connection_id = 1;
+    channelimpl.set_default_connection_id(connection_id);
+    ASSERT_EQ(0, channelimpl.default_connection_id());
 
-TEST(ChannelImpl, DefaultFdGetSet)
-{
-    maid::ChannelImpl channelimpl;
-    ASSERT_EQ(0, channelimpl.default_connect());
+    connection_id = channelimpl.Connect("0.0.0.0", 8888);
+    channelimpl.set_default_connection_id(connection_id);
+    ASSERT_EQ(0, channelimpl.default_connection_id());
 
-    channelimpl.set_default_connect(1);
-    ASSERT_EQ(1, channelimpl.default_connect());
+    connection_id = channelimpl.Connect("0.0.0.0", 8888, true);
+    channelimpl.set_default_connection_id(connection_id);
+    ASSERT_EQ(connection_id, channelimpl.default_connection_id());
 }
 
 TEST(ChannelImpl, Update)
@@ -268,195 +290,152 @@ TEST(ChannelImpl, Update)
      */
 }
 
-TEST(ChannelImpl, Handle)
+TEST(ChannelImpl, HandleZero)
 {
     maid::ChannelImpl channelimpl;
     channelimpl.AppendService(new TestServiceImpl());
-    uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
-    handle->data = &channelimpl;
-    int64_t fd = (int64_t)handle;
+    channelimpl.Connect("0.0.0.0", 8888, true);
 
     uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
+    maid::ChannelImpl::OnAlloc((uv_handle_t*)channelimpl.default_stream_, 4, buf);
+    ASSERT_GE(buf->len, 4);
+    memset(buf->base, 0, buf->len);
 
-    maid::Controller controller;
-    controller.meta_data().set_full_service_name("TestService");
-    controller.meta_data().set_method_name("TestMethod");
+    maid::ChannelImpl::OnRead(channelimpl.default_stream_, 4, buf);
+    int32_t result = channelimpl.Handle((int64_t)channelimpl.default_stream_);
 
-    //request
-    controller.meta_data().set_stub(true);
-    controller.meta_data().set_notify(false);
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 1000, buf);
-    ASSERT_TRUE(buf->base != NULL);
-
-    uint32_t len = controller.meta_data().ByteSize();
-    uint32_t nlen = ::htonl(len);
-    memcpy(buf->base, &nlen, 4);
-    bool sr = controller.meta_data().SerializeToArray((int8_t*)buf->base + sizeof(uint32_t), len);
-    ASSERT_TRUE(sr);
-
-    int32_t result = channelimpl.Handle(handle, sizeof(uint32_t) + len);
     ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[fd].len);
-
-    //notify
-    controller.meta_data().set_stub(true);
-    controller.meta_data().set_notify(true);
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 1000, buf);
-    ASSERT_TRUE(buf->base != NULL);
-
-    len = controller.meta_data().ByteSize();
-    nlen = ::htonl(len);
-    memcpy(buf->base, &nlen, 4);
-    sr = controller.meta_data().SerializeToArray((int8_t*)buf->base + sizeof(uint32_t), len);
-    ASSERT_TRUE(sr);
-
-    result = channelimpl.Handle(handle, sizeof(uint32_t) + len);
-    ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[fd].len);
-
-    //response
-    controller.meta_data().set_stub(false);
-    controller.meta_data().set_notify(false);
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 1000, buf);
-    ASSERT_TRUE(buf->base != NULL);
-
-    len = controller.meta_data().ByteSize();
-    nlen = ::htonl(len);
-    memcpy(buf->base, &nlen, 4);
-    sr = controller.meta_data().SerializeToArray((int8_t*)buf->base + sizeof(uint32_t), len);
-    ASSERT_TRUE(sr);
-
-    result = channelimpl.Handle(handle, sizeof(uint32_t) + len);
-    ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[fd].len);
+    ASSERT_EQ(channelimpl.buffer_[(int64_t)channelimpl.default_stream_].start, channelimpl.buffer_[(int64_t)channelimpl.default_stream_].end);
 }
 
-TEST(ChannelImpl, HandleWithMore)
+TEST(ChannelImpl, HandleLackData1)
 {
     maid::ChannelImpl channelimpl;
     channelimpl.AppendService(new TestServiceImpl());
-    uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
-    handle->data = &channelimpl;
-    int64_t fd = (int64_t)handle;
+    channelimpl.Connect("0.0.0.0", 8888, true);
+
     uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 1000, buf);
-    ASSERT_TRUE(buf->base != NULL);
+    maid::ChannelImpl::OnAlloc((uv_handle_t*)channelimpl.default_stream_, 2, buf);
+    ASSERT_GE(buf->len, 4);
 
-    maid::Controller controller;
-    controller.set_fd(fd);
-    controller.meta_data().set_full_service_name("TestService");
-    controller.meta_data().set_method_name("TestMethod");
+    maid::ChannelImpl::OnRead(channelimpl.default_stream_, 2, buf);
+    int32_t result = channelimpl.Handle((int64_t)channelimpl.default_stream_);
 
-    int32_t cur = 0;
-
-    //request
-    controller.meta_data().set_stub(true);
-    controller.meta_data().set_notify(false);
-    uint32_t len = controller.meta_data().ByteSize();
-    uint32_t nlen = ::htonl(len);
-    for (int32_t i = 0; i < 10; i++) {
-        memcpy((int8_t*)buf->base + cur, &nlen, sizeof(uint32_t));
-        bool sr = controller.meta_data().SerializeToArray((int8_t*)buf->base + sizeof(uint32_t) + cur, len);
-        ASSERT_TRUE(sr);
-        cur += sizeof(uint32_t) + len;
-    }
-
-    //notify
-    controller.meta_data().set_stub(true);
-    controller.meta_data().set_notify(true);
-    len = controller.meta_data().ByteSize();
-    nlen = ::htonl(len);
-    for (int32_t i = 0; i < 10; i++) {
-        memcpy((int8_t*)buf->base + cur, &nlen, sizeof(uint32_t));
-        bool sr = controller.meta_data().SerializeToArray((int8_t*)buf->base + sizeof(uint32_t) + cur, len);
-        ASSERT_TRUE(sr);
-        cur += sizeof(uint32_t) + len;
-    }
-
-    //response
-    controller.meta_data().set_stub(false);
-    controller.meta_data().set_notify(false);
-    len = controller.meta_data().ByteSize();
-    nlen = ::htonl(len);
-    for (int32_t i = 0; i < 10; i++) {
-        memcpy((int8_t*)channelimpl.buffer_[fd].base + cur, &nlen, sizeof(uint32_t));
-        bool sr = controller.meta_data().SerializeToArray((int8_t*)channelimpl.buffer_[fd].base + sizeof(uint32_t) + cur, len);
-        ASSERT_TRUE(sr);
-        cur += sizeof(uint32_t) + len;
-    }
-
-    int32_t result = channelimpl.Handle(handle, cur);
-
-    ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[fd].len);
+    ASSERT_EQ(ERROR_LACK_DATA, result);
+    ASSERT_EQ(channelimpl.buffer_[(int64_t)channelimpl.default_stream_].start + 2, channelimpl.buffer_[(int64_t)channelimpl.default_stream_].end);
 }
+
+TEST(ChannelImpl, HandleLackData2)
+{
+    maid::ChannelImpl channelimpl;
+    channelimpl.AppendService(new TestServiceImpl());
+    channelimpl.Connect("0.0.0.0", 8888, true);
+
+    uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
+    maid::ChannelImpl::OnAlloc((uv_handle_t*)channelimpl.default_stream_, 6, buf);
+    ASSERT_GE(buf->len, 4);
+
+    int32_t nlen = ::htonl(10);
+    memcpy(buf->base, &nlen, sizeof(nlen));
+    maid::ChannelImpl::OnRead(channelimpl.default_stream_, 6, buf);
+
+    int32_t result = channelimpl.Handle((int64_t)channelimpl.default_stream_);
+    ASSERT_EQ(ERROR_LACK_DATA, result);
+    ASSERT_EQ(channelimpl.buffer_[(int64_t)channelimpl.default_stream_].start + 6, channelimpl.buffer_[(int64_t)channelimpl.default_stream_].end);
+}
+
+TEST(ChannelImpl, HandleOutOfSize)
+{
+    maid::ChannelImpl channelimpl;
+    channelimpl.AppendService(new TestServiceImpl());
+    channelimpl.Connect("0.0.0.0", 8888, true);
+
+    uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
+    maid::ChannelImpl::OnAlloc((uv_handle_t*)channelimpl.default_stream_, 6, buf);
+    ASSERT_GE(buf->len, 4);
+
+    int32_t nlen = ::htonl(channelimpl.controller_max_size_ + 1);
+    memcpy(buf->base, &nlen, sizeof(nlen));
+    maid::ChannelImpl::OnRead(channelimpl.default_stream_, 6, buf);
+
+    int32_t result = channelimpl.Handle((int64_t)channelimpl.default_stream_);
+    ASSERT_EQ(ERROR_OUT_OF_SIZE, result);
+    ASSERT_EQ(channelimpl.buffer_[(int64_t)channelimpl.default_stream_].start, channelimpl.buffer_[(int64_t)channelimpl.default_stream_].end);
+}
+
 
 TEST(ChannelImpl, HandleParseFailed)
 {
     maid::ChannelImpl channelimpl;
-    uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
-    handle->data = &channelimpl;
-    int64_t fd = (int64_t)handle;
+    channelimpl.AppendService(new TestServiceImpl());
+    channelimpl.Connect("0.0.0.0", 8888, true);
+
     uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 100, buf);
+    maid::ChannelImpl::OnAlloc((uv_handle_t*)channelimpl.default_stream_, 6, buf);
+    ASSERT_GE(buf->len, 4);
 
-    uint32_t len = ::htonl(4);
-    memcpy(buf->base, &len, 4);
-    memcpy(buf->base + 4, "asda", 4);
-    int32_t result = channelimpl.Handle(handle, 100);
+    int32_t nlen = ::htonl(2);
+    memcpy(buf->base, &nlen, sizeof(nlen));
+    memcpy(buf->base + sizeof(nlen), "a", 1);
+    maid::ChannelImpl::OnRead(channelimpl.default_stream_, 6, buf);
 
+    int32_t result = channelimpl.Handle((int64_t)channelimpl.default_stream_);
     ASSERT_EQ(ERROR_PARSE_FAILED, result);
-    ASSERT_EQ(92u, channelimpl.buffer_[fd].len);
-}
-
-TEST(ChannelImpl, HandleLackData)
-{
-    maid::ChannelImpl channelimpl;
-    uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
-    handle->data = &channelimpl;
-    int64_t fd = (int64_t)handle;
-    uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
-    maid::ChannelImpl::OnAlloc((uv_handle_t*)handle, 10, buf);
-
-    uint32_t len = ::htonl(1000);
-    memcpy(buf->base, &len, 4);
-    int32_t result = channelimpl.Handle(handle, 10);
-
-    ASSERT_EQ(ERROR_LACK_DATA, result);
-    ASSERT_EQ(10u, channelimpl.buffer_[fd].len);
+    ASSERT_EQ(channelimpl.buffer_[(int64_t)channelimpl.default_stream_].start, channelimpl.buffer_[(int64_t)channelimpl.default_stream_].end);
 }
 
 TEST(ChannelImpl, HandleRequest)
 {
     maid::ChannelImpl channelimpl;
-    maid::Controller* controller = new maid::Controller();
+    maid::proto::ControllerProto* proto = new maid::proto::ControllerProto();
     channelimpl.AppendService(new TestServiceImpl());
-    controller->meta_data().set_full_service_name("TestService");
-    controller->meta_data().set_method_name("TestMethod");
+    proto->set_full_service_name("TestService");
+    proto->set_method_name("TestMethod");
 
     Request request;
-    request.SerializeToString(controller->meta_data().mutable_message());
+    request.SerializeToString(proto->mutable_message());
 
-    int32_t result = channelimpl.HandleRequest(controller);
+    int32_t result = channelimpl.HandleRequest(proto);
 
     ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[1].len);
+    ASSERT_TRUE(proto->failed());
+    ASSERT_EQ("not implement", proto->error_text());
 }
 
 TEST(ChannelImpl, HandleRequestNoService)
 {
     maid::ChannelImpl channelimpl;
-    maid::Controller* controller = new maid::Controller();
-    controller->meta_data().set_full_service_name("TestService");
-    controller->meta_data().set_method_name("TestMethod");
+    maid::proto::ControllerProto* proto = new maid::proto::ControllerProto();
+    proto->set_full_service_name("TestService");
+    proto->set_method_name("TestMethod");
 
     Request request;
-    request.SerializeToString(controller->meta_data().mutable_message());
+    request.SerializeToString(proto->mutable_message());
 
-    int32_t result = channelimpl.HandleRequest(controller);
+    int32_t result = channelimpl.HandleRequest(proto);
 
     ASSERT_EQ(ERROR_OTHER, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[1].len);
+    ASSERT_TRUE(proto->failed());
+    ASSERT_EQ("service TestService not exist", proto->error_text());
+}
+
+
+TEST(ChannelImpl, HandleRequestNoMethod)
+{
+    maid::ChannelImpl channelimpl;
+    maid::proto::ControllerProto* proto = new maid::proto::ControllerProto();
+    channelimpl.AppendService(new TestServiceImpl());
+    proto->set_full_service_name("TestService");
+    proto->set_method_name("TestNoSuchMethod");
+
+    Request request;
+    request.SerializeToString(proto->mutable_message());
+
+    int32_t result = channelimpl.HandleRequest(proto);
+
+    ASSERT_EQ(ERROR_OTHER, result);
+    ASSERT_TRUE(proto->failed());
+    ASSERT_EQ("method TestNoSuchMethod not exist", proto->error_text());
 }
 
 TEST(ChannelImpl, HandleResponse)
@@ -469,8 +448,8 @@ TEST(ChannelImpl, HandleResponse)
     Response response;
     ClosureMock done;
 
-    channelimpl.SendRequest(controller, &request, &response, &done);
-    int32_t result = channelimpl.HandleResponse(controller);
+    channelimpl.SendRequest(controller->mutable_proto());
+    int32_t result = channelimpl.HandleResponse(controller->mutable_proto());
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
@@ -488,10 +467,10 @@ TEST(ChannelImpl, HandleResponseWithFailed)
     Request request;
     Response response;
     ClosureMock done;
-    channelimpl.SendRequest(controller, &request, &response, &done);
+    channelimpl.SendRequest(controller->mutable_proto());
 
     controller->SetFailed("failed");
-    int32_t result = channelimpl.HandleResponse(controller);
+    int32_t result = channelimpl.HandleResponse(controller->mutable_proto());
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
@@ -506,31 +485,12 @@ TEST(ChannelImpl, HandleResponseNoRequest)
     channelimpl.AddConnection(handle);
 
     maid::Controller* controller = new maid::Controller();
-    int32_t result = channelimpl.HandleResponse(controller);
+    int32_t result = channelimpl.HandleResponse(controller->mutable_proto());
 
     ASSERT_EQ(0, result);
     ASSERT_EQ(0u, channelimpl.async_result_.size());
     ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
     ASSERT_EQ(1u, channelimpl.transactions_.size());
-}
-
-TEST(ChannelImpl, HandleNotify)
-{
-    maid::ChannelImpl channelimpl;
-    maid::Controller* controller = new maid::Controller();
-    controller->meta_data().set_stub(true);
-    controller->meta_data().set_notify(true);
-    channelimpl.AppendService(new TestServiceImpl());
-    controller->meta_data().set_full_service_name("TestService");
-    controller->meta_data().set_method_name("TestMethod");
-
-    Request request;
-    request.SerializeToString(controller->meta_data().mutable_message());
-
-    int32_t result = channelimpl.HandleRequest(controller);
-
-    ASSERT_EQ(0, result);
-    ASSERT_EQ(0u, channelimpl.buffer_[1].len);
 }
 
 TEST(ChannelImpl, RemoteClosureNewAndDelete)
@@ -668,11 +628,11 @@ TEST(ChannelImpl, AfterSendRequest)
     uv_stream_t* handle = (uv_stream_t*)malloc(sizeof(uv_stream_t));
     channelimpl.AddConnection(handle);
     maid::Controller* controller = new maid::Controller();
-    controller->set_fd((int64_t)handle);
+    controller->set_connection_id((int64_t)handle);
     Request request;
     Response response;
     ClosureMock done;
-    channelimpl.SendRequest(controller, &request, &response, &done);
+    channelimpl.SendRequest(controller->mutable_proto());
     ASSERT_FALSE(controller->Failed());
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -695,11 +655,11 @@ TEST(ChannelImpl, AfterSendRequestWithFailed)
     ASSERT_EQ(1u, channelimpl.connected_handle_.size());
 
     maid::Controller* controller = new maid::Controller();
-    controller->set_fd((int64_t)handle);
+    controller->set_connection_id((int64_t)handle);
     Request request;
     Response response;
     ClosureMock done;
-    channelimpl.SendRequest(controller, &request, &response, &done);
+    channelimpl.SendRequest(controller->mutable_proto());
     ASSERT_FALSE(controller->Failed());
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -714,35 +674,21 @@ TEST(ChannelImpl, AfterSendRequestWithFailed)
     ASSERT_EQ(0u, channelimpl.transactions_[(int64_t)handle].size());
 }
 
-TEST(ChannelImpl, AfterSendNotify)
-{
-    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    maid::ChannelImpl::AfterSendNotify(req, 0);
-
-    /*
-     * NOTHING TO BE DONE
-     */
-}
-
 TEST(ChannelImpl, AfterSendResponse)
 {
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     maid::ChannelImpl::AfterSendResponse(req, 0);
 
-    /*
-     * NOTHING TO BE DONE
-     */
+     // NOTHING TO BE DONE
 }
 
-TEST(ChannelImpl, OnClose)
-{
-    uv_handle_t* handle = (uv_handle_t*)malloc(sizeof(uv_handle_t));
-    maid::ChannelImpl::OnClose(handle);
-
-    /*
-     * NOTHING TO BE DONE
-     */
-}
+//TEST(ChannelImpl, OnClose)
+//{
+//    uv_handle_t* handle = (uv_handle_t*)malloc(sizeof(uv_handle_t));
+//    maid::ChannelImpl::OnClose(handle);
+//
+//     // NOTHING TO BE DONE
+//}
 
 TEST(ChannelImpl, AddConnection)
 {

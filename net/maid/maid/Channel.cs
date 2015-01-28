@@ -24,7 +24,6 @@ namespace maid
         private List<ConnectionFunc> ConnectedCallback_;
         private List<ConnectionFunc> DisconnectedCallback_;
 
-
         private int reconnect_ = -1;
         private string host_ = "";
         private int port_ = 0;
@@ -43,7 +42,24 @@ namespace maid
         private MemoryStream readBufferBack_; //
 
         private ControllerProtoSerializer serializer_;
+        private ControllerProto proto_;
         private byte[] buffer_;
+
+        public List<ConnectionFunc> ConnectedCallback
+        {
+            get
+            {
+                return ConnectedCallback_;
+            }
+        }
+
+        public List<ConnectionFunc> DisconnectedCallback
+        {
+            get
+            {
+                return DisconnectedCallback_;
+            }
+        }
 
         public Channel()
         {
@@ -60,6 +76,8 @@ namespace maid
 
             ConnectedCallback_ = new List<ConnectionFunc>();
             DisconnectedCallback_ = new List<ConnectionFunc>();
+
+            proto_ = new ControllerProto();
         }
 
         public void AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RpcCallFunc<RequestType, ResponseType> callback)
@@ -153,12 +171,12 @@ namespace maid
                 };
             }
 
-            ConnectedCallback_.Add(() =>
+            ConnectedCallback.Add(() =>
             {
                 requests.Clear();
             });
 
-            DisconnectedCallback_.Add(() =>
+            DisconnectedCallback.Add(() =>
             {
                 requests.Clear();
             });
@@ -226,7 +244,8 @@ namespace maid
             string methodName = fullMethodName.Substring(last + 1, fullMethodName.Length - last - 1);
 
             Controller controller = new Controller();
-            controller.proto = new ControllerProto();
+            controller.channel = this;
+            controller.proto = proto_;
             controller.proto.full_service_name = fullServiceName;
             controller.proto.method_name = methodName;
             sendRequestFunc_[fullMethodName](controller, request);
@@ -362,7 +381,7 @@ namespace maid
             asyncRead_ = null;
             connection_ = null;
 
-            foreach (ConnectionFunc callback in DisconnectedCallback_)
+            foreach (ConnectionFunc callback in DisconnectedCallback)
             {
                 callback();
             }
@@ -468,6 +487,7 @@ namespace maid
             Controller controller = new Controller();
             controller.channel = this;
             controller.proto = serializer_.Deserialize(readBuffer_, null, typeof(ControllerProto), len) as ControllerProto;
+            proto_ = controller.proto;
 
             // swap buffer
             readBufferBack_.Seek(0, SeekOrigin.Begin);

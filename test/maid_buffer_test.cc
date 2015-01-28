@@ -6,104 +6,84 @@ TEST(Buffer, Constructor)
 {
     maid::Buffer buffer;
 
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_EQ(0u, buffer.total);
-    ASSERT_EQ(NULL, buffer.base);
+    ASSERT_EQ(NULL, buffer.base_);
+    ASSERT_EQ(NULL, buffer.start);
+    ASSERT_EQ(NULL, buffer.end);
+    ASSERT_EQ(0u, buffer.size_);
 }
 
-TEST(Buffer, ExpendSmall)
+TEST(Buffer, Expend)
 {
     maid::Buffer buffer;
+    size_t expect_size = 10;
 
-    buffer.Expend(10);
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_LE(10u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
-
-    buffer.Expend(10);
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_LE(10u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
-
-    buffer.len = 10;
-    buffer.Expend(10);
-    ASSERT_EQ(10u, buffer.len);
-    ASSERT_LE(20u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
+    buffer.Expend(expect_size);
+    ASSERT_LE(expect_size, buffer.size_);
+    ASSERT_EQ(buffer.base_, buffer.start);
+    ASSERT_EQ(buffer.start, buffer.end);
 }
 
-
-TEST(Buffer, ExpendZero)
+TEST(Buffer, ExpendTwice)
 {
     maid::Buffer buffer;
+    size_t expect_size = 50;
+    buffer.Expend(expect_size);
+    size_t origin_size = buffer.size_;
+    buffer.Expend(expect_size);
 
-    buffer.Expend(0);
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_LE(0u, buffer.total);
-    ASSERT_TRUE(NULL == buffer.base);
+    ASSERT_LE(expect_size, buffer.size_);
+    ASSERT_EQ(buffer.base_, buffer.start);
+    ASSERT_EQ(buffer.start, buffer.end);
+    ASSERT_EQ(origin_size, buffer.size_);
 }
 
 
-TEST(Buffer, ExpendLarge)
+TEST(Buffer, ExpendUseTail)
 {
     maid::Buffer buffer;
+    size_t expect_size = 50;
+    size_t expect_size_2 = 40;
+    buffer.Expend(expect_size);
+    size_t origin_size = buffer.size_;
+    buffer.end += 10;
+    buffer.Expend(expect_size_2);
 
-    buffer.Expend(100000000);
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_LE(100000000u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
+    ASSERT_LE(expect_size, buffer.size_);
+    ASSERT_EQ(buffer.base_, buffer.start);
+    ASSERT_EQ(buffer.start + 10, buffer.end);
+    ASSERT_EQ(origin_size, buffer.size_);
 
-    buffer.Expend(100000000);
-    ASSERT_EQ(0u, buffer.len);
-    ASSERT_LE(100000000u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
-
-    buffer.len = 100000000;
-    buffer.Expend(100000000);
-    ASSERT_EQ(100000000u, buffer.len);
-    ASSERT_LE(200000000u, buffer.total);
-    ASSERT_TRUE(NULL != buffer.base);
 }
 
-TEST(Buffer, ExpendKeepOriginDataSmall)
+TEST(Buffer, ExpendUseRemain)
 {
     maid::Buffer buffer;
-    const char* data = "hello world";
-    buffer.base = malloc(strlen(data));
-    buffer.len = strlen(data);
-    memmove(buffer.base, data, strlen(data) + 1);
+    size_t expect_size = 50;
+    size_t expect_size_2 = 40;
+    buffer.Expend(expect_size);
+    size_t origin_size = buffer.size_;
+    buffer.start += 20;
+    buffer.end += 30;
+    buffer.Expend(expect_size_2);
 
-    buffer.Expend(100);
-    ASSERT_TRUE(strncmp((char*)buffer.base, data, buffer.len) == 0);
-    ASSERT_LE(buffer.len, buffer.total);
-    ASSERT_EQ(buffer.len, strlen(data));
+    ASSERT_LE(expect_size, buffer.size_);
+    ASSERT_EQ(buffer.base_, buffer.start);
+    ASSERT_EQ(buffer.start + 10, buffer.end);
+    ASSERT_EQ(origin_size, buffer.size_);
 }
 
-TEST(Buffer, ExpendKeepOriginDataZero)
+TEST(Buffer, ExpendUseMalloc)
 {
     maid::Buffer buffer;
-    const char* data = "hello world";
-    buffer.base = malloc(strlen(data));
-    buffer.len = strlen(data);
-    memmove(buffer.base, data, strlen(data) + 1);
+    size_t expect_size = 50;
+    size_t expect_size_2 = 40;
+    buffer.Expend(expect_size);
+    size_t origin_size = buffer.size_;
+    buffer.end += 50;
+    buffer.Expend(expect_size_2);
 
-    buffer.Expend(0);
-    ASSERT_TRUE(strncmp((char*)buffer.base, data, buffer.len) == 0);
-    ASSERT_LE(buffer.len, buffer.total);
-    ASSERT_EQ(buffer.len, strlen(data));
-}
-
-
-TEST(Buffer, ExpendKeepOriginDataLarge)
-{
-    maid::Buffer buffer;
-    const char* data = "hhello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello ello world";
-    buffer.base = malloc(strlen(data));
-    buffer.len = strlen(data);
-    memmove(buffer.base, data, strlen(data) + 1);
-
-    buffer.Expend(100000);
-    ASSERT_TRUE(strncmp((char*)buffer.base, data, buffer.len) == 0);
-    ASSERT_LE(buffer.len, buffer.total);
-    ASSERT_EQ(buffer.len, strlen(data));
+    ASSERT_LE(expect_size + expect_size_2, buffer.size_);
+    ASSERT_EQ(buffer.base_, buffer.start);
+    ASSERT_EQ(buffer.start + 50, buffer.end);
+    ASSERT_LT(origin_size, buffer.size_);
 }

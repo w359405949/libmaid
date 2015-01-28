@@ -5,10 +5,26 @@
 class MockClosure : public google::protobuf::Closure
 {
 public:
+    MockClosure(maid::Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
+        :controller_(controller),
+        request_(request),
+        response_(response)
+    {
+    }
+
     void Run()
     {
         printf("receive something\n");
+
+        delete controller_;
+        delete request_;
+        delete response_;
     }
+
+private:
+    maid::Controller* controller_;
+    google::protobuf::Message* request_;
+    google::protobuf::Message* response_;
 };
 
 class HelloServiceImpl: public maid::example::HelloService
@@ -27,6 +43,8 @@ public:
         maid::example::HelloRequest* req = new maid::example::HelloRequest();
         req->set_message("request from libmaid");
         stub->HelloNotify(con, req, NULL, NULL);
+        delete con;
+        delete req;
 
         response->set_message("welcome to libmaid");
         done->Run();
@@ -58,8 +76,10 @@ public:
         req->set_message("request from libmaid");
 
         maid::example::HelloResponse* res = new maid::example::HelloResponse();
-        MockClosure* stub_done = new MockClosure();
+        MockClosure* stub_done = new MockClosure(con, req, res);
         stub->HelloRpc(con, req, res, stub_done);
+
+        done->Run();
     }
 
 

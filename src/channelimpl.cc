@@ -12,6 +12,7 @@
 
 #include <glog/logging.h>
 
+#include "helper.h"
 #include "maid/controller.h"
 #include "maid/controller.pb.h"
 #include "maid/options.pb.h"
@@ -52,11 +53,13 @@ ChannelImpl::~ChannelImpl()
     middleware_.clear();
 
     for (std::map<int64_t, uv_stream_t*>::iterator it = connected_handle_.begin(); it != connected_handle_.end(); it++) {
+        it->second->data = NULL;
         RemoveConnection(it->second);
     }
     connected_handle_.clear();
 
     for (std::map<int64_t, uv_stream_t*>::iterator it = listen_handle_.begin(); it != listen_handle_.end(); it++) {
+        it->second->data = NULL;
         uv_close((uv_handle_t*)it->second, OnCloseListen);
     }
     listen_handle_.clear();
@@ -81,111 +84,97 @@ void ChannelImpl::CallMethod(const google::protobuf::MethodDescriptor* method,
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    DCHECK(NULL != dynamic_cast<Controller*>(rpc_controller));
     DCHECK(NULL != request);
+    maid::Controller* controller = google::protobuf::down_cast<Controller*>(rpc_controller);
+    proto::ControllerProto* controller_proto = controller->mutable_proto();
+    controller_proto->set_full_service_name(method->service()->full_name());
+    controller_proto->set_method_name(method->name());
+    request->SerializeToString(controller_proto->mutable_message());
 
-    Controller* controller = (Controller*)rpc_controller;
-    controller->mutable_proto()->set_full_service_name(method->service()->full_name());
-    controller->mutable_proto()->set_method_name(method->name());
-
-    bool notify = false;
-    const proto::MaidMethodOptions& method_options = method->options().GetExtension(proto::method_options);
-    if (method_options.has_notify()) {
-        notify = method_options.notify();
-    } else {
-        const proto::MaidServiceOptions& service_options = method->service()->options().GetExtension(proto::service_options);
-        notify = service_options.notify();
-    }
-
-    if (!notify) {
+    if (!helper::ProtobufHelper::notify(*controller_proto)) {
         uint32_t transmit_id = ++transmit_id_max_; // TODO: check if used
-        //DLOG_IF(FATAL, async_result_.find(transmit_id) != async_result_.end()) << "transmit id used";
-        controller->mutable_proto()->set_transmit_id(transmit_id);
+        controller_proto->set_transmit_id(transmit_id);
         async_result_[transmit_id].controller = controller;
         async_result_[transmit_id].response = response;
         async_result_[transmit_id].done = done;
-        transactions_[controller->connection_id()].insert(transmit_id);
+
+        const proto::ConnectionProto& connection_proto = controller_proto->GetExtension(proto::connection);
+        if (connection_proto.has_id()) {
+            transactions_[connection_proto.id()].insert(transmit_id);
+        }
     } else {
-        DLOG_IF(FATAL, NULL != done) << method->full_name() << " Closure should be NULL, while MaidMethodOptions.notify=true or MaidServiceOptions.notify=true";
+        DLOG_IF(FATAL, NULL != done) << "notify method, done should be NULL";
+        controller_proto = controller->release_proto();
     }
 
-    try {
-        request->SerializeToString(controller->mutable_proto()->mutable_message());
-    } catch (std::bad_alloc) {
-        controller->SetFailed("busy");
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
-        return;
-    }
-
-    SendRequest(method, controller);
+    SendRequest(controller_proto);
 }
 
-
-void ChannelImpl::SendRequest(const google::protobuf::MethodDescriptor* method, Controller* controller)
+void ChannelImpl::SendRequest(proto::ControllerProto* controller_proto)
 {
-    controller->mutable_proto()->set_stub(true);
+    controller_proto->set_stub(true);
 
-    bool notify = false;
-    const proto::MaidMethodOptions& method_options = method->options().GetExtension(proto::method_options);
-    if (method_options.has_notify()) {
-        notify = method_options.notify();
-    } else {
-        const proto::MaidServiceOptions& service_options = method->service()->options().GetExtension(proto::service_options);
-        notify = service_options.notify();
-    }
-
-    uv_stream_t* stream = connected_handle(controller);
+    proto::ConnectionProto* connection_proto = controller_proto->MutableExtension(proto::connection);
+    uv_stream_t* stream = connected_handle(*connection_proto, default_stream_);
     if (NULL == stream) {
-        controller->SetFailed("not connected");
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
-        LOG(ERROR) << " connection: " << controller->connection_id() << " not connected";
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text("not connected");
+        HandleResponse(controller_proto);
         return;
     }
-    controller->set_connection_id((int64_t)stream);
+    connection_proto->set_id((int64_t)stream);
+
+    if (controller_proto->has_transmit_id()) {
+        DCHECK(!helper::ProtobufHelper::notify(*controller_proto));
+        transactions_[connection_proto->id()].insert(controller_proto->transmit_id());
+    }
 
     /*
      * middleware
      */
     std::vector<proto::Middleware*>::iterator it = middleware_.begin();
     for (; it != middleware_.end(); it++) {
-        (*it)->ProcessRequest(MockController::default_instance(), controller->mutable_proto(), controller->mutable_proto(), MockClosure::default_instance());
+        (*it)->ProcessRequest(MockController::default_instance(), controller_proto, controller_proto, MockClosure::default_instance());
     }
 
-    int32_t controller_nl = htonl(controller->proto().ByteSize());
-    int32_t send_buffer_size = sizeof(controller_nl) + controller->proto().ByteSize();
+    int32_t controller_nl = htonl(controller_proto->ByteSize());
+    int32_t send_buffer_size = sizeof(controller_nl) + controller_proto->ByteSize();
     int8_t* send_buffer = (int8_t*)malloc(send_buffer_size);
     if (NULL == send_buffer) {
         free(send_buffer);
-        LOG(ERROR) << " no more memory";
-        controller->SetFailed("busy");
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
+        DLOG(ERROR) << " no more memory";
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text("no more memory");
+        HandleResponse(controller_proto);
         return;
     }
+
     memcpy(send_buffer, &controller_nl, sizeof(controller_nl));
-    controller->proto().SerializeToArray(send_buffer + sizeof(controller_nl), controller->proto().ByteSize());
+    controller_proto->SerializeToArray(send_buffer + sizeof(controller_nl), controller_proto->ByteSize());
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (NULL == req) {
         free(send_buffer);
-        controller->SetFailed("busy");
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
-        LOG(ERROR) << " no more memory";
+        DLOG(ERROR) << " no more memory";
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text("no more memory");
+        HandleResponse(controller_proto);
         return;
     }
 
-    req->data = notify ? NULL : controller;
+    req->data = controller_proto;
 
     uv_buf_t uv_buf;
     uv_buf.base = (char*)send_buffer;
     uv_buf.len = send_buffer_size;
-    DLOG(INFO) << " uv_buf.len: " << uv_buf.len;
-    int error = uv_write(req, stream, &uv_buf, 1, AfterSendResponse);
+    int error = uv_write(req, stream, &uv_buf, 1, AfterSendRequest);
     if (error) {
         free(req);
         free(send_buffer);
-        controller->SetFailed(uv_strerror(error));
-        HandleResponse(controller->mutable_proto(), controller->connection_id());
-        DLOG(FATAL) << uv_strerror(error);
+        DLOG(ERROR) << uv_strerror(error);
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text(uv_strerror(error));
+        HandleResponse(controller_proto);
         return;
     }
 
@@ -195,14 +184,17 @@ void ChannelImpl::SendRequest(const google::protobuf::MethodDescriptor* method, 
 void ChannelImpl::AfterSendRequest(uv_write_t* req, int32_t status)
 {
     ChannelImpl* self = (ChannelImpl*)req->handle->data;
-    Controller* controller = (Controller*)req->data;
+    proto::ControllerProto* controller_proto = (proto::ControllerProto*)req->data;
     delete self->sending_buffer_[req];
     self->sending_buffer_.erase(req);
     delete req;
 
-    if (status && NULL != controller) {
-        controller->SetFailed(uv_strerror(status));
-        self->HandleResponse(controller->mutable_proto(), controller->connection_id());
+    if (helper::ProtobufHelper::notify(*controller_proto)) {
+        self->HandleResponse(controller_proto);
+    } else if (status != 0) {
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text(uv_strerror(status));
+        self->HandleResponse(controller_proto);
     }
 }
 
@@ -215,17 +207,20 @@ void ChannelImpl::AfterSendResponse(uv_write_t* req, int32_t status)
     free(req);
 }
 
-void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::Message* response)
+void ChannelImpl::SendResponse(maid::proto::ControllerProto* controller_proto, const google::protobuf::Message* response)
 {
-    controller->mutable_proto()->set_stub(false);
-    controller->mutable_proto()->clear_message();
-    try {
-        if (NULL != response) {
-            response->SerializeToString(controller->mutable_proto()->mutable_message());
-        }
-    } catch (std::bad_alloc) {
-        LOG(ERROR) << " no more memory";
+    if (helper::ProtobufHelper::notify(*controller_proto)) {
         return;
+    }
+
+    controller_proto->set_stub(false);
+    if (NULL != response) {
+        try {
+                response->SerializeToString(controller_proto->mutable_message());
+        } catch (std::bad_alloc) {
+            LOG(ERROR) << " no more memory";
+            return;
+        }
     }
 
     /*
@@ -233,23 +228,24 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
      */
     std::vector<proto::Middleware*>::reverse_iterator it = middleware_.rbegin();
     for (; it != middleware_.rend(); it++) {
-        (*it)->ProcessResponseStub(MockController::default_instance(), controller->mutable_proto(), controller->mutable_proto(), MockClosure::default_instance());
+        (*it)->ProcessResponseStub(MockController::default_instance(), controller_proto, controller_proto, MockClosure::default_instance());
     }
 
-    int32_t controller_nl = htonl(controller->proto().ByteSize());
-    int32_t send_buffer_size = sizeof(controller_nl) + controller->proto().ByteSize();
+    int32_t controller_nl = htonl(controller_proto->ByteSize());
+    int32_t send_buffer_size = sizeof(controller_nl) + controller_proto->ByteSize();
     int8_t* send_buffer = (int8_t*)malloc(send_buffer_size);
     if (NULL == send_buffer) {
         LOG(ERROR) << " no more memory";
         return;
     }
     memcpy(send_buffer, &controller_nl, sizeof(controller_nl));
-    controller->proto().SerializeToArray(send_buffer + sizeof(controller_nl), controller->proto().ByteSize());
+    controller_proto->SerializeToArray(send_buffer + sizeof(controller_nl), controller_proto->ByteSize());
 
-    uv_stream_t* stream = connected_handle(controller);
+    const proto::ConnectionProto& connection_proto = controller_proto->GetExtension(proto::connection);
+    uv_stream_t* stream = connected_handle(connection_proto, NULL);
     if (NULL == stream) {
         free(send_buffer);
-        LOG(ERROR) << " connection: " << controller->connection_id() << " not connected";
+        LOG(ERROR) << " connection: " << connection_proto.id() << " not connected";
         return;
     }
 
@@ -267,7 +263,7 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
     if (error) {
         free(req);
         free(send_buffer);
-        DLOG(FATAL) << uv_strerror(error);
+        DLOG(ERROR) << uv_strerror(error);
         return;
     }
 
@@ -276,7 +272,6 @@ void ChannelImpl::SendResponse(Controller* controller, const google::protobuf::M
 
 void ChannelImpl::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
-    DLOG(INFO) << "connection: " << (int64_t)stream << " nread: " << nread;
     ChannelImpl * self = (ChannelImpl*)stream->data;
 
     if (nread < 0) {
@@ -289,9 +284,24 @@ void ChannelImpl::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf
      */
     self->buffer_[(int64_t)stream].end += nread;
 
+    /*
+     * libuv self schedular
+     */
+    //int32_t result = 0;
+    //do {
+    //    result = self->Handle((int64_t)stream);
+    //} while(result != -2);
+
+    /*
+     *  timer schedular
+     */
     uv_read_stop(stream);
     uv_timer_t& timer = self->timer_handle_[(int64_t)stream];
     uv_timer_start(&timer, OnTimer, 1, 1);
+
+    /*
+     * idle schedular
+     */
     //uv_idle_t& idle = self->idle_handle_[(int64_t)stream];
     //uv_idle_start(&idle, OnIdle);
 }
@@ -301,8 +311,6 @@ void ChannelImpl::OnIdle(uv_idle_t* idle)
     uv_stream_t* stream = (uv_stream_t*)idle->data;
     ChannelImpl* self = (ChannelImpl*)stream->data;
     int32_t result = self->Handle((int64_t)stream);
-
-    DLOG(INFO)<< " uv_now:" << uv_now(self->loop_) << " uv_hrtime:" << uv_hrtime() << " idle result: " << result;
 
     // scheduler
     switch (result) {
@@ -329,8 +337,6 @@ void ChannelImpl::OnTimer(uv_timer_t* timer)
     uv_stream_t* stream = (uv_stream_t*)timer->data;
     ChannelImpl* self = (ChannelImpl*)stream->data;
     int32_t result = self->Handle((int64_t)stream);
-
-    DLOG(INFO)<< " uv_now:" << uv_now(self->loop_) << " uv_hrtime:" << uv_hrtime() << " timer result: " << result;
 
     // scheduler
     switch (result) {
@@ -366,7 +372,7 @@ int32_t ChannelImpl::Handle(int64_t connection_id)
 
     if (controller_size < 0 || controller_size > controller_max_size_) {
         buffer.start = buffer.end;
-        DLOG(FATAL) << " connection: " << connection_id << " controller_size: " << controller_size << " out of max size: " << controller_max_size_;
+        DLOG(WARNING) << " connection: " << connection_id << " controller_size: " << controller_size << " out of max size: " << controller_max_size_;
         return ERROR_OUT_OF_SIZE;
     }
 
@@ -374,145 +380,150 @@ int32_t ChannelImpl::Handle(int64_t connection_id)
         return ERROR_LACK_DATA;
     }
 
-    proto::ControllerProto proto;
+    proto::ControllerProto* controller_proto = NULL;
+
     try {
-        if (!proto.ParseFromArray(buffer.start + sizeof(controller_size_nl), controller_size)) {
-            DLOG(FATAL) << " connection: " << connection_id << " parse ControllerProto failed";
+        controller_proto = new proto::ControllerProto();
+        if (!controller_proto->ParseFromArray(buffer.start + sizeof(controller_size_nl), controller_size)) {
+            DLOG(WARNING) << " connection: " << connection_id << " parse ControllerProto failed";
             buffer.start += sizeof(controller_size_nl) + controller_size;
             return ERROR_PARSE_FAILED;
         }
+
+        proto::ConnectionProto* connection_proto = controller_proto->MutableExtension(proto::connection);
+        connection_proto->set_id(connection_id);
     } catch (std::bad_alloc) {
+        delete controller_proto;
         return ERROR_BUSY;
     }
     buffer.start += sizeof(controller_size_nl) + controller_size;
     CHECK(buffer.start <= buffer.end);
 
-    if (proto.stub()) {
-        return HandleRequest(&proto, connection_id);
+    if (controller_proto->stub()) {
+        return HandleRequest(controller_proto);
     } else {
-        return HandleResponse(&proto, connection_id);
+        return HandleResponse(controller_proto);
     }
 
     return 0;
 }
 
-int32_t ChannelImpl::HandleRequest(proto::ControllerProto* proto, int64_t connection_id)
+int32_t ChannelImpl::HandleRequest(proto::ControllerProto* controller_proto)
 {
     /*
      * middleware
      */
     std::vector<proto::Middleware*>::reverse_iterator middleware_it = middleware_.rbegin();
     for (; middleware_it != middleware_.rend(); middleware_it++) {
-        (*middleware_it)->ProcessRequestStub(MockController::default_instance(), proto, proto, MockClosure::default_instance());
+        (*middleware_it)->ProcessRequestStub(MockController::default_instance(), controller_proto, controller_proto, MockClosure::default_instance());
     }
 
     std::map<std::string, google::protobuf::Service*>::iterator service_it;
-    service_it = service_.find(proto->full_service_name());
+    service_it = service_.find(controller_proto->full_service_name());
     if (service_.end() == service_it) {
-        DLOG(WARNING) << " service: " << proto->full_service_name().c_str() << " not exist";
+        DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " not exist";
+        delete controller_proto;
         return ERROR_OTHER;
     }
 
     google::protobuf::Service* service = service_it->second;
     const google::protobuf::MethodDescriptor* method = NULL;
-    method = service->GetDescriptor()->FindMethodByName(proto->method_name());
+    method = service->GetDescriptor()->FindMethodByName(controller_proto->method_name());
     if (NULL == method) {
-        DLOG(WARNING) << " service: " << proto->full_service_name().c_str() << " method: " << proto->method_name() << " not exist";
+        DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " method: " << controller_proto->method_name() << " not exist";
+        delete controller_proto;
         return ERROR_OTHER;
     }
 
-    bool notify = false;
-    const proto::MaidMethodOptions& method_options = method->options().GetExtension(proto::method_options);
-    if (method_options.has_notify()) {
-        notify = method_options.notify();
-    } else {
-        const proto::MaidServiceOptions& service_options = method->service()->options().GetExtension(proto::service_options);
-        notify = service_options.notify();
-    }
-
-    google::protobuf::RpcController* controller = MockController::default_instance();
+    maid::Controller* controller = NULL;
     google::protobuf::Message* request = NULL;
     google::protobuf::Message* response = NULL;
-    google::protobuf::Closure* done = MockClosure::default_instance();
+    RemoteClosure* done = NULL;
 
     try {
+        done = NewRemoteClosure();
+        controller = new Controller();
+
         request = service->GetRequestPrototype(method).New();
-        if (!request->ParseFromString(proto->message())) {
+        if (!request->ParseFromString(controller_proto->message())) {
+            delete controller;
             delete request;
             delete done;
+            delete controller_proto;
             return ERROR_PARSE_FAILED;
         }
 
-        if (!notify) {
-            RemoteClosure* closure = NewRemoteClosure();
-            done = closure;
+        response = service->GetResponsePrototype(method).New();
 
-            Controller* maid_controller = new Controller();
-            controller = maid_controller;
-            proto->clear_message();
-            maid_controller->mutable_proto()->CopyFrom(*proto);
-            maid_controller->set_connection_id(connection_id);
+        done->set_controller(controller);
+        done->set_request(request);
+        done->set_response(response);
 
-            closure->set_controller(maid_controller);
-
-            closure->set_request(request);
-
-            response = service->GetResponsePrototype(method).New();
-            closure->set_response(response);
-        }
     } catch (std::bad_alloc) {
-        if (controller != MockController::default_instance())
-        {
-            delete done;
-        }
+        delete controller;
         delete request;
         delete response;
-        if (done!= MockClosure::default_instance())
-        {
-            delete done;
-        }
+        delete done;
+        delete controller_proto;
         return ERROR_BUSY;
     }
+    controller->set_allocated_proto(controller_proto);
 
-    CHECK(connection_id == ((Controller*)controller)->connection_id());
+    bool notify = helper::ProtobufHelper::notify(*controller_proto);
+
     // call
     service->CallMethod(method, controller, request, response, done);
 
     if (notify) {
-        delete request;
+        done->Reset();
     }
+
     return 0;
 }
 
-int32_t ChannelImpl::HandleResponse(proto::ControllerProto* proto, int64_t connection_id)
+int32_t ChannelImpl::HandleResponse(proto::ControllerProto* controller_proto)
 {
+    if (helper::ProtobufHelper::notify(*controller_proto)) {
+        delete controller_proto;
+        return 0;
+    }
+
     /*
      * middleware
      */
     std::vector<proto::Middleware*>::iterator middleware_it = middleware_.begin();
     for (; middleware_it != middleware_.end(); middleware_it++) {
-        (*middleware_it)->ProcessResponse(MockController::default_instance(), proto, proto, MockClosure::default_instance());
+        (*middleware_it)->ProcessResponse(MockController::default_instance(), controller_proto, controller_proto, MockClosure::default_instance());
     }
 
-    std::map<int64_t, Context>::iterator it = async_result_.find(proto->transmit_id());
-    Context& context = it->second;
-    if (it == async_result_.end() || context.controller->connection_id() != connection_id) {
+    const proto::ConnectionProto& connection_proto = controller_proto->GetExtension(proto::connection);
+
+    if (connection_proto.has_id()) {
+        std::set<int64_t>& transactions = transactions_[connection_proto.id()];
+        if (transactions.end() == transactions.find(controller_proto->transmit_id())) {
+            DLOG(WARNING) << "connection id miss";
+            return 0;
+        }
+        transactions.erase(controller_proto->transmit_id());
+        if (transactions.size() == 0) {
+            transactions_.erase(connection_proto.id());
+        }
+    }
+
+    std::map<int64_t, Context>::iterator it = async_result_.find(controller_proto->transmit_id());
+    if (it == async_result_.end()) {
+        DLOG(WARNING) << "commit id miss";
         return 0;
     }
 
-    if (!proto->failed()) {
-        it->second.response->ParseFromString(proto->message());
+    Context& context = it->second;
+    if (!controller_proto->failed()) {
+        context.response->ParseFromString(controller_proto->message());
     }
+    context.controller->set_allocated_proto(controller_proto);
+    context.done->Run();
 
-    proto->clear_message();
-    it->second.controller->mutable_proto()->CopyFrom(*proto);
-    it->second.done->Run();
-
-    async_result_.erase(it->first);
-    transactions_[connection_id].erase(it->first);
-    if (transactions_[connection_id].size() == 0) {
-        transactions_.erase(connection_id);
-    }
+    async_result_.erase(it);
 
     return 0;
 }
@@ -523,6 +534,7 @@ maid::RemoteClosure* ChannelImpl::NewRemoteClosure()
     if (!remote_closure_pool_.empty()) {
         done = remote_closure_pool_.top();
         remote_closure_pool_.pop();
+        done->Reset();
     } else {
         done = new RemoteClosure(this);
     }
@@ -609,7 +621,9 @@ void ChannelImpl::OnAccept(uv_stream_t* handle, int32_t status)
 void ChannelImpl::OnCloseListen(uv_handle_t* handle)
 {
     ChannelImpl* self = (ChannelImpl*)handle->data;
-    self->listen_handle_.erase((int64_t)handle);
+    if (NULL != self) {
+        self->listen_handle_.erase((int64_t)handle);
+    }
     free(handle);
 }
 
@@ -652,7 +666,9 @@ int64_t ChannelImpl::Listen(const char* host, int32_t port, int32_t backlog)
 void ChannelImpl::OnCloseConnection(uv_handle_t* handle)
 {
     ChannelImpl* self = (ChannelImpl*)handle->data;
-    self->connected_handle_.erase((int64_t)handle);
+    if (NULL != self) {
+        self->connected_handle_.erase((int64_t)handle);
+    }
     free(handle);
 }
 
@@ -671,17 +687,16 @@ void ChannelImpl::RemoveConnection(uv_stream_t* stream)
         default_stream_ = NULL;
     }
 
-    stream->data = this;
     uv_close((uv_handle_t*)stream, OnCloseConnection);
 
     /*
      * middleware
      */
-    proto::ConnectionProto connection;
-    connection.set_id((int64_t)stream);
+    proto::ConnectionProto connection_proto;
+    connection_proto.set_id((int64_t)stream);
     std::vector<proto::Middleware*>::iterator middleware_it = middleware_.begin();
     for (; middleware_it != middleware_.end(); middleware_it++) {
-        (*middleware_it)->Disconnected(MockController::default_instance(), &connection, &connection, MockClosure::default_instance());
+        (*middleware_it)->Disconnected(MockController::default_instance(), &connection_proto, &connection_proto, MockClosure::default_instance());
     }
 }
 
@@ -702,11 +717,13 @@ void ChannelImpl::AddConnection(uv_stream_t* stream)
     /*
      * middleware
      */
-    proto::ConnectionProto connection;
-    connection.set_id((int64_t)stream);
+    proto::ConnectionProto connection_proto;
+    connection_proto.set_id((int64_t)stream);
+    //connection.set_host();
+    //connection.set_port();
     std::vector<proto::Middleware*>::iterator it = middleware_.begin();
     for (; it != middleware_.end(); it++) {
-        (*it)->Connected(MockController::default_instance(), &connection, &connection, MockClosure::default_instance());
+        (*it)->Connected(MockController::default_instance(), &connection_proto, &connection_proto, MockClosure::default_instance());
     }
 }
 
@@ -719,19 +736,17 @@ void ChannelImpl::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* 
     buf->base = (char*)buffer.end;
 }
 
-uv_stream_t* ChannelImpl::connected_handle(Controller* controller)
+uv_stream_t* ChannelImpl::connected_handle(const maid::proto::ConnectionProto& connection_proto, uv_stream_t* stream)
 {
-    const proto::ConnectionProto& connection = controller->proto().GetExtension(proto::connection);
-    if (!connection.has_id()) {
-        return default_stream_;
+    if (!connection_proto.has_id()) {
+        return stream;
     }
 
-    uv_stream_t* handle = NULL;
-    std::map<int64_t, uv_stream_t*>::const_iterator it = connected_handle_.find(connection.id());
+    std::map<int64_t, uv_stream_t*>::iterator it = connected_handle_.find(connection_proto.id());
     if (connected_handle_.end() != it) {
-        handle = it->second;
+        stream = it->second;
     }
-    return handle;
+    return stream;
 }
 
 void ChannelImpl::set_default_connection_id(int64_t connection_id)

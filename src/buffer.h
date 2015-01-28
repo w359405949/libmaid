@@ -15,7 +15,7 @@ struct Buffer
         :start(NULL),
         end(NULL),
         base_(NULL),
-        size(0)
+        size_(0)
     {
     }
 
@@ -27,11 +27,11 @@ struct Buffer
         base_ = NULL;
     }
 
-    size_t Expend(size_t expect_length);
+    size_t Expend(size_t expect_size);
 
-private:
+public:
     int8_t* base_;
-    size_t size;
+    size_t size_;
 };
 
 }

@@ -3,10 +3,13 @@
 #include <google/protobuf/service.h>
 #include <google/protobuf/stubs/common.h>
 
-#include "maid/controller.pb.h"
-
 namespace maid
 {
+
+namespace proto
+{
+    class ControllerProto;
+}
 
 class ControllerImpl : public google::protobuf::RpcController
 {
@@ -29,20 +32,16 @@ public:
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
 public:
-    inline proto::ControllerProto* mutable_proto()
-    {
-        return &proto_;
-    }
-    inline const proto::ControllerProto& proto()
-    {
-        return proto_;
-    }
+    proto::ControllerProto* mutable_proto();
+    const proto::ControllerProto& proto() const;
+    proto::ControllerProto* release_proto();
+    void set_allocated_proto(proto::ControllerProto* proto);
 
     void set_connection_id(int64_t connection_id);
     int64_t connection_id() const;
 
 public:
-    proto::ControllerProto proto_;
+    proto::ControllerProto* proto_;
 };
 
 } /* maid */

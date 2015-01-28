@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "maid/maid.h"
 #include "hello.pb.h"
-#define MAX_CONNECTION 10000
+#define REQUESTS 1000000
 
 using maid::Channel;
 using maid::Controller;
@@ -24,7 +24,7 @@ public:
             ++count;
             printf("count:%d\n", count);
         }
-        if(count + 1 >= MAX_CONNECTION){
+        if(count + 1 >= REQUESTS){
             uv_stop(uv_default_loop());
         }
         //printf("%s\n", response_->message().c_str());
@@ -45,7 +45,7 @@ int main()
 {
     Channel* channel = new Channel();
     channel->Connect("127.0.0.1", 5555, true);
-    for(int32_t i = 0; i < MAX_CONNECTION; i++){
+    for(int32_t i = 0; i < REQUESTS; i++){
         Controller* controller = new Controller();
         maid::example::HelloRequest* request = new maid::example::HelloRequest();
         request->set_message("hello");

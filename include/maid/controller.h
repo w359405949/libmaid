@@ -32,7 +32,9 @@ public:
     void NotifyOnCancel(google::protobuf::Closure* callback);
 
     proto::ControllerProto* mutable_proto();
-    const proto::ControllerProto& proto();
+    const proto::ControllerProto& proto() const;
+    proto::ControllerProto* release_proto();
+    void set_allocated_proto(proto::ControllerProto* proto);
 
     int64_t connection_id();
     void set_connection_id(int64_t connection_id);

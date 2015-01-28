@@ -16,10 +16,10 @@ namespace Example
             HelloService service = new HelloService();
             channel.AddMethod<HelloRequest, HelloSerializer>("maid.example.HelloService.HelloNotify", service.HelloNotify);
             channel.AddMethod<HelloRequest, HelloSerializer, HelloResponse, HelloSerializer>("maid.example.HelloService.HelloRpc", service.HelloRpc);
-            channel.ConnectedEvent += () =>
+            channel.ConnectedCallback.Add(() =>
             {
                 Console.WriteLine("连接上了");
-            };
+            });
 
             channel.Connect("192.168.0.99", 5555);
 

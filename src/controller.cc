@@ -53,9 +53,19 @@ maid::proto::ControllerProto* Controller::mutable_proto()
     return controller_->mutable_proto();
 }
 
-const maid::proto::ControllerProto& Controller::proto()
+const maid::proto::ControllerProto& Controller::proto() const
 {
     return controller_->proto();
+}
+
+maid::proto::ControllerProto* Controller::release_proto()
+{
+    return controller_->release_proto();
+}
+
+void Controller::set_allocated_proto(maid::proto::ControllerProto* proto)
+{
+    controller_->set_allocated_proto(proto);
 }
 
 int64_t Controller::connection_id()

@@ -1,30 +1,31 @@
 #include "gtest/gtest.h"
 #include "controllerimpl.h"
+#include "maid/controller.pb.h"
 
-TEST(ControllerImpl, MetaData) {
+TEST(ControllerImpl, proto) {
     maid::ControllerImpl controllerimpl;
 
-    ASSERT_STREQ("", controllerimpl.meta_data().method_name().c_str());
-    ASSERT_EQ(0u, controllerimpl.meta_data().transmit_id());
-    ASSERT_FALSE(controllerimpl.meta_data().stub());
-    ASSERT_FALSE(controllerimpl.meta_data().is_canceled());
-    ASSERT_FALSE(controllerimpl.meta_data().failed());
-    ASSERT_STREQ("", controllerimpl.meta_data().error_text().c_str());
-    ASSERT_FALSE(controllerimpl.meta_data().notify());
-    ASSERT_STREQ("", controllerimpl.meta_data().message().c_str());
-    ASSERT_STREQ("", controllerimpl.meta_data().full_service_name().c_str());
+    ASSERT_STREQ("", controllerimpl.proto().method_name().c_str());
+    ASSERT_EQ(0u, controllerimpl.proto().transmit_id());
+    ASSERT_FALSE(controllerimpl.proto().stub());
+    ASSERT_FALSE(controllerimpl.proto().is_canceled());
+    ASSERT_FALSE(controllerimpl.proto().failed());
+    ASSERT_STREQ("", controllerimpl.proto().error_text().c_str());
+    ASSERT_FALSE(controllerimpl.proto().notify());
+    ASSERT_STREQ("", controllerimpl.proto().message().c_str());
+    ASSERT_STREQ("", controllerimpl.proto().full_service_name().c_str());
 }
 
-TEST(ControllerImpl, FdGetSet) {
+TEST(ControllerImpl, ConnectionIdGetSet) {
 
     maid::ControllerImpl controllerimpl;
-    ASSERT_EQ(0, controllerimpl.fd());
+    ASSERT_EQ(0, controllerimpl.connection_id());
 
-    controllerimpl.set_fd(1);
-    ASSERT_EQ(1, controllerimpl.fd());
+    controllerimpl.set_connection_id(1);
+    ASSERT_EQ(1, controllerimpl.connection_id());
 
-    controllerimpl.set_fd(-1);
-    ASSERT_EQ(-1, controllerimpl.fd());
+    controllerimpl.set_connection_id(-1);
+    ASSERT_EQ(-1, controllerimpl.connection_id());
 }
 
 TEST(ControllerImpl, Reset)
@@ -35,7 +36,7 @@ TEST(ControllerImpl, FailedGetSet)
 {
     maid::ControllerImpl controllerimpl;
     ASSERT_FALSE(controllerimpl.Failed());
-    ASSERT_FALSE(controllerimpl.meta_data().failed());
+    ASSERT_FALSE(controllerimpl.proto().failed());
     ASSERT_STREQ("", controllerimpl.ErrorText().c_str());
 
     controllerimpl.SetFailed("whatever");

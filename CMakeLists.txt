@@ -21,6 +21,7 @@ message("  -> Prepared: maid")
 
 include_directories(
     ${maid_SOURCE_DIR}/include
+    ${maid_SOURCE_DIR}/src
     ${maid_SOURCE_DIR}/deps/gtest/include
 )
 
@@ -29,7 +30,7 @@ set(cxx_strict "${cxx_strict} -Wno-shadow")
 if (maid_debug)
     set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
 else()
-    set(cxx_strict "${cxx_strict} -O2 -fPIC")
+    set(cxx_strict "${cxx_strict} -O3 -fPIC")
 endif()
 
 cxx_shared_library(maid ${cxx_strict} ${source})
@@ -40,7 +41,6 @@ target_link_libraries(maid
     uv
     protobuf
     glog
-    #tcmalloc
     )
 
 ################################
@@ -62,7 +62,7 @@ if (maid_test)
 
     cxx_test(maid_controllerimpl_test maid_main)
     cxx_test(maid_channelimpl_uv_success_test maid_main test/test.pb.cc)
-    cxx_test(maid_channelimpl_uv_failed_test maid_main test/test.pb.cc)
+    #cxx_test(maid_channelimpl_uv_failed_test maid_main test/test.pb.cc)
     cxx_test(maid_channel_test maid_main )
     cxx_test(maid_controller_test maid_main )
     cxx_test(maid_buffer_test maid_main )

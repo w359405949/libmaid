@@ -12,8 +12,8 @@ size_t Buffer::Expend(size_t expect)
     CHECK(end >= start);
 
     size_t space_used = end - start;
-    size_t remain = size - space_used;
-    size_t tail = size - (end - base_);
+    size_t remain = size_ - space_used;
+    size_t tail = size_ - (end - base_);
 
     if (tail >= expect) {
         return tail;
@@ -26,7 +26,7 @@ size_t Buffer::Expend(size_t expect)
         return remain;
     }
 
-    size_t new_size = size;
+    size_t new_size = size_;
     while (expect + space_used > new_size){
         new_size += 1;
         new_size <<= 1;
@@ -43,7 +43,7 @@ size_t Buffer::Expend(size_t expect)
     base_ = new_ptr;
     start = new_ptr;
     end = new_ptr + space_used;
-    size = new_size;
+    size_ = new_size;
 
     return new_size - space_used;
 }
