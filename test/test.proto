@@ -2,10 +2,12 @@ option cc_generic_services = true;
 
 message Request
 {
+	optional string message = 1;
 }
 
 message Response
 {
+	optional string message = 1;
 }
 
 service TestService

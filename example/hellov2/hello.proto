@@ -1,0 +1,27 @@
+import "maid/options.proto";
+
+package maid.example;
+
+option cc_generic_services = true;
+option py_generic_services = true;
+
+message HelloRequest
+{
+    optional string message = 1;
+}
+
+message HelloResponse
+{
+    optional string message = 1;
+}
+
+service HelloService
+{
+    rpc Hello(HelloRequest) returns(HelloResponse);
+    rpc HelloRpc(HelloRequest) returns(HelloResponse);
+
+    rpc HelloNotify(HelloRequest) returns(HelloResponse)
+    {
+    	option (maid.proto.method_options).notify = true;
+    }
+}

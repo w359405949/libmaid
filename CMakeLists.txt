@@ -13,7 +13,7 @@ config_compiler_and_linker()
 MESSAGE(STATUS "Project: ${PROJECT_NAME}")
 MESSAGE(STATUS "Project Directory: ${PORJECT_SOURCE_DIR}")
 
-file(GLOB_RECURSE header include/maid/*.h)
+file(GLOB_RECURSE header include/maid/*.h src/*.h)
 file(GLOB_RECURSE source src/*.cc src/middleware/*.cc)
 file(GLOB_RECURSE middleware_header src/middleware/*.h)
 
@@ -33,7 +33,11 @@ else()
     set(cxx_strict "${cxx_strict} -O3 -fPIC")
 endif()
 
-cxx_shared_library(maid ${cxx_strict} ${source})
+if (maid_static)
+    cxx_library(maid ${cxx_strict} ${source})
+else()
+    cxx_shared_library(maid ${cxx_strict} ${source})
+endif()
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
 
@@ -48,7 +52,8 @@ target_link_libraries(maid
 ################################
 INSTALL(FILES libmaid.so DESTINATION lib)
 INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
-INSTALL(FILES ${middleware_header} DESTINATION include/maid/middlware/)
+INSTALL(FILES ${header} DESTINATION include/maid/)
+INSTALL(FILES ${middleware_header} DESTINATION include/maid/middleware/)
 
 ################################
 # TEST
@@ -60,11 +65,9 @@ if (maid_test)
     cxx_library(maid_main ${cxx_strict} test/maid_main)
     target_link_libraries(maid_main maid gtest)
 
-    cxx_test(maid_controllerimpl_test maid_main)
-    cxx_test(maid_channelimpl_uv_success_test maid_main test/test.pb.cc)
-    #cxx_test(maid_channelimpl_uv_failed_test maid_main test/test.pb.cc)
-    cxx_test(maid_channel_test maid_main )
+    cxx_test(maid_channel_factory_test maid_main)
+    cxx_test(maid_channel_test maid_main test/test.pb.cc)
     cxx_test(maid_controller_test maid_main )
     cxx_test(maid_buffer_test maid_main )
-    cxx_test(maid_remoteclosure_test maid_main test/test.pb.cc)
+    cxx_test(maid_closure_test maid_main test/test.pb.cc)
 endif()

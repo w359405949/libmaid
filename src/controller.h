@@ -11,11 +11,11 @@ namespace proto
     class ControllerProto;
 }
 
-class ControllerImpl : public google::protobuf::RpcController
+class Controller : public google::protobuf::RpcController
 {
 public:
-    ControllerImpl();
-    virtual ~ControllerImpl();
+    Controller();
+    virtual ~Controller();
 
     void Reset();
 
@@ -37,11 +37,17 @@ public:
     proto::ControllerProto* release_proto();
     void set_allocated_proto(proto::ControllerProto* proto);
 
-    void set_connection_id(int64_t connection_id);
-    int64_t connection_id() const;
+public: // unit test only
+    inline const google::protobuf::Closure* cancel_callback() const
+    {
+        return cancel_callback_;
+    }
 
-public:
+private:
     proto::ControllerProto* proto_;
+    google::protobuf::Closure* cancel_callback_;
+
+    GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Controller);
 };
 
 } /* maid */

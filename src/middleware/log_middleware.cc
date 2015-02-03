@@ -1,6 +1,8 @@
 #include "log_middleware.h"
 #include <glog/logging.h>
 
+namespace maid {
+
 LogMiddleware::LogMiddleware()
 {
     google::InitGoogleLogging("");
@@ -52,4 +54,6 @@ void LogMiddleware::ProcessResponseStub(::google::protobuf::RpcController* contr
         ::google::protobuf::Closure* done)
 {
     DLOG(INFO)<< "process request stub: "<< request->DebugString();
+}
+
 }

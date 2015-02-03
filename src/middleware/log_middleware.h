@@ -1,7 +1,9 @@
 #pragma once
 #include "maid/middleware.pb.h"
 
-class LogMiddleware : public maid::proto::Middleware
+namespace maid {
+
+class LogMiddleware : public proto::Middleware
 {
 public:
 
@@ -32,3 +34,5 @@ public:
 
     LogMiddleware();
 };
+
+}

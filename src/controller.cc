@@ -1,79 +1,92 @@
-#include "maid/controller.h"
-#include "controllerimpl.h"
+#include <glog/logging.h>
+#include "controller.h"
+#include "maid/connection.pb.h"
+#include "maid/controller.pb.h"
 
 using maid::Controller;
 
 Controller::Controller()
+    :proto_(NULL),
+    cancel_callback_(NULL)
 {
-    controller_ = new ControllerImpl();
-}
-
-void Controller::Reset()
-{
-    controller_->Reset();
-}
-
-bool Controller::Failed() const
-{
-    return controller_->Failed();
-}
-
-std::string Controller::ErrorText() const
-{
-    return controller_->ErrorText();
-}
-
-void Controller::StartCancel()
-{
-    return controller_->StartCancel();
-}
-
-void Controller::SetFailed(const std::string& reason)
-{
-    return controller_->SetFailed(reason);
-}
-
-bool Controller::IsCanceled() const
-{
-    return controller_->IsCanceled();
-}
-
-void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
-{
-    return controller_->NotifyOnCancel(callback);
 }
 
 Controller::~Controller()
 {
-    delete controller_;
+    delete proto_;
+    delete cancel_callback_;
+}
+
+void Controller::Reset()
+{
+    if (NULL != proto_) {
+        proto_->Clear();
+    }
+}
+
+bool Controller::Failed() const
+{
+    return proto_ == NULL ? proto::ControllerProto::default_instance().failed() : proto_->failed();
+}
+
+std::string Controller::ErrorText() const
+{
+    return proto_ == NULL ? proto::ControllerProto::default_instance().error_text() : proto_->error_text();
+}
+
+void Controller::StartCancel()
+{
+    mutable_proto();
+    proto_->set_is_canceled(true);
+
+    if (cancel_callback_ != NULL) {
+        cancel_callback_->Run();
+    }
+}
+
+void Controller::SetFailed(const std::string& reason)
+{
+    mutable_proto();
+    proto_->set_failed(true);
+    proto_->set_error_text(reason);
+}
+
+bool Controller::IsCanceled() const
+{
+    return proto_ == NULL ? proto::ControllerProto::default_instance().is_canceled() : proto_->is_canceled();
+}
+
+void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
+{
+    CHECK(cancel_callback_ == NULL);
+    cancel_callback_ = callback;
 }
 
 maid::proto::ControllerProto* Controller::mutable_proto()
 {
-    return controller_->mutable_proto();
+    if (proto_ == NULL) {
+        proto_ = new proto::ControllerProto();
+    }
+    return proto_;
 }
 
 const maid::proto::ControllerProto& Controller::proto() const
 {
-    return controller_->proto();
+    return proto_ == NULL ? proto::ControllerProto::default_instance() : *proto_;
 }
 
 maid::proto::ControllerProto* Controller::release_proto()
 {
-    return controller_->release_proto();
+    proto::ControllerProto* proto = proto_;
+    proto_ = NULL;
+    return proto;
 }
 
 void Controller::set_allocated_proto(maid::proto::ControllerProto* proto)
 {
-    controller_->set_allocated_proto(proto);
-}
-
-int64_t Controller::connection_id()
-{
-    return controller_->connection_id();
-}
-
-void Controller::set_connection_id(int64_t connection_id)
-{
-    controller_->set_connection_id(connection_id);
+    if (proto == proto_) {
+        return;
+    }
+    delete proto_;
+    proto_ = proto;
 }

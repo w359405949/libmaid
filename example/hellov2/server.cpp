@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include "maid/base.h"
+#include "maid/channel_factory.h"
+#include "maid/channel_pool.h"
 #include "maid/controller.h"
-#include "maid/middleware/log_middleware.h"
+#include "maid/channel.h"
 #include "hello.pb.h"
 
 class MockClosure : public google::protobuf::Closure
@@ -37,9 +38,10 @@ public:
             maid::example::HelloResponse* response,
             google::protobuf::Closure* done)
     {
-        //printf("transmit_id:%d, %s\n", ((maid::Controller*)controller)->meta_data().transmit_id(), request->message().c_str());
-
-        //request->PrintDebugString();
+        //maid::example::HelloRequest* req = new maid::example::HelloRequest();
+        //req->set_message("request from libmaid");
+        //stub->HelloNotify(con, req, NULL, NULL);
+        request->PrintDebugString();
         response->set_message("welcome to libmaid");
         done->Run();
     }
@@ -60,6 +62,19 @@ public:
             maid::example::HelloResponse* response,
             google::protobuf::Closure* done)
     {
+        printf("hello notify:%s\n", request->DebugString().c_str());
+
+        //int64_t connection_id = ((maid::Controller*)controller)->connection_id();
+        //maid::Controller* con = new maid::Controller();
+        //con->set_connection_id(connection_id);
+
+        //maid::example::HelloRequest* req = new maid::example::HelloRequest();
+        //req->set_message("request from libmaid");
+
+        //maid::example::HelloResponse* res = new maid::example::HelloResponse();
+        //MockClosure* stub_done = new MockClosure(con, req, res);
+        //stub->HelloRpc(con, req, res, stub_done);
+
         done->Run();
     }
 
@@ -69,10 +84,12 @@ private:
 
 int main()
 {
-    maid::TcpServer* server = new maid::TcpServer();
-    maid::example::HelloService* hello = new HelloServiceImpl();
-    server->InsertService(hello);
-    server->AppendMiddleware(new maid::LogMiddleware());
-    server->Listen("0.0.0.0", 5555);
-    server->ServeForever();
+    maid::LocalMapRepoChannel* repo = new maid::LocalMapRepoChannel();
+    maid::ChannelPool::generated_pool()->AddChannel(repo);
+    repo->Insert(new HelloServiceImpl());
+    maid::Acceptor acceptor(repo, NULL, NULL);
+    acceptor.Listen("0.0.0.0", 5555);
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+    acceptor.Close();
 }
