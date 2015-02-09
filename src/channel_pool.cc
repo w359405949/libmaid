@@ -27,7 +27,7 @@ ChannelPool* ChannelPool::generated_pool()
 }
 
 ChannelPool::ChannelPool(google::protobuf::RpcChannel* default_channel)
-    :default_channel_(default_channel_)
+    :default_channel_(default_channel)
 {
     gc_.data = this;
     uv_prepare_init(uv_default_loop(), &gc_);
