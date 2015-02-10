@@ -5,10 +5,15 @@
 #include <stack>
 
 namespace maid {
+namespace proto {
+class ConnectionProto;
+}
+
 class Channel;
 class TcpChannel;
 class Controller;
 class ChannelPool;
+class Closure;
 
 class AbstractTcpChannelFactory
 {
@@ -30,6 +35,10 @@ public:
     static AbstractTcpChannelFactory* default_instance();
 
 private:
+    Controller* controller_;
+    proto::ConnectionProto* connection_;
+    Closure* closure_;
+
     google::protobuf::RpcChannel* router_channel_;
     google::protobuf::RpcChannel* middleware_channel_;
     ChannelPool* pool_;

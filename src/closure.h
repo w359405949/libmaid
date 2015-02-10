@@ -1,5 +1,6 @@
 #pragma once
 #include <google/protobuf/service.h>
+#include <google/protobuf/message.h>
 #include <uv.h>
 
 namespace maid {
@@ -17,6 +18,37 @@ public:
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Closure);
 };
 
+class GCClosure : public google::protobuf::Closure
+{
+public:
+    GCClosure(google::protobuf::RpcController* controller,
+            google::protobuf::Message* request,
+            google::protobuf::Message* response)
+        :controller_(controller),
+        request_(request),
+        response_(response)
+    {
+        gc_.data = this;
+    }
+
+    ~GCClosure()
+    {
+        delete controller_;
+        delete request_;
+        delete response_;
+    }
+
+    void Run();
+
+public:
+    static void OnGC(uv_idle_t* handle);
+
+private:
+    google::protobuf::RpcController* controller_;
+    google::protobuf::Message* request_;
+    google::protobuf::Message* response_;
+    uv_idle_t gc_;
+};
 
 class TcpClosure : public google::protobuf::Closure
 {

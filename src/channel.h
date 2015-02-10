@@ -135,10 +135,6 @@ private:
 
     AbstractTcpChannelFactory* factory_;
 
-    Controller* controller_;
-    proto::ConnectionProto* connection_;
-    Closure* closure_;
-
     // packet
     int64_t transmit_id_;
 

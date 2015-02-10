@@ -62,14 +62,6 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
     uv_idle_init(uv_default_loop(), &idle_handle_);
 
     uv_read_start(stream, OnAlloc, OnRead);
-
-    controller_ = new Controller();
-    connection_ = new proto::ConnectionProto();
-    closure_ = new Closure();
-    connection_->set_id((int64_t)stream);
-
-    proto::Middleware_Stub stub(factory()->middleware_channel());
-    stub.Connected(controller_, connection_, connection_, closure_);
 }
 
 
@@ -82,10 +74,6 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 TcpChannel::~TcpChannel()
 {
     stream_ = NULL;
-
-    delete controller_;
-    delete connection_;
-    delete closure_;
 }
 
 void TcpChannel::RemoveController(Controller* controller)
@@ -246,6 +234,9 @@ int32_t TcpChannel::Handle()
         return result;
     }
 
+    proto::ConnectionProto* connection = controller_proto->MutableExtension(proto::connection);
+    connection->set_id((int64_t)this);
+
     if (controller_proto->stub()) {
         return HandleRequest(controller_proto);
     } else {
@@ -335,6 +326,7 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 
 void TcpChannel::Close()
 {
+
     uv_idle_stop(&idle_handle_);
     uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
@@ -353,9 +345,6 @@ void TcpChannel::Close()
         context_it->second.done->Run();
     }
     async_result_.clear();
-
-    proto::Middleware_Stub stub(factory()->middleware_channel());
-    stub.Disconnected(controller_, connection_, connection_, closure_);
 }
 
 

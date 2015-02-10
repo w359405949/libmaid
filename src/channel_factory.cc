@@ -1,9 +1,11 @@
 #include <glog/logging.h>
 #include "maid/connection.pb.h"
+#include "maid/middleware.pb.h"
 #include "channel_factory.h"
 #include "channel_pool.h"
 #include "channel.h"
 #include "controller.h"
+#include "closure.h"
 
 namespace maid {
 
@@ -33,6 +35,9 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory(google::protobuf::RpcChanne
     middleware_channel_(middleware),
     pool_(pool)
 {
+    controller_ = new Controller();
+    connection_ = new proto::ConnectionProto();
+    closure_ = new Closure();
 }
 
 
@@ -46,6 +51,9 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory()
     middleware_channel_(NULL),
     pool_(NULL)
 {
+    controller_ = new Controller();
+    connection_ = new proto::ConnectionProto();
+    closure_ = new Closure();
 }
 
 ChannelPool* AbstractTcpChannelFactory::pool()
@@ -75,10 +83,18 @@ google::protobuf::RpcChannel* AbstractTcpChannelFactory::middleware_channel()
 void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 {
     pool()->AddChannel(channel);
+
+    connection_->set_id((int64_t)channel->stream());
+    proto::Middleware_Stub stub(middleware_channel());
+    stub.Connected(controller_, connection_, connection_, closure_);
 }
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
+    connection_->set_id((int64_t)channel->stream());
+    proto::Middleware_Stub stub(middleware_channel());
+    stub.Disconnected(controller_, connection_, connection_, closure_);
+
     pool()->RemoveChannel(channel);
 }
 
@@ -203,9 +219,10 @@ void Acceptor::Connected(TcpChannel* channel)
 void Acceptor::Disconnected(TcpChannel* channel)
 {
     CHECK(channel_.find(channel) != channel_.end());
+
+    AbstractTcpChannelFactory::Disconnected(channel);
     channel->Close();
     channel_.erase(channel);
-    AbstractTcpChannelFactory::Disconnected(channel);
 }
 
 

@@ -1,5 +1,6 @@
 #include <glog/logging.h>
 #include "maid/controller.pb.h"
+#include "maid/connection.pb.h"
 
 #include "closure.h"
 #include "channel.h"
@@ -19,6 +20,19 @@ Closure::~Closure()
 
 void Closure::Run()
 {
+}
+
+void GCClosure::Run()
+{
+    uv_idle_init(uv_default_loop(), &gc_);
+    uv_idle_start(&gc_, OnGC);
+}
+
+void GCClosure::OnGC(uv_idle_t* handle)
+{
+    uv_idle_stop(handle);
+    GCClosure* self = (GCClosure*)handle->data;
+    delete self;
 }
 
 TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
@@ -42,9 +56,11 @@ void TcpClosure::Run()
 
     channel_->RemoveController(controller_);
 
-    controller_->mutable_proto()->set_stub(false);
+    proto::ControllerProto* controller_proto = controller_->mutable_proto();
+    controller_proto->ClearExtension(proto::connection);
+    controller_proto->set_stub(false);
     if (!controller_->Failed()) {
-        response_->SerializeToString(controller_->mutable_proto()->mutable_message());
+        response_->SerializeToString(controller_proto->mutable_message());
     }
     send_buffer_ = WireFormat::Serializer(controller_->proto());
 
