@@ -111,4 +111,22 @@ private:
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpClosure);
 };
 
+
+class ContextPool;
+class CancelClosure : public google::protobuf::Closure
+{
+public:
+    CancelClosure(ContextClosurePool* pool, Context* context);
+    ~CancelClosure();
+
+    void Run()
+    {
+        pool_->RemoveContext(context_);
+    }
+
+private:
+    ContextPool* pool_;
+    Context* context_;
+};
+
 }
