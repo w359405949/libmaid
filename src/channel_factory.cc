@@ -328,9 +328,11 @@ void Connector::Connected(TcpChannel* channel)
 
 void Connector::Disconnected(TcpChannel* channel)
 {
-    CHECK(channel_ == channel);
-    channel_->Close();
-    channel_ = NULL;
+    CHECK(channel_ == NULL ||channel_ == channel);
+    if (channel_ != NULL) {
+        channel_ = NULL;
+        channel->Close();
+    }
     AbstractTcpChannelFactory::Disconnected(channel);
 }
 

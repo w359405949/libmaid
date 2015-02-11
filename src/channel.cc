@@ -73,6 +73,7 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 
 TcpChannel::~TcpChannel()
 {
+    free(stream_);
     stream_ = NULL;
 }
 
@@ -162,7 +163,6 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
 
 void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
-    uv_read_stop(stream);
 
     TcpChannel* self = (TcpChannel*)stream->data;
     if (nread < 0) {
@@ -175,6 +175,7 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     self->buffer_.end += nread;
 
     uv_timer_start(&self->timer_handle_, OnTimer, 1, 1);
+    uv_read_stop(stream);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
@@ -326,12 +327,9 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 
 void TcpChannel::Close()
 {
-
     uv_idle_stop(&idle_handle_);
     uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
-
-    stream_ = NULL;
 
     std::map<Controller*, Controller*>::iterator it;
     for (it = router_controllers_.begin(); it != router_controllers_.end(); it++) {
