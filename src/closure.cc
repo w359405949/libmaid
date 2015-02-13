@@ -99,23 +99,4 @@ void TcpClosure::AfterSendResponse(uv_write_t* handle, int32_t status)
     delete self;
 }
 
-
-ContextClosure::ContextClosure(ContextClosurePool* pool, Context* context)
-    :pool_(pool),
-    context_(context)
-{
-}
-
-ContextClosure::~ContextClosure()
-{
-    pool_ = NULL;
-    context_ = NULL;
-}
-
-
-void ContextClosure::Run()
-{
-    pool_->RemoveContext(context_);
-}
-
 }
