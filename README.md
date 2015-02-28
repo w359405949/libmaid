@@ -25,7 +25,7 @@ proto format
 
 basic format:|----------4 bytes------------------|-----n bytes----|
 
-description :|-ControllerMeta length(Big Endian)-|-ControllerMeta-|
+description :|-ControllerMeta length(Big Endian)-|-ControllerProto-|
 
 
 Build && install
