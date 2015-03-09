@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <glog/logging.h>
 #include "maid/controller.pb.h"
 #include "maid/connection.pb.h"
@@ -7,6 +8,7 @@
 #include "controller.h"
 #include "wire_format.h"
 #include "helper.h"
+#include "uv_hook.h"
 
 namespace maid {
 
@@ -24,7 +26,10 @@ void Closure::Run()
 
 void GCClosure::Run()
 {
-    uv_idle_init(uv_default_loop(), &gc_);
+    CHECK(!called) << "TcpClosure::Run() call twice";
+    called = true;
+    gc_.data = this;
+    uv_idle_init(maid_default_loop(), &gc_);
     uv_idle_start(&gc_, OnGC);
 }
 
@@ -32,6 +37,8 @@ void GCClosure::OnGC(uv_idle_t* handle)
 {
     uv_idle_stop(handle);
     GCClosure* self = (GCClosure*)handle->data;
+    CHECK(self);
+    handle->data = NULL;
     delete self;
 }
 
@@ -47,11 +54,12 @@ TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::prot
 
 void TcpClosure::Run()
 {
-    DLOG_IF(FATAL, send_buffer_ != NULL) << "TcpClosure::Run() call twice";
+    CHECK(send_buffer_ != NULL) << "TcpClosure::Run() call twice";
     if (controller_->IsCanceled() || helper::ProtobufHelper::notify(controller_->proto())) {
         gc_.data = this;
-        uv_idle_init(uv_default_loop(), &gc_);
+        uv_idle_init(maid_default_loop(), &gc_);
         uv_idle_start(&gc_, OnGc);
+        return;
     }
 
     channel_->RemoveController(controller_);
@@ -70,7 +78,7 @@ void TcpClosure::Run()
     int error = uv_write(&req_, channel_->stream(), &uv_buf, 1, AfterSendResponse);
     if (error) {
         gc_.data = this;
-        uv_idle_init(uv_default_loop(), &gc_);
+        uv_idle_init(maid_default_loop(), &gc_);
         uv_idle_start(&gc_, OnGc);
         DLOG(ERROR) << uv_strerror(error);
         return;

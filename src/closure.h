@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 #include <google/protobuf/service.h>
 #include <google/protobuf/message.h>
 #include <uv.h>
@@ -11,7 +12,7 @@ class Closure : public google::protobuf::Closure
 {
 public:
     Closure();
-    ~Closure();
+    virtual ~Closure();
 
     void Run();
 
@@ -26,12 +27,12 @@ public:
             google::protobuf::Message* response)
         :controller_(controller),
         request_(request),
-        response_(response)
+        response_(response),
+        called(false)
     {
-        gc_.data = this;
     }
 
-    ~GCClosure()
+    virtual ~GCClosure()
     {
         delete controller_;
         delete request_;
@@ -47,6 +48,7 @@ private:
     google::protobuf::RpcController* controller_;
     google::protobuf::Message* request_;
     google::protobuf::Message* response_;
+    bool called;
     uv_idle_t gc_;
 };
 
@@ -54,7 +56,7 @@ class TcpClosure : public google::protobuf::Closure
 {
 public:
     TcpClosure(TcpChannel* channel, Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response);
-    ~TcpClosure();
+    virtual ~TcpClosure();
 
     void Run();
 

@@ -29,6 +29,8 @@ struct Buffer
 
     size_t Expend(size_t expect_size);
 
+    void reset();
+
 public:
     int8_t* base_;
     size_t size_;

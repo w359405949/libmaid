@@ -80,6 +80,7 @@ public:
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
     static void OnIdle(uv_idle_t* handle);
     static void OnTimer(uv_timer_t* timer);
+    static void OnClose(uv_handle_t* handle);
 
 public: // unit test only
     inline const std::map<int64_t, Context>& async_result() const
@@ -128,7 +129,6 @@ private:
     std::map<Controller*, Controller*> router_controllers_;
 
 private:
-
     uv_stream_t* stream_;
     uv_timer_t timer_handle_;
     uv_idle_t idle_handle_;

@@ -6,6 +6,7 @@
 #include "channel.h"
 #include "controller.h"
 #include "closure.h"
+#include "uv_hook.h"
 
 namespace maid {
 
@@ -140,7 +141,7 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
         return result;
     }
 
-    uv_tcp_init(uv_default_loop(), handle_);
+    uv_tcp_init(maid_default_loop(), handle_);
 
     int32_t flags = 0;
     result = uv_tcp_bind(handle_, (struct sockaddr*)&address, flags);
@@ -188,7 +189,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int32_t status)
         return;
     }
 
-    uv_tcp_init(uv_default_loop(), peer_stream);
+    uv_tcp_init(maid_default_loop(), peer_stream);
     int result = uv_accept(stream, (uv_stream_t*)peer_stream);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
@@ -222,6 +223,7 @@ void Acceptor::Disconnected(TcpChannel* channel)
 
     AbstractTcpChannelFactory::Disconnected(channel);
     channel->Close();
+    channel_[channel] = NULL;
     channel_.erase(channel);
 }
 
@@ -258,15 +260,17 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
     Connector* self = (Connector*)req->data;
-    delete req;
+    free(req);
 
     if (NULL == self) {
+        free(stream);
         return;
     }
 
     self->req_ = NULL;
 
     if (status) {
+        free(stream);
         DLOG(WARNING) << uv_strerror(status);
         return;
     }
@@ -275,6 +279,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
     try {
         channel = new TcpChannel(stream, self);
     } catch (std::bad_alloc) {
+        free(stream);
         return;
     }
 
@@ -284,7 +289,10 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 int32_t Connector::Connect(const char* host, int32_t port)
 {
     CHECK(NULL == req_); // only be called one time
-    req_ = new uv_connect_t();
+    req_ = (uv_connect_t*)malloc(sizeof(uv_connect_t));
+    if (req_ == NULL) {
+        return -1;
+    }
     req_->data = this;
 
     struct sockaddr_in address;
@@ -295,8 +303,11 @@ int32_t Connector::Connect(const char* host, int32_t port)
         return result;
     }
 
-    uv_tcp_t* handle = new uv_tcp_t();
-    uv_tcp_init(uv_default_loop(), handle);
+    uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+    if (handle == NULL) {
+        return -1;
+    }
+    uv_tcp_init(maid_default_loop(), handle);
     uv_tcp_nodelay(handle, 1);
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {

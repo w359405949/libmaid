@@ -12,6 +12,7 @@
 #include "controller.h"
 #include "wire_format.h"
 #include "closure.h"
+#include "uv_hook.h"
 
 namespace maid {
 
@@ -56,10 +57,10 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
     stream->data = this;
 
     timer_handle_.data = this;
-    uv_timer_init(uv_default_loop(), &timer_handle_);
+    uv_timer_init(maid_default_loop(), &timer_handle_);
 
     idle_handle_.data = this;
-    uv_idle_init(uv_default_loop(), &idle_handle_);
+    uv_idle_init(maid_default_loop(), &idle_handle_);
 
     uv_read_start(stream, OnAlloc, OnRead);
 }
@@ -73,12 +74,13 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 
 TcpChannel::~TcpChannel()
 {
-    free(stream_);
+    buffer_.reset();
     stream_ = NULL;
 }
 
 void TcpChannel::RemoveController(Controller* controller)
 {
+    router_controllers_[controller] = NULL;
     router_controllers_.erase(controller);
 }
 
@@ -103,6 +105,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     request->SerializeToString(controller_proto->mutable_message());
 
     int64_t transmit_id = transmit_id_++; // TODO: check if used
+    CHECK(async_result_.find(transmit_id) == async_result_.end());
     controller_proto->set_transmit_id(transmit_id);
     async_result_[transmit_id].controller = controller;
     async_result_[transmit_id].response = response;
@@ -148,6 +151,7 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
     TcpChannel* self = (TcpChannel*)req->handle->data;
     proto::ControllerProto* controller_proto = (proto::ControllerProto*)req->data;
     delete self->sending_buffer_[req];
+    self->sending_buffer_[req] = NULL;
     self->sending_buffer_.erase(req);
     free(req);
 
@@ -163,6 +167,7 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
 
 void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
+    uv_read_stop(stream);
 
     TcpChannel* self = (TcpChannel*)stream->data;
     if (nread < 0) {
@@ -175,7 +180,6 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     self->buffer_.end += nread;
 
     uv_timer_start(&self->timer_handle_, OnTimer, 1, 1);
-    uv_read_stop(stream);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
@@ -306,14 +310,16 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
     if (it == async_result_.end()) {
         return 0;
     }
-    async_result_.erase(it);
 
     Context& context = it->second;
-    if (!controller_proto->failed()) {
+    if (!controller_proto->failed() || controller_proto->has_message()) {
         context.response->ParseFromString(controller_proto->message());
     }
     context.controller->set_allocated_proto(controller_proto);
     context.done->Run();
+    context.reset();
+
+    async_result_.erase(it);
     return 0;
 }
 
@@ -325,11 +331,17 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
     buf->base = (char*)self->buffer_.end;
 }
 
+void TcpChannel::OnClose(uv_handle_t* handle)
+{
+    free(handle);
+}
+
 void TcpChannel::Close()
 {
     uv_idle_stop(&idle_handle_);
     uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
+    uv_close((uv_handle_t*)stream_, OnClose);
 
     std::map<Controller*, Controller*>::iterator it;
     for (it = router_controllers_.begin(); it != router_controllers_.end(); it++) {
@@ -341,7 +353,9 @@ void TcpChannel::Close()
     for (context_it = async_result_.begin(); context_it != async_result_.end(); context_it++) {
         context_it->second.controller->StartCancel();
         context_it->second.done->Run();
+        context_it->second.reset();
     }
+
     async_result_.clear();
 }
 
