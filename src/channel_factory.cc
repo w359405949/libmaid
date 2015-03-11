@@ -67,6 +67,10 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
     router_channel_ = NULL;
     middleware_channel_ = NULL;
     pool_ = NULL;
+
+    delete controller_;
+    delete connection_;
+    delete closure_;
 }
 
 google::protobuf::RpcChannel* AbstractTcpChannelFactory::router_channel()
@@ -215,6 +219,8 @@ void Acceptor::Connected(TcpChannel* channel)
     CHECK(channel_.find(channel) == channel_.end());
     channel_[channel] = channel;
     AbstractTcpChannelFactory::Connected(channel);
+
+    DLOG(INFO)<<"connected:"<< channel_.size();
 }
 
 void Acceptor::Disconnected(TcpChannel* channel)
@@ -225,6 +231,8 @@ void Acceptor::Disconnected(TcpChannel* channel)
     channel->Close();
     channel_[channel] = NULL;
     channel_.erase(channel);
+
+    DLOG(INFO)<<"connected:"<< channel_.size();
 }
 
 
@@ -248,29 +256,27 @@ Connector::Connector()
 
 Connector::~Connector()
 {
+    req_ = NULL;
     channel_ = NULL;
 }
 
-void Connector::OnCloseConnect(uv_handle_t* handle)
+void Connector::OnCloseStream(uv_handle_t* stream)
 {
-    delete handle;
+    free(stream);
 }
 
 void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
     Connector* self = (Connector*)req->data;
-    free(req);
 
     if (NULL == self) {
-        free(stream);
+        uv_close((uv_handle_t*)stream, OnCloseStream);
         return;
     }
 
-    self->req_ = NULL;
-
     if (status) {
-        free(stream);
+        uv_close((uv_handle_t*)stream, OnCloseStream);
         DLOG(WARNING) << uv_strerror(status);
         return;
     }
@@ -279,7 +285,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
     try {
         channel = new TcpChannel(stream, self);
     } catch (std::bad_alloc) {
-        free(stream);
+        uv_close((uv_handle_t*)stream, OnCloseStream);
         return;
     }
 
@@ -312,6 +318,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
+        free(handle);
         Close();
         return result;
     }
@@ -329,6 +336,7 @@ void Connector::Close()
         req_->data = NULL;
     }
 
+    free(req_);
 }
 
 void Connector::Connected(TcpChannel* channel)

@@ -37,9 +37,10 @@ size_t Buffer::Expend(size_t expect)
         return tail;
     }
 
+    CHECK(new_size > space_used);
     memmove(new_ptr, start, space_used);
 
-    free((void*)base_);
+    free(base_);
     base_ = new_ptr;
     start = new_ptr;
     end = new_ptr + space_used;

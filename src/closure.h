@@ -24,31 +24,20 @@ class GCClosure : public google::protobuf::Closure
 public:
     GCClosure(google::protobuf::RpcController* controller,
             google::protobuf::Message* request,
-            google::protobuf::Message* response)
-        :controller_(controller),
-        request_(request),
-        response_(response),
-        called(false)
-    {
-    }
-
-    virtual ~GCClosure()
-    {
-        delete controller_;
-        delete request_;
-        delete response_;
-    }
-
+            google::protobuf::Message* response);
     void Run();
 
 public:
     static void OnGC(uv_idle_t* handle);
+    static std::map<GCClosure*, GCClosure*> closures_;
+
+protected:
+    virtual ~GCClosure();
 
 private:
     google::protobuf::RpcController* controller_;
     google::protobuf::Message* request_;
     google::protobuf::Message* response_;
-    bool called;
     uv_idle_t gc_;
 };
 

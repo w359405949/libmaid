@@ -75,7 +75,7 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 TcpChannel::~TcpChannel()
 {
     buffer_.reset();
-    stream_ = NULL;
+    delete stream_;
 }
 
 void TcpChannel::RemoveController(Controller* controller)
@@ -155,10 +155,8 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
     self->sending_buffer_.erase(req);
     free(req);
 
-    if (helper::ProtobufHelper::notify(*controller_proto)) {
+    if (status != 0) {
         controller_proto->clear_message();
-        self->HandleResponse(controller_proto);
-    } else if (status != 0) {
         controller_proto->set_failed(true);
         controller_proto->set_error_text(uv_strerror(status));
         self->HandleResponse(controller_proto);
@@ -179,7 +177,7 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
      */
     self->buffer_.end += nread;
 
-    uv_timer_start(&self->timer_handle_, OnTimer, 1, 1);
+    uv_timer_start(&self->timer_handle_, OnTimer, 1, 1000);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
@@ -275,12 +273,13 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
 
     try {
         controller = new Controller();
+        controller->set_allocated_proto(controller_proto);
+
         request = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->input_type())->New();
         if (!request->ParseFromString(controller_proto->message())) {
             delete controller;
             delete request;
             delete done;
-            delete controller_proto;
             return ERROR_PARSE_FAILED;
         }
 
@@ -294,10 +293,8 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
         delete request;
         delete response;
         delete done;
-        delete controller_proto;
         return ERROR_BUSY;
     }
-    controller->set_allocated_proto(controller_proto);
 
     factory()->router_channel()->CallMethod(method, controller, request, response, done);
 
@@ -312,14 +309,13 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
     }
 
     Context& context = it->second;
-    if (!controller_proto->failed() || controller_proto->has_message()) {
+    if (!controller_proto->failed() && controller_proto->has_message()) {
         context.response->ParseFromString(controller_proto->message());
     }
     context.controller->set_allocated_proto(controller_proto);
     context.done->Run();
-    context.reset();
+    async_result_.erase(controller_proto->transmit_id());
 
-    async_result_.erase(it);
     return 0;
 }
 
@@ -331,9 +327,9 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
     buf->base = (char*)self->buffer_.end;
 }
 
-void TcpChannel::OnClose(uv_handle_t* handle)
+void TcpChannel::OnCloseStream(uv_handle_t* handle)
 {
-    free(handle);
+    delete handle;
 }
 
 void TcpChannel::Close()
@@ -341,7 +337,8 @@ void TcpChannel::Close()
     uv_idle_stop(&idle_handle_);
     uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
-    uv_close((uv_handle_t*)stream_, OnClose);
+    uv_close((uv_handle_t*)stream_, OnCloseStream);
+    stream_ = NULL;
 
     std::map<Controller*, Controller*>::iterator it;
     for (it = router_controllers_.begin(); it != router_controllers_.end(); it++) {
@@ -353,10 +350,10 @@ void TcpChannel::Close()
     for (context_it = async_result_.begin(); context_it != async_result_.end(); context_it++) {
         context_it->second.controller->StartCancel();
         context_it->second.done->Run();
-        context_it->second.reset();
     }
 
     async_result_.clear();
+
 }
 
 

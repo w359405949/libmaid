@@ -10,7 +10,10 @@
 #include "helper.h"
 #include "uv_hook.h"
 
+
 namespace maid {
+
+std::map<GCClosure*, GCClosure*> GCClosure::closures_;
 
 Closure::Closure()
 {
@@ -24,11 +27,20 @@ void Closure::Run()
 {
 }
 
+GCClosure::GCClosure(google::protobuf::RpcController* controller,
+        google::protobuf::Message* request,
+        google::protobuf::Message* response)
+    :controller_(controller),
+    request_(request),
+    response_(response)
+{
+    gc_.data = this;
+}
+
 void GCClosure::Run()
 {
-    CHECK(!called) << "TcpClosure::Run() call twice";
-    called = true;
-    gc_.data = this;
+    CHECK(closures_.find(this) == closures_.end());
+    closures_[this] = this;
     uv_idle_init(maid_default_loop(), &gc_);
     uv_idle_start(&gc_, OnGC);
 }
@@ -37,9 +49,20 @@ void GCClosure::OnGC(uv_idle_t* handle)
 {
     uv_idle_stop(handle);
     GCClosure* self = (GCClosure*)handle->data;
-    CHECK(self);
-    handle->data = NULL;
-    delete self;
+    if (closures_.find(self) == closures_.end()) {
+        LOG(WARNING)<<"what happend";
+        return;
+    }
+
+    closures_.erase(self);
+    //delete self;
+}
+
+GCClosure::~GCClosure()
+{
+    delete controller_;
+    delete request_;
+    delete response_;
 }
 
 TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
@@ -54,7 +77,9 @@ TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::prot
 
 void TcpClosure::Run()
 {
-    CHECK(send_buffer_ != NULL) << "TcpClosure::Run() call twice";
+    CHECK(send_buffer_ == NULL) << "TcpClosure::Run() call twice";
+    channel_->RemoveController(controller_);
+
     if (controller_->IsCanceled() || helper::ProtobufHelper::notify(controller_->proto())) {
         gc_.data = this;
         uv_idle_init(maid_default_loop(), &gc_);
@@ -62,7 +87,6 @@ void TcpClosure::Run()
         return;
     }
 
-    channel_->RemoveController(controller_);
 
     proto::ControllerProto* controller_proto = controller_->mutable_proto();
     controller_proto->ClearExtension(proto::connection);

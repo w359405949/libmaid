@@ -4,6 +4,7 @@
 #include "channel.h"
 #include "controller.h"
 #include "channel_factory.h"
+#include "uv_hook.h"
 #include "test.pb.h"
 
 UV_EXTERN int uv_read_start(uv_stream_t*,
@@ -125,9 +126,9 @@ TEST(TcpChannel, TcpChannel)
 
     ASSERT_EQ(stream, channel.stream());
     ASSERT_EQ(stream->data, &channel);
-    ASSERT_EQ(channel.timer_handle().loop, uv_default_loop());
+    ASSERT_EQ(channel.timer_handle().loop, maid_default_loop());
     ASSERT_EQ(channel.timer_handle().data, &channel);
-    ASSERT_EQ(channel.idle_handle().loop, uv_default_loop());
+    ASSERT_EQ(channel.idle_handle().loop, maid_default_loop());
     ASSERT_EQ(channel.idle_handle().data, &channel);
 }
 
@@ -262,7 +263,7 @@ TEST(TcpChannel, OnAlloc)
 TEST(TcpChannel, Close)
 {
     uv_tcp_t* stream = new uv_tcp_t();
-    uv_tcp_init(uv_default_loop(), stream);
+    uv_tcp_init(maid_default_loop(), stream);
     maid::TcpChannel channel((uv_stream_t*)stream, NULL);
     maid::Controller* controller = new maid::Controller();
     Request* request = new Request();

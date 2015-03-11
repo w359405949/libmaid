@@ -13,8 +13,8 @@ Controller::Controller()
 
 Controller::~Controller()
 {
-    delete proto_;
     delete cancel_callback_;
+    delete proto_;
 }
 
 void Controller::Reset()
@@ -87,6 +87,6 @@ void Controller::set_allocated_proto(maid::proto::ControllerProto* proto)
     if (proto == proto_) {
         return;
     }
-    delete proto_;
+    //delete proto_;
     proto_ = proto;
 }
