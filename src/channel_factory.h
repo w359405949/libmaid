@@ -107,7 +107,7 @@ public:
 
 public:
     static void OnConnect(uv_connect_t* req, int32_t status);
-    static void OnCloseStream(uv_handle_t* stream);
+    static void OnCloseHandle(uv_handle_t* handle);
     static void OnGC(uv_prepare_t* handle);
 
 public:

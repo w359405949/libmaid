@@ -74,8 +74,7 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 
 TcpChannel::~TcpChannel()
 {
-    buffer_.reset();
-    delete stream_;
+    CHECK(stream_ == NULL)<<"call Close first";
 }
 
 void TcpChannel::RemoveController(Controller* controller)
@@ -332,7 +331,7 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 
 void TcpChannel::OnCloseStream(uv_handle_t* handle)
 {
-    delete handle;
+    free(handle);
 }
 
 void TcpChannel::Close()
@@ -358,6 +357,7 @@ void TcpChannel::Close()
 
     async_result_.clear();
 
+    buffer_.reset();
 }
 
 

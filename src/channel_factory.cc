@@ -261,23 +261,19 @@ Connector::~Connector()
     channel_ = NULL;
 }
 
-void Connector::OnCloseStream(uv_handle_t* stream)
+void Connector::OnCloseHandle(uv_handle_t* handle)
 {
-    free(stream);
+    free(handle);
 }
 
 void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
     Connector* self = (Connector*)req->data;
-
-    if (NULL == self) {
-        uv_close((uv_handle_t*)stream, OnCloseStream);
-        return;
-    }
+    CHECK(self != NULL);
 
     if (status) {
-        uv_close((uv_handle_t*)stream, OnCloseStream);
+        uv_close((uv_handle_t*)stream, OnCloseHandle);
         DLOG(WARNING) << uv_strerror(status);
         return;
     }
@@ -286,7 +282,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
     try {
         channel = new TcpChannel(stream, self);
     } catch (std::bad_alloc) {
-        uv_close((uv_handle_t*)stream, OnCloseStream);
+        uv_close((uv_handle_t*)stream, OnCloseHandle);
         return;
     }
 
@@ -319,7 +315,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
-        uv_close((uv_handle_t*)handle, OnCloseStream);
+        uv_close((uv_handle_t*)handle, OnCloseHandle);
         Close();
         return result;
     }
@@ -332,14 +328,13 @@ void Connector::Close()
     Disconnected(channel_);
 
     if (NULL != req_) {
-        req_->data = NULL;
+        free(req_);
     }
-
-    free(req_);
 }
 
 void Connector::Connected(TcpChannel* channel)
 {
+    CHECK(channel_ == NULL);
     channel_ = channel;
     AbstractTcpChannelFactory::Connected(channel);
 }
