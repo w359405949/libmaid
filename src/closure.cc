@@ -13,8 +13,6 @@
 
 namespace maid {
 
-std::map<GCClosure*, GCClosure*> GCClosure::closures_;
-
 Closure::Closure()
 {
 }
@@ -34,28 +32,12 @@ GCClosure::GCClosure(google::protobuf::RpcController* controller,
     request_(request),
     response_(response)
 {
-    gc_.data = this;
 }
 
 void GCClosure::Run()
 {
-    CHECK(closures_.find(this) == closures_.end());
-    closures_[this] = this;
-    uv_idle_init(maid_default_loop(), &gc_);
-    uv_idle_start(&gc_, OnGC);
-}
-
-void GCClosure::OnGC(uv_idle_t* handle)
-{
-    uv_idle_stop(handle);
-    GCClosure* self = (GCClosure*)handle->data;
-    if (closures_.find(self) == closures_.end()) {
-        LOG(WARNING)<<"what happend";
-        return;
-    }
-
-    closures_.erase(self);
-    //delete self;
+    CHECK(controller_ != NULL);
+    delete this;
 }
 
 GCClosure::~GCClosure()
@@ -63,6 +45,7 @@ GCClosure::~GCClosure()
     delete controller_;
     delete request_;
     delete response_;
+    controller_ = NULL;
 }
 
 TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
@@ -77,13 +60,10 @@ TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::prot
 
 void TcpClosure::Run()
 {
-    CHECK(send_buffer_ == NULL) << "TcpClosure::Run() call twice";
     channel_->RemoveController(controller_);
 
     if (controller_->IsCanceled() || helper::ProtobufHelper::notify(controller_->proto())) {
-        gc_.data = this;
-        uv_idle_init(maid_default_loop(), &gc_);
-        uv_idle_start(&gc_, OnGc);
+        delete this;
         return;
     }
 
@@ -101,10 +81,8 @@ void TcpClosure::Run()
     uv_buf.len = send_buffer_->size();
     int error = uv_write(&req_, channel_->stream(), &uv_buf, 1, AfterSendResponse);
     if (error) {
-        gc_.data = this;
-        uv_idle_init(maid_default_loop(), &gc_);
-        uv_idle_start(&gc_, OnGc);
         DLOG(ERROR) << uv_strerror(error);
+        delete this;
         return;
     }
 }
@@ -115,14 +93,6 @@ TcpClosure::~TcpClosure()
     delete controller_;
     delete request_;
     delete response_;
-}
-
-void TcpClosure::OnGc(uv_idle_t* idle)
-{
-    uv_idle_stop(idle);
-    TcpClosure* self = (TcpClosure*)idle->data;
-
-    delete self;
 }
 
 void TcpClosure::AfterSendResponse(uv_write_t* handle, int32_t status)

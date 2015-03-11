@@ -21,4 +21,17 @@ uv_loop_t* maid_default_loop()
     }
 
     return loop;
+
+}
+
+void maid_loop()
+{
+    uv_once(&loop_once, init_key);
+
+    uv_loop_t* loop = (uv_loop_t*)uv_key_get(&loop_key);
+    if (loop == NULL) {
+        loop = (uv_loop_t*)malloc(sizeof(uv_loop_t));
+        uv_key_set(&loop_key, NULL);
+        free(loop);
+    }
 }

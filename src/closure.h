@@ -27,10 +27,6 @@ public:
             google::protobuf::Message* response);
     void Run();
 
-public:
-    static void OnGC(uv_idle_t* handle);
-    static std::map<GCClosure*, GCClosure*> closures_;
-
 protected:
     virtual ~GCClosure();
 
@@ -38,7 +34,8 @@ private:
     google::protobuf::RpcController* controller_;
     google::protobuf::Message* request_;
     google::protobuf::Message* response_;
-    uv_idle_t gc_;
+
+    GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(GCClosure);
 };
 
 class TcpClosure : public google::protobuf::Closure
@@ -51,7 +48,6 @@ public:
 
 public:
     static void AfterSendResponse(uv_write_t* handle, int32_t status);
-    static void OnGc(uv_idle_t* idle);
 
 public: // unit test only
     inline const TcpChannel* channel() const
@@ -84,11 +80,6 @@ public: // unit test only
         return req_;
     }
 
-    inline const uv_idle_t& gc() const
-    {
-        return gc_;
-    }
-
 private:
     TcpChannel* channel_;
     std::string* send_buffer_;
@@ -97,7 +88,6 @@ private:
     google::protobuf::Message* response_;
 
     uv_write_t req_;
-    uv_idle_t gc_;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpClosure);
 };

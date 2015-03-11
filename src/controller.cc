@@ -87,6 +87,6 @@ void Controller::set_allocated_proto(maid::proto::ControllerProto* proto)
     if (proto == proto_) {
         return;
     }
-    //delete proto_;
+    delete proto_;
     proto_ = proto;
 }

@@ -96,11 +96,12 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
+    pool()->RemoveChannel(channel);
+
     connection_->set_id((int64_t)channel->stream());
     proto::Middleware_Stub stub(middleware_channel());
     stub.Disconnected(controller_, connection_, connection_, closure_);
 
-    pool()->RemoveChannel(channel);
 }
 
 /*
@@ -318,7 +319,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
-        free(handle);
+        uv_close((uv_handle_t*)handle, OnCloseStream);
         Close();
         return result;
     }
@@ -328,9 +329,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
 
 void Connector::Close()
 {
-    if (NULL != channel_) {
-        Disconnected(channel_);
-    }
+    Disconnected(channel_);
 
     if (NULL != req_) {
         req_->data = NULL;
@@ -347,12 +346,12 @@ void Connector::Connected(TcpChannel* channel)
 
 void Connector::Disconnected(TcpChannel* channel)
 {
-    CHECK(channel_ == NULL ||channel_ == channel);
+    CHECK(channel_ == channel);
     if (channel_ != NULL) {
         channel_ = NULL;
         channel->Close();
+        AbstractTcpChannelFactory::Disconnected(channel);
     }
-    AbstractTcpChannelFactory::Disconnected(channel);
 }
 
 google::protobuf::RpcChannel* Connector::channel()

@@ -156,9 +156,11 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
     free(req);
 
     if (status != 0) {
-        controller_proto->clear_message();
         controller_proto->set_failed(true);
         controller_proto->set_error_text(uv_strerror(status));
+        controller_proto->clear_message();
+    }
+    if (status != 0 || helper::ProtobufHelper::notify(*controller_proto)) {
         self->HandleResponse(controller_proto);
     }
 }
@@ -177,7 +179,7 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
      */
     self->buffer_.end += nread;
 
-    uv_timer_start(&self->timer_handle_, OnTimer, 1, 1000);
+    uv_timer_start(&self->timer_handle_, OnTimer, 1, 1);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
@@ -314,7 +316,8 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
     }
     context.controller->set_allocated_proto(controller_proto);
     context.done->Run();
-    async_result_.erase(controller_proto->transmit_id());
+    context.reset();
+    async_result_.erase(it);
 
     return 0;
 }
@@ -350,6 +353,7 @@ void TcpChannel::Close()
     for (context_it = async_result_.begin(); context_it != async_result_.end(); context_it++) {
         context_it->second.controller->StartCancel();
         context_it->second.done->Run();
+        context_it->second.reset();
     }
 
     async_result_.clear();
