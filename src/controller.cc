@@ -13,8 +13,8 @@ Controller::Controller()
 
 Controller::~Controller()
 {
-    delete proto_;
     delete cancel_callback_;
+    delete proto_;
 }
 
 void Controller::Reset()

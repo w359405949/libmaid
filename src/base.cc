@@ -1,4 +1,5 @@
 #include "base.h"
+#include "uv_hook.h"
 
 namespace maid {
 
@@ -31,7 +32,7 @@ void TcpServer::Close()
     middleware_->Close();
     pool_->Close();
 
-    uv_stop(uv_default_loop());
+    uv_stop(maid_default_loop());
 }
 
 int32_t TcpServer::Listen(const char* host, int32_t port, int32_t backlog)
@@ -43,12 +44,12 @@ int32_t TcpServer::Listen(const char* host, int32_t port, int32_t backlog)
 
 void TcpServer::ServeForever()
 {
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
 }
 
 void TcpServer::Update()
 {
-    uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+    uv_run(maid_default_loop(), UV_RUN_NOWAIT);
 }
 
 void TcpServer::InsertService(google::protobuf::Service* service)
@@ -101,7 +102,7 @@ void TcpClient::Close()
     middleware_->Close();
     pool_->Close();
 
-    uv_stop(uv_default_loop());
+    uv_stop(maid_default_loop());
 }
 
 int32_t TcpClient::Connect(const char* host, int32_t port)
@@ -123,12 +124,12 @@ void TcpClient::AppendMiddleware(proto::Middleware* middleware)
 
 void TcpClient::ServeForever()
 {
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
 }
 
 void TcpClient::Update()
 {
-    uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+    uv_run(maid_default_loop(), UV_RUN_NOWAIT);
 }
 
 google::protobuf::RpcChannel* TcpClient::channel() const

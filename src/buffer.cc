@@ -1,4 +1,4 @@
-
+#include <stdio.h>
 #include <glog/logging.h>
 #include "buffer.h"
 #include "define.h"
@@ -37,6 +37,7 @@ size_t Buffer::Expend(size_t expect)
         return tail;
     }
 
+    CHECK(new_size > space_used);
     memmove(new_ptr, start, space_used);
 
     free(base_);
@@ -46,4 +47,12 @@ size_t Buffer::Expend(size_t expect)
     size_ = new_size;
 
     return new_size - space_used;
+}
+
+void Buffer::reset()
+{
+    free(base_);
+    start = NULL;
+    end = NULL;
+    base_ = NULL;
 }

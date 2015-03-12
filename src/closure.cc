@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <glog/logging.h>
 #include "maid/controller.pb.h"
 #include "maid/connection.pb.h"
@@ -7,6 +8,8 @@
 #include "controller.h"
 #include "wire_format.h"
 #include "helper.h"
+#include "uv_hook.h"
+
 
 namespace maid {
 
@@ -22,17 +25,27 @@ void Closure::Run()
 {
 }
 
-void GCClosure::Run()
+GCClosure::GCClosure(google::protobuf::RpcController* controller,
+        google::protobuf::Message* request,
+        google::protobuf::Message* response)
+    :controller_(controller),
+    request_(request),
+    response_(response)
 {
-    uv_idle_init(uv_default_loop(), &gc_);
-    uv_idle_start(&gc_, OnGC);
 }
 
-void GCClosure::OnGC(uv_idle_t* handle)
+void GCClosure::Run()
 {
-    uv_idle_stop(handle);
-    GCClosure* self = (GCClosure*)handle->data;
-    delete self;
+    CHECK(controller_ != NULL);
+    delete controller_;
+    delete request_;
+    delete response_;
+    delete this;
+}
+
+GCClosure::~GCClosure()
+{
+    controller_ = NULL;
 }
 
 TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
@@ -47,14 +60,13 @@ TcpClosure::TcpClosure(TcpChannel* channel, Controller* controller, google::prot
 
 void TcpClosure::Run()
 {
-    DLOG_IF(FATAL, send_buffer_ != NULL) << "TcpClosure::Run() call twice";
+    channel_->RemoveController(controller_);
+
     if (controller_->IsCanceled() || helper::ProtobufHelper::notify(controller_->proto())) {
-        gc_.data = this;
-        uv_idle_init(uv_default_loop(), &gc_);
-        uv_idle_start(&gc_, OnGc);
+        delete this;
+        return;
     }
 
-    channel_->RemoveController(controller_);
 
     proto::ControllerProto* controller_proto = controller_->mutable_proto();
     controller_proto->ClearExtension(proto::connection);
@@ -69,10 +81,8 @@ void TcpClosure::Run()
     uv_buf.len = send_buffer_->size();
     int error = uv_write(&req_, channel_->stream(), &uv_buf, 1, AfterSendResponse);
     if (error) {
-        gc_.data = this;
-        uv_idle_init(uv_default_loop(), &gc_);
-        uv_idle_start(&gc_, OnGc);
         DLOG(ERROR) << uv_strerror(error);
+        delete this;
         return;
     }
 }
@@ -83,14 +93,6 @@ TcpClosure::~TcpClosure()
     delete controller_;
     delete request_;
     delete response_;
-}
-
-void TcpClosure::OnGc(uv_idle_t* idle)
-{
-    uv_idle_stop(idle);
-    TcpClosure* self = (TcpClosure*)idle->data;
-
-    delete self;
 }
 
 void TcpClosure::AfterSendResponse(uv_write_t* handle, int32_t status)

@@ -3,6 +3,7 @@
 #include "glog/logging.h"
 #include "controller.h"
 #include "channel.h"
+#include "uv_hook.h"
 
 namespace maid {
 
@@ -30,7 +31,7 @@ ChannelPool::ChannelPool(google::protobuf::RpcChannel* default_channel)
     :default_channel_(default_channel)
 {
     gc_.data = this;
-    uv_prepare_init(uv_default_loop(), &gc_);
+    uv_prepare_init(maid_default_loop(), &gc_);
     uv_prepare_start(&gc_, OnGC);
 }
 
@@ -38,7 +39,7 @@ ChannelPool::ChannelPool()
     :default_channel_(NULL)
 {
     gc_.data = this;
-    uv_prepare_init(uv_default_loop(), &gc_);
+    uv_prepare_init(maid_default_loop(), &gc_);
     uv_prepare_start(&gc_, OnGC);
 }
 
@@ -107,6 +108,7 @@ void ChannelPool::RemoveChannel(google::protobuf::RpcChannel* channel)
     std::map<google::protobuf::RpcChannel*, google::protobuf::RpcChannel*>::iterator it;
     it = channel_.find(channel);
     if (channel_.end() != it) {
+        channel_[channel] = NULL;
         channel_.erase(channel);
         channel_invalid_.push(channel);
     }
@@ -123,8 +125,8 @@ void ChannelPool::ChannelRedirect(google::protobuf::RpcChannel* another, google:
 
 void ChannelPool::RemoveRedirect(google::protobuf::RpcChannel* channel)
 {
-    redirect_channel_.erase(channel);
-}
+    redirect_channel_[channel] = NULL;
+    redirect_channel_.erase(channel); }
 
 void ChannelPool::Close()
 {

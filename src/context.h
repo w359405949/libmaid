@@ -12,6 +12,13 @@ struct Context
     Controller* controller;
     google::protobuf::Message* response;
     google::protobuf::Closure* done;
+
+    void reset()
+    {
+        controller = NULL;
+        response = NULL;
+        done = NULL;
+    }
 };
 
 } /* maid */
