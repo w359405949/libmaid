@@ -37,14 +37,14 @@ GCClosure::GCClosure(google::protobuf::RpcController* controller,
 void GCClosure::Run()
 {
     CHECK(controller_ != NULL);
+    delete controller_;
+    delete request_;
+    delete response_;
     delete this;
 }
 
 GCClosure::~GCClosure()
 {
-    delete controller_;
-    delete request_;
-    delete response_;
     controller_ = NULL;
 }
 
