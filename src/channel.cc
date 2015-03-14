@@ -95,8 +95,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         return;
     }
 
-    maid::Controller* controller = google::protobuf::down_cast<Controller*>(rpc_controller);
-    proto::ControllerProto* controller_proto = controller->mutable_proto();
+    proto::ControllerProto* controller_proto = new proto::ControllerProto();
 
     controller_proto->set_full_service_name(method->service()->full_name());
     controller_proto->set_method_name(method->name());
@@ -106,7 +105,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     int64_t transmit_id = transmit_id_++; // TODO: check if used
     CHECK(async_result_.find(transmit_id) == async_result_.end());
     controller_proto->set_transmit_id(transmit_id);
-    async_result_[transmit_id].controller = controller;
+    async_result_[transmit_id].controller = google::protobuf::down_cast<Controller*>(rpc_controller);
     async_result_[transmit_id].response = response;
     async_result_[transmit_id].done = done;
 
@@ -306,6 +305,7 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
 {
     std::map<int64_t, Context>::iterator it = async_result_.find(controller_proto->transmit_id());
     if (it == async_result_.end()) {
+        delete controller_proto;
         return 0;
     }
 
