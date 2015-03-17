@@ -149,17 +149,20 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
     TcpChannel* self = (TcpChannel*)req->handle->data;
     proto::ControllerProto* controller_proto = (proto::ControllerProto*)req->data;
     delete self->sending_buffer_[req];
-    self->sending_buffer_[req] = NULL;
     self->sending_buffer_.erase(req);
     free(req);
 
-    if (status != 0) {
-        controller_proto->set_failed(true);
-        controller_proto->set_error_text(uv_strerror(status));
-        controller_proto->clear_message();
-    }
-    if (status != 0 || helper::ProtobufHelper::notify(*controller_proto)) {
+    if (helper::ProtobufHelper::notify(*controller_proto)) {
         self->HandleResponse(controller_proto);
+    } else {
+        if (status != 0) {
+            controller_proto->set_failed(true);
+            controller_proto->set_error_text(uv_strerror(status));
+            controller_proto->clear_message();
+            self->HandleResponse(controller_proto);
+        } else {
+            delete controller_proto;
+        }
     }
 }
 
@@ -309,15 +312,18 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
         return 0;
     }
 
-    Context& context = it->second;
-    if (!controller_proto->failed() && controller_proto->has_message()) {
-        context.response->ParseFromString(controller_proto->message());
-    }
-    context.controller->set_allocated_proto(controller_proto);
-    context.done->Run();
-    context.reset();
+    Controller* controller = it->second.controller;
+    google::protobuf::Closure* done = it->second.done;
+    google::protobuf::Message* response = it->second.response;
+
+    it->second.reset();
     async_result_.erase(it);
 
+    if (!controller_proto->failed() && controller_proto->has_message()) {
+        response->ParseFromString(controller_proto->message());
+    }
+    controller->set_allocated_proto(controller_proto);
+    done->Run();
     return 0;
 }
 
@@ -351,6 +357,7 @@ void TcpChannel::Close()
     std::map<int64_t, Context>::iterator context_it;
     for (context_it = async_result_.begin(); context_it != async_result_.end(); context_it++) {
         context_it->second.controller->StartCancel();
+        context_it->second.controller->SetFailed("canceled");
         context_it->second.done->Run();
         context_it->second.reset();
     }

@@ -124,7 +124,7 @@ public: // unit test only
     }
 
 private:
-    std::map<int64_t/* transmit_id */, Context> async_result_; //<transmit_id, Context>
+    std::map<int64_t/* transmit_id */, Context> async_result_;
     std::map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
     std::map<Controller*, Controller*> router_controllers_;
 
