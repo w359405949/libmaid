@@ -96,12 +96,11 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
-    pool()->RemoveChannel(channel);
-
-    connection_->set_id((int64_t)channel->stream());
+    connection_->set_id((int64_t)channel);
     proto::Middleware_Stub stub(middleware_channel());
     stub.Disconnected(controller_, connection_, connection_, closure_);
 
+    pool()->RemoveChannel(channel);
 }
 
 /*
