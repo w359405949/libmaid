@@ -214,18 +214,14 @@ void TcpChannel::OnTimer(uv_timer_t* timer)
 
     // scheduler
     switch (result) {
-        case ERROR_OUT_OF_SIZE:
-            break;
         case ERROR_LACK_DATA:
             uv_timer_stop(timer);
             uv_read_start(self->stream_, OnAlloc, OnRead);
             break;
+        case ERROR_OUT_OF_SIZE:
         case ERROR_BUSY:
-            break;
         case ERROR_PARSE_FAILED:
-            break;
         case ERROR_OTHER:
-            break;
         default:
             uv_timer_again(timer);
             break;
