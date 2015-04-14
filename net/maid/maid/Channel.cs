@@ -44,6 +44,8 @@ namespace maid
         private ControllerProtoSerializer serializer_;
         private ControllerProto proto_;
         private byte[] buffer_;
+        private int lack_length_;
+        private int controller_proto_length_ = 4;
 
         public List<ConnectionFunc> ConnectedCallback
         {
@@ -78,6 +80,7 @@ namespace maid
             DisconnectedCallback_ = new List<ConnectionFunc>();
 
             proto_ = new ControllerProto();
+
         }
 
         public void AddMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RpcCallFunc<RequestType, ResponseType> callback)
@@ -126,50 +129,51 @@ namespace maid
                 serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
 
-            if (null != callback)
+            handleResponseFunc_[fullMethodName] = (controller) =>
             {
-                handleResponseFunc_[fullMethodName] = (controller) =>
+                if (!requests.ContainsKey(controller.proto.transmit_id))
                 {
-                    if (!requests.ContainsKey(controller.proto.transmit_id))
-                    {
-                        return;
-                    }
-                    RequestType request = requests[controller.proto.transmit_id] as RequestType;
-                    ResponseType response = null;
+                    return;
+                }
+                RequestType request = requests[controller.proto.transmit_id] as RequestType;
+                ResponseType response = null;
 
-                    requests.Remove(controller.proto.transmit_id);
-                    using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
-                    {
-                        response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
-                    }
+                requests.Remove(controller.proto.transmit_id);
+                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
+                {
+                    response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
+                }
+
+                if (callback != null)
+                {
                     callback(controller, request, response);
-                };
-            }
+                }
+            };
 
-            if (method != null)
+            handleRequestFunc_[fullMethodName] = (controller) =>
             {
-                handleRequestFunc_[fullMethodName] = (controller) =>
+                RequestType request = null;
+                ResponseType response = Activator.CreateInstance<ResponseType>();
+                using (MemoryStream stream = new MemoryStream())
                 {
-                    RequestType request = null;
-                    ResponseType response = Activator.CreateInstance<ResponseType>();
-                    using (MemoryStream stream = new MemoryStream())
-                    {
-                        request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
-                    }
+                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
+                }
 
+                if (method != null)
+                {
                     method(controller, request, response);
+                }
 
-                    using (MemoryStream stream = new MemoryStream())
-                    {
-                        responseSerializer.Serialize(stream, response);
-                        controller.proto.message = stream.ToArray();
-                    }
-                    controller.proto.stub = false;
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    responseSerializer.Serialize(stream, response);
+                    controller.proto.message = stream.ToArray();
+                }
+                controller.proto.stub = false;
 
-                    writeBufferPending_.Seek(0, SeekOrigin.End);
-                    serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
-                };
-            }
+                writeBufferPending_.Seek(0, SeekOrigin.End);
+                serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+            };
 
             ConnectedCallback.Add(() =>
             {
@@ -243,6 +247,7 @@ namespace maid
             string fullServiceName = fullMethodName.Substring(0, last);
             string methodName = fullMethodName.Substring(last + 1, fullMethodName.Length - last - 1);
 
+
             Controller controller = new Controller();
             controller.channel = this;
             controller.proto = proto_;
@@ -295,7 +300,7 @@ namespace maid
 
         private void Reconnect()
         {
-            if (asyncConnect_ != null)
+            if (asyncConnect_ != null && asyncConnect_.IsCompleted)
             {
                 Socket connection = asyncConnect_.AsyncState as Socket;
                 try
@@ -418,18 +423,18 @@ namespace maid
                 {
                     byte[] data = writeBuffer_.ToArray();
                     int remain = data.Length - nwrite;
-                    asyncWrite_ = connection_.BeginSend(data, nwrite, remain, SocketFlags.None, null, null);
+                    asyncWrite_ = connection_.BeginSend(data, nwrite, remain, SocketFlags.Partial, null, null);
                 }
                 else
                 {
-                    writeBuffer_.Seek(0, SeekOrigin.Begin);
-                    writeBuffer_.SetLength(0);
                     asyncWrite_ = null;
                 }
             }
 
             if (asyncWrite_ == null)
             {
+                writeBuffer_.Seek(0, SeekOrigin.Begin);
+                writeBuffer_.SetLength(0);
 
                 MemoryStream ms = writeBuffer_;
                 writeBuffer_ = writeBufferPending_;
@@ -438,7 +443,7 @@ namespace maid
                 if (writeBuffer_.Length > 0)
                 {
                     byte[] data = writeBuffer_.ToArray();
-                    asyncWrite_ = connection_.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                    asyncWrite_ = connection_.BeginSend(data, 0, data.Length, SocketFlags.Partial, null, null);
                 }
             }
         }
@@ -448,6 +453,7 @@ namespace maid
             if (asyncRead_ != null && asyncRead_.IsCompleted)
             {
                 int nread = connection_.EndReceive(asyncRead_);
+
                 if (nread < 0)
                 {
                     CloseConnection();
@@ -463,7 +469,11 @@ namespace maid
 
             if (asyncRead_ == null)
             {
-                asyncRead_ = connection_.BeginReceive(buffer_, 0, buffer_.Length, SocketFlags.None, null, null);
+                if (lack_length_ > buffer_.Length)
+                {
+                    lack_length_ = buffer_.Length;
+                }
+                asyncRead_ = connection_.BeginReceive(buffer_, 0, lack_length_, SocketFlags.Partial, null, null);
             }
         }
 
@@ -471,17 +481,24 @@ namespace maid
         {
             readBuffer_.Seek(0, SeekOrigin.Begin);
 
-            if (readBuffer_.Length < 4)
+            if (readBuffer_.Length < controller_proto_length_)
             {
+                lack_length_ = controller_proto_length_ - (int)readBuffer_.Length;
                 return;
             }
 
+
             int fieldNumber;
             int len = ProtoReader.ReadLengthPrefix(readBuffer_, false, PrefixStyle.Fixed32BigEndian, out fieldNumber);
-            if (len > readBuffer_.Length - 4)
+            if (len > readBuffer_.Length - controller_proto_length_)
             {
+                lack_length_ = len + controller_proto_length_ - (int)readBuffer_.Length;
                 readBuffer_.Seek(0, SeekOrigin.Begin);
                 return;
+            }
+            else
+            {
+                lack_length_ = controller_proto_length_;
             }
 
             Controller controller = new Controller();
@@ -497,9 +514,11 @@ namespace maid
             readBuffer_ = readBufferBack_;
             readBufferBack_ = ms;
 
+
+            string fullMethodName = controller.proto.full_service_name + "." + controller.proto.method_name;
+
             if (controller.proto.stub)
             {
-                string fullMethodName = controller.proto.full_service_name + "." + controller.proto.method_name;
                 if (handleRequestFunc_.ContainsKey(fullMethodName))
                 {
                     handleRequestFunc_[fullMethodName](controller);
@@ -507,7 +526,6 @@ namespace maid
             }
             else
             {
-                string fullMethodName = controller.proto.full_service_name + "." + controller.proto.method_name;
                 if (handleResponseFunc_.ContainsKey(fullMethodName))
                 {
                     handleResponseFunc_[fullMethodName](controller);
