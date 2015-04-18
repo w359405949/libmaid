@@ -400,16 +400,20 @@ namespace maid
                 Reconnect();
                 return;
             }
-            try
+            else
             {
-                Read();
-                Handle();
-                Write();
-            }
-            catch (SocketException)
-            {
-                CloseConnection();
-                return;
+                try
+                {
+                    Read();
+                    Handle();
+                    Write();
+                }
+                catch (SocketException e)
+                {
+                    CloseConnection();
+                    return;
+                }
+
             }
         }
 
@@ -419,7 +423,12 @@ namespace maid
             {
                 int nwrite = connection_.EndSend(asyncWrite_);
 
-                if (nwrite < writeBuffer_.Length)
+                if (nwrite <= 0)
+                {
+                    CloseConnection();
+                    return;
+                }
+                else if (nwrite < writeBuffer_.Length)
                 {
                     byte[] data = writeBuffer_.ToArray();
                     int remain = data.Length - nwrite;
@@ -454,7 +463,7 @@ namespace maid
             {
                 int nread = connection_.EndReceive(asyncRead_);
 
-                if (nread < 0)
+                if (nread < 0 || (nread == 0 && connection_.Available == 0))
                 {
                     CloseConnection();
                     return;
@@ -488,8 +497,8 @@ namespace maid
             }
 
 
-            int fieldNumber;
-            int len = ProtoReader.ReadLengthPrefix(readBuffer_, false, PrefixStyle.Fixed32BigEndian, out fieldNumber);
+            int field_number;
+            int len = ProtoReader.ReadLengthPrefix(readBuffer_, false, PrefixStyle.Fixed32BigEndian, out field_number);
             if (len > readBuffer_.Length - controller_proto_length_)
             {
                 lack_length_ = len + controller_proto_length_ - (int)readBuffer_.Length;

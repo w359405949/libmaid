@@ -21,7 +21,7 @@ namespace Example
                 Console.WriteLine("连接上了");
             });
 
-            channel.Connect("192.168.0.99", 5555);
+            channel.Connect("192.168.0.99", 8888);
 
             while (true)
             {
