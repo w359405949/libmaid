@@ -410,6 +410,7 @@ namespace maid
                 }
                 catch (SocketException e)
                 {
+                    throw e;
                     CloseConnection();
                     return;
                 }
@@ -463,16 +464,18 @@ namespace maid
             {
                 int nread = connection_.EndReceive(asyncRead_);
 
-                if (nread < 0 || (nread == 0 && connection_.Available == 0))
-                {
-                    CloseConnection();
-                    return;
-                }
-                else
+
+                if (nread > 0)
                 {
                     readBuffer_.Seek(0, SeekOrigin.End);
                     readBuffer_.Write(buffer_, 0, nread);
                 }
+                else
+                {
+                    CloseConnection();
+                    return;
+                }
+
                 asyncRead_ = null;
             }
 
@@ -482,7 +485,11 @@ namespace maid
                 {
                     lack_length_ = buffer_.Length;
                 }
-                asyncRead_ = connection_.BeginReceive(buffer_, 0, lack_length_, SocketFlags.Partial, null, null);
+
+                if (lack_length_ > 0)
+                {
+                    asyncRead_ = connection_.BeginReceive(buffer_, 0, lack_length_, SocketFlags.Partial, null, null);
+                }
             }
         }
 
