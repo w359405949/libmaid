@@ -410,7 +410,6 @@ namespace maid
                 }
                 catch (SocketException e)
                 {
-                    throw e;
                     CloseConnection();
                     return;
                 }
@@ -433,7 +432,7 @@ namespace maid
                 {
                     byte[] data = writeBuffer_.ToArray();
                     int remain = data.Length - nwrite;
-                    asyncWrite_ = connection_.BeginSend(data, nwrite, remain, SocketFlags.Partial, null, null);
+                    asyncWrite_ = connection_.BeginSend(data, nwrite, remain, SocketFlags.None, null, null);
                 }
                 else
                 {
@@ -453,7 +452,7 @@ namespace maid
                 if (writeBuffer_.Length > 0)
                 {
                     byte[] data = writeBuffer_.ToArray();
-                    asyncWrite_ = connection_.BeginSend(data, 0, data.Length, SocketFlags.Partial, null, null);
+                    asyncWrite_ = connection_.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
                 }
             }
         }
@@ -488,7 +487,7 @@ namespace maid
 
                 if (lack_length_ > 0)
                 {
-                    asyncRead_ = connection_.BeginReceive(buffer_, 0, lack_length_, SocketFlags.Partial, null, null);
+                    asyncRead_ = connection_.BeginReceive(buffer_, 0, lack_length_, SocketFlags.None, null, null);
                 }
             }
         }
