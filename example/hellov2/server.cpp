@@ -3,6 +3,7 @@
 #include "maid/channel_pool.h"
 #include "maid/controller.h"
 #include "maid/channel.h"
+#include "maid/uv_hook.h"
 #include "hello.pb.h"
 
 class MockClosure : public google::protobuf::Closure
@@ -89,7 +90,7 @@ int main()
     repo->Insert(new HelloServiceImpl());
     maid::Acceptor acceptor(repo, NULL, NULL);
     acceptor.Listen("0.0.0.0", 5555);
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
 
     acceptor.Close();
 }
