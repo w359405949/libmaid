@@ -6,6 +6,7 @@
 #include "maid/controller.h"
 #include "maid/controller.pb.h"
 #include "maid/closure.h"
+#include "maid/uv_hook.h"
 #include "hello.pb.h"
 
 #define REQUESTS 10000
@@ -70,7 +71,7 @@ int main()
         stub.Hello(controller, request, response, closure);
     }
 
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
 
     connector.Close();
 
