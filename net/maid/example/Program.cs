@@ -33,6 +33,7 @@ namespace Example
                 {
                     channel.CallMethod("maid.example.HelloService.HelloNotify", request);
                     channel.CallMethod("maid.example.HelloService.HelloRpc", request);
+                    channel.CallMethod<HelloRequest, HelloSerializer, HelloResponse, HelloSerializer>("maid.example.HelloService.HelloRpc", request, service.HelloRpcCallback);
                 }
                 catch (Exception ){ }
                 if (channel.Connecting)
@@ -53,6 +54,11 @@ namespace Example
         public void HelloNotify(Controller controller, HelloRequest request)
         {
             Console.WriteLine("notify: " + request.message);
+        }
+
+        public void HelloRpcCallback(Controller controller, HelloRequest request, HelloResponse response)
+        {
+            Console.WriteLine("(callback)request: " + request.message + " response: " + response.message);
         }
     }
 }
