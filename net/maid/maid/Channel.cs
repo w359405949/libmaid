@@ -42,7 +42,7 @@ namespace maid
         // double read buffer
         private IAsyncResult asyncRead_;
         private MemoryStream readBuffer_; //
-        private MemoryStream readBufferBack_; //
+        private MemoryStream readBufferBack_; // 
 
         private ControllerProtoSerializer serializer_;
         private ControllerProto proto_;
@@ -114,7 +114,7 @@ namespace maid
             where ResponseType : class, ProtoBuf.IExtensible
             where ResponseSerializerType : ProtoBuf.Meta.TypeModel
         {
-            Dictionary<UInt64, RequestType> requests = new Dictionary<UInt64, RequestType>();
+            Dictionary<UInt64, ProtoBuf.IExtensible> requests = new Dictionary<UInt64, ProtoBuf.IExtensible>();
             UInt64 transmit_id = 0;
             RequestSerializerType requestSerializer = Activator.CreateInstance<RequestSerializerType>();
             ResponseSerializerType responseSerializer = Activator.CreateInstance<ResponseSerializerType>();
@@ -123,7 +123,7 @@ namespace maid
             {
                 transmit_id += 2;
                 controller.proto.transmit_id = transmit_id;
-                requests[controller.proto.transmit_id] = request as RequestType;
+                requests[controller.proto.transmit_id] = request;
 
                 using (MemoryStream stream = new MemoryStream())
                 {
@@ -181,7 +181,6 @@ namespace maid
                 writeBufferPending_.Seek(0, SeekOrigin.End);
                 serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
-
             ConnectedCallback.Add(() =>
             {
                 requests.Clear();
@@ -191,7 +190,7 @@ namespace maid
             {
                 requests.Clear();
             });
-
+            
         }
 
         /*
@@ -302,7 +301,7 @@ namespace maid
             serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
 
 
-            handleResponseFunc_[fullMethodName] = (controller_res) =>
+            handleTransmitFunc_[controller.proto.transmit_id] = (controller_res) =>
             {
                 ResponseType response = null;
 
@@ -410,6 +409,8 @@ namespace maid
             connection.NoDelay = true;
             buffer_ = new byte[connection.ReceiveBufferSize];
             connection_ = connection;
+
+            handleTransmitFunc_.Clear();
 
             foreach (ConnectionFunc callback in ConnectedCallback_)
             {
@@ -600,9 +601,10 @@ namespace maid
             }
             else
             {
-                if (controller.proto.transmit_id % 2 == 1) // global transmit
+                if (handleTransmitFunc_.ContainsKey(controller.proto.transmit_id)) // global transmit
                 {
                     handleTransmitFunc_[controller.proto.transmit_id](controller);
+                    handleTransmitFunc_.Remove(controller.proto.transmit_id);
                 }
                 else if (handleResponseFunc_.ContainsKey(fullMethodName))
                 {
