@@ -39,7 +39,7 @@ public:
 
         if(count >= REQUESTS){
             printf("count:%d\n", count);
-            uv_stop(uv_default_loop());
+            uv_stop(maid_default_loop());
         }
 
         delete request_;
@@ -60,7 +60,7 @@ int main()
     maid::Connector connector(NULL, NULL, pool);
     connector.Connect("0.0.0.0", 5555);
     for(int32_t i = 0; i < REQUESTS; i++){
-        uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+        uv_run(maid_default_loop(), UV_RUN_NOWAIT);
         Controller* controller = new Controller();
         maid::example::HelloRequest* request = new maid::example::HelloRequest();
         request->set_message("hello");

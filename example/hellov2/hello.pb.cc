@@ -43,31 +43,31 @@ void protobuf_AssignDesc_hello_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloRequest, message_),
   };
   HelloRequest_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       HelloRequest_descriptor_,
       HelloRequest::default_instance_,
       HelloRequest_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloRequest, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloRequest, _unknown_fields_),
       -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(HelloRequest));
+      -1,
+      sizeof(HelloRequest),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloRequest, _internal_metadata_),
+      -1);
   HelloResponse_descriptor_ = file->message_type(1);
   static const int HelloResponse_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloResponse, message_),
   };
   HelloResponse_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       HelloResponse_descriptor_,
       HelloResponse::default_instance_,
       HelloResponse_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloResponse, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloResponse, _unknown_fields_),
       -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(HelloResponse));
+      -1,
+      sizeof(HelloResponse),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(HelloResponse, _internal_metadata_),
+      -1);
   HelloService_descriptor_ = file->service(0);
 }
 
@@ -82,9 +82,9 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    HelloRequest_descriptor_, &HelloRequest::default_instance());
+      HelloRequest_descriptor_, &HelloRequest::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    HelloResponse_descriptor_, &HelloResponse::default_instance());
+      HelloResponse_descriptor_, &HelloResponse::default_instance());
 }
 
 }  // namespace
@@ -129,6 +129,16 @@ struct StaticDescriptorInitializer_hello_2eproto {
   }
 } static_descriptor_initializer_hello_2eproto_;
 
+namespace {
+
+static void MergeFromFail(int line) GOOGLE_ATTRIBUTE_COLD;
+static void MergeFromFail(int line) {
+  GOOGLE_CHECK(false) << __FILE__ << ":" << line;
+}
+
+}  // namespace
+
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -136,7 +146,7 @@ const int HelloRequest::kMessageFieldNumber;
 #endif  // !_MSC_VER
 
 HelloRequest::HelloRequest()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.example.HelloRequest)
 }
@@ -145,7 +155,8 @@ void HelloRequest::InitAsDefaultInstance() {
 }
 
 HelloRequest::HelloRequest(const HelloRequest& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.example.HelloRequest)
@@ -154,7 +165,7 @@ HelloRequest::HelloRequest(const HelloRequest& from)
 void HelloRequest::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  message_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -164,9 +175,7 @@ HelloRequest::~HelloRequest() {
 }
 
 void HelloRequest::SharedDtor() {
-  if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete message_;
-  }
+  message_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -188,18 +197,22 @@ const HelloRequest& HelloRequest::default_instance() {
 
 HelloRequest* HelloRequest::default_instance_ = NULL;
 
-HelloRequest* HelloRequest::New() const {
-  return new HelloRequest;
+HelloRequest* HelloRequest::New(::google::protobuf::Arena* arena) const {
+  HelloRequest* n = new HelloRequest;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void HelloRequest::Clear() {
   if (has_message()) {
-    if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      message_->clear();
-    }
+    message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool HelloRequest::MergePartialFromCodedStream(
@@ -220,7 +233,7 @@ bool HelloRequest::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->message().data(), this->message().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "message");
+            "maid.example.HelloRequest.message");
         } else {
           goto handle_unusual;
         }
@@ -258,12 +271,12 @@ void HelloRequest::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->message().data(), this->message().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "message");
+      "maid.example.HelloRequest.message");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       1, this->message(), output);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -278,13 +291,13 @@ void HelloRequest::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->message().data(), this->message().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "message");
+      "maid.example.HelloRequest.message");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         1, this->message(), target);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -295,16 +308,14 @@ void HelloRequest::SerializeWithCachedSizes(
 int HelloRequest::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional string message = 1;
-    if (has_message()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->message());
-    }
-
+  // optional string message = 1;
+  if (has_message()) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->message());
   }
-  if (!unknown_fields().empty()) {
+
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -316,7 +327,7 @@ int HelloRequest::ByteSize() const {
 }
 
 void HelloRequest::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const HelloRequest* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const HelloRequest*>(
       &from);
@@ -328,13 +339,16 @@ void HelloRequest::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void HelloRequest::MergeFrom(const HelloRequest& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_message()) {
-      set_message(from.message());
+      set_has_message();
+      message_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.message_);
     }
   }
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void HelloRequest::CopyFrom(const ::google::protobuf::Message& from) {
@@ -355,12 +369,14 @@ bool HelloRequest::IsInitialized() const {
 }
 
 void HelloRequest::Swap(HelloRequest* other) {
-  if (other != this) {
-    std::swap(message_, other->message_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void HelloRequest::InternalSwap(HelloRequest* other) {
+  message_.Swap(&other->message_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
 }
 
 ::google::protobuf::Metadata HelloRequest::GetMetadata() const {
@@ -379,7 +395,7 @@ const int HelloResponse::kMessageFieldNumber;
 #endif  // !_MSC_VER
 
 HelloResponse::HelloResponse()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.example.HelloResponse)
 }
@@ -388,7 +404,8 @@ void HelloResponse::InitAsDefaultInstance() {
 }
 
 HelloResponse::HelloResponse(const HelloResponse& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.example.HelloResponse)
@@ -397,7 +414,7 @@ HelloResponse::HelloResponse(const HelloResponse& from)
 void HelloResponse::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  message_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -407,9 +424,7 @@ HelloResponse::~HelloResponse() {
 }
 
 void HelloResponse::SharedDtor() {
-  if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete message_;
-  }
+  message_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -431,18 +446,22 @@ const HelloResponse& HelloResponse::default_instance() {
 
 HelloResponse* HelloResponse::default_instance_ = NULL;
 
-HelloResponse* HelloResponse::New() const {
-  return new HelloResponse;
+HelloResponse* HelloResponse::New(::google::protobuf::Arena* arena) const {
+  HelloResponse* n = new HelloResponse;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void HelloResponse::Clear() {
   if (has_message()) {
-    if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      message_->clear();
-    }
+    message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool HelloResponse::MergePartialFromCodedStream(
@@ -463,7 +482,7 @@ bool HelloResponse::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->message().data(), this->message().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "message");
+            "maid.example.HelloResponse.message");
         } else {
           goto handle_unusual;
         }
@@ -501,12 +520,12 @@ void HelloResponse::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->message().data(), this->message().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "message");
+      "maid.example.HelloResponse.message");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       1, this->message(), output);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -521,13 +540,13 @@ void HelloResponse::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->message().data(), this->message().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "message");
+      "maid.example.HelloResponse.message");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         1, this->message(), target);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -538,16 +557,14 @@ void HelloResponse::SerializeWithCachedSizes(
 int HelloResponse::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional string message = 1;
-    if (has_message()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->message());
-    }
-
+  // optional string message = 1;
+  if (has_message()) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->message());
   }
-  if (!unknown_fields().empty()) {
+
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -559,7 +576,7 @@ int HelloResponse::ByteSize() const {
 }
 
 void HelloResponse::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const HelloResponse* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const HelloResponse*>(
       &from);
@@ -571,13 +588,16 @@ void HelloResponse::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void HelloResponse::MergeFrom(const HelloResponse& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_message()) {
-      set_message(from.message());
+      set_has_message();
+      message_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.message_);
     }
   }
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void HelloResponse::CopyFrom(const ::google::protobuf::Message& from) {
@@ -598,12 +618,14 @@ bool HelloResponse::IsInitialized() const {
 }
 
 void HelloResponse::Swap(HelloResponse* other) {
-  if (other != this) {
-    std::swap(message_, other->message_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void HelloResponse::InternalSwap(HelloResponse* other) {
+  message_.Swap(&other->message_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
 }
 
 ::google::protobuf::Metadata HelloResponse::GetMetadata() const {
@@ -696,7 +718,7 @@ const ::google::protobuf::Message& HelloService::GetRequestPrototype(
       return ::maid::example::HelloRequest::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
-      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+      return *static_cast< ::google::protobuf::Message*>(NULL);
   }
 }
 
@@ -712,7 +734,7 @@ const ::google::protobuf::Message& HelloService::GetResponsePrototype(
       return ::maid::example::HelloResponse::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
-      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+      return *static_cast< ::google::protobuf::Message*>(NULL);
   }
 }
 

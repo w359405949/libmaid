@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "maid/uv_hook.h"
 #include "maid/base.h"
 #include "maid/controller.h"
 #include "maid/middleware/log_middleware.h"
@@ -21,7 +22,7 @@ public:
     void Run()
     {
         ++count;
-        //printf("%d:%s\n", count, response_->message().c_str());
+        printf("%d:%s\n", count, response_->message().c_str());
         if(count >= REQUESTS){
             client_->Close();
         }

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "maid/uv_hook.h"
 #include "maid/base.h"
 #include "maid/controller.h"
 #include "maid/middleware/log_middleware.h"
@@ -39,7 +40,7 @@ public:
     {
         //printf("transmit_id:%d, %s\n", ((maid::Controller*)controller)->meta_data().transmit_id(), request->message().c_str());
 
-        //request->PrintDebugString();
+        request->PrintDebugString();
         response->set_message("welcome to libmaid");
         done->Run();
     }

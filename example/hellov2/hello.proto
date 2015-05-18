@@ -1,3 +1,4 @@
+syntax="proto2";
 import "maid/options.proto";
 
 package maid.example;
