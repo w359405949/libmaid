@@ -13,16 +13,17 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-import maid.controller_pb2
-import maid.connection_pb2
+from maid import controller_pb2 as maid_dot_controller__pb2
+from maid import connection_pb2 as maid_dot_connection__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/middleware.proto',
   package='maid.proto',
+  syntax='proto2',
   serialized_pb=_b('\n\x15maid/middleware.proto\x12\nmaid.proto\x1a\x15maid/controller.proto\x1a\x15maid/connection.proto2\xd7\x03\n\nMiddleware\x12\x45\n\tConnected\x12\x1b.maid.proto.ConnectionProto\x1a\x1b.maid.proto.ConnectionProto\x12H\n\x0c\x44isconnected\x12\x1b.maid.proto.ConnectionProto\x1a\x1b.maid.proto.ConnectionProto\x12J\n\x0eProcessRequest\x12\x1b.maid.proto.ControllerProto\x1a\x1b.maid.proto.ControllerProto\x12K\n\x0fProcessResponse\x12\x1b.maid.proto.ControllerProto\x1a\x1b.maid.proto.ControllerProto\x12N\n\x12ProcessRequestStub\x12\x1b.maid.proto.ControllerProto\x1a\x1b.maid.proto.ControllerProto\x12O\n\x13ProcessResponseStub\x12\x1b.maid.proto.ControllerProto\x1a\x1b.maid.proto.ControllerProtoB\x03\x80\x01\x01')
   ,
-  dependencies=[maid.controller_pb2.DESCRIPTOR,maid.connection_pb2.DESCRIPTOR,])
+  dependencies=[maid_dot_controller__pb2.DESCRIPTOR,maid_dot_connection__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 

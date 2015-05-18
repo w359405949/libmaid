@@ -13,15 +13,16 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-import maid.controller_pb2
+from maid import controller_pb2 as maid_dot_controller__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/connection.proto',
   package='maid.proto',
+  syntax='proto2',
   serialized_pb=_b('\n\x15maid/connection.proto\x12\nmaid.proto\x1a\x15maid/controller.proto\"D\n\x0f\x43onnectionProto\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02:M\n\nconnection\x12\x1b.maid.proto.ControllerProto\x18\xe9\x07 \x01(\x0b\x32\x1b.maid.proto.ConnectionProto')
   ,
-  dependencies=[maid.controller_pb2.DESCRIPTOR,])
+  dependencies=[maid_dot_controller__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
@@ -71,6 +72,7 @@ _CONNECTIONPROTO = _descriptor.Descriptor(
   ],
   options=None,
   is_extendable=True,
+  syntax='proto2',
   extension_ranges=[(1000, 536870912), ],
   oneofs=[
   ],
@@ -89,6 +91,6 @@ ConnectionProto = _reflection.GeneratedProtocolMessageType('ConnectionProto', (_
 _sym_db.RegisterMessage(ConnectionProto)
 
 connection.message_type = _CONNECTIONPROTO
-maid.controller_pb2.ControllerProto.RegisterExtension(connection)
+maid_dot_controller__pb2.ControllerProto.RegisterExtension(connection)
 
 # @@protoc_insertion_point(module_scope)

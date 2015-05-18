@@ -41,16 +41,16 @@ void protobuf_AssignDesc_maid_2fconnection_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConnectionProto, port_),
   };
   ConnectionProto_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       ConnectionProto_descriptor_,
       ConnectionProto::default_instance_,
       ConnectionProto_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConnectionProto, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConnectionProto, _unknown_fields_),
+      -1,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConnectionProto, _extensions_),
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(ConnectionProto));
+      sizeof(ConnectionProto),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConnectionProto, _internal_metadata_),
+      -1);
 }
 
 namespace {
@@ -64,7 +64,7 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    ConnectionProto_descriptor_, &ConnectionProto::default_instance());
+      ConnectionProto_descriptor_, &ConnectionProto::default_instance());
 }
 
 }  // namespace
@@ -106,6 +106,16 @@ struct StaticDescriptorInitializer_maid_2fconnection_2eproto {
   }
 } static_descriptor_initializer_maid_2fconnection_2eproto_;
 
+namespace {
+
+static void MergeFromFail(int line) GOOGLE_ATTRIBUTE_COLD;
+static void MergeFromFail(int line) {
+  GOOGLE_CHECK(false) << __FILE__ << ":" << line;
+}
+
+}  // namespace
+
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -115,7 +125,7 @@ const int ConnectionProto::kPortFieldNumber;
 #endif  // !_MSC_VER
 
 ConnectionProto::ConnectionProto()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.proto.ConnectionProto)
 }
@@ -124,7 +134,8 @@ void ConnectionProto::InitAsDefaultInstance() {
 }
 
 ConnectionProto::ConnectionProto(const ConnectionProto& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.proto.ConnectionProto)
@@ -134,7 +145,7 @@ void ConnectionProto::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
   id_ = GOOGLE_LONGLONG(0);
-  host_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  host_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   port_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -145,9 +156,7 @@ ConnectionProto::~ConnectionProto() {
 }
 
 void ConnectionProto::SharedDtor() {
-  if (host_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete host_;
-  }
+  host_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -169,8 +178,12 @@ const ConnectionProto& ConnectionProto::default_instance() {
 
 ConnectionProto* ConnectionProto::default_instance_ = NULL;
 
-ConnectionProto* ConnectionProto::New() const {
-  return new ConnectionProto;
+ConnectionProto* ConnectionProto::New(::google::protobuf::Arena* arena) const {
+  ConnectionProto* n = new ConnectionProto;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void ConnectionProto::Clear() {
@@ -178,14 +191,14 @@ void ConnectionProto::Clear() {
   if (_has_bits_[0 / 32] & 7) {
     id_ = GOOGLE_LONGLONG(0);
     if (has_host()) {
-      if (host_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        host_->clear();
-      }
+      host_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
     port_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool ConnectionProto::MergePartialFromCodedStream(
@@ -221,7 +234,7 @@ bool ConnectionProto::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->host().data(), this->host().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "host");
+            "maid.proto.ConnectionProto.host");
         } else {
           goto handle_unusual;
         }
@@ -284,7 +297,7 @@ void ConnectionProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->host().data(), this->host().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "host");
+      "maid.proto.ConnectionProto.host");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       2, this->host(), output);
   }
@@ -298,7 +311,7 @@ void ConnectionProto::SerializeWithCachedSizes(
   _extensions_.SerializeWithCachedSizes(
       1000, 536870912, output);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -318,7 +331,7 @@ void ConnectionProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->host().data(), this->host().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "host");
+      "maid.proto.ConnectionProto.host");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         2, this->host(), target);
@@ -333,7 +346,7 @@ void ConnectionProto::SerializeWithCachedSizes(
   target = _extensions_.SerializeWithCachedSizesToArray(
       1000, 536870912, target);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -344,7 +357,7 @@ void ConnectionProto::SerializeWithCachedSizes(
 int ConnectionProto::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+  if (_has_bits_[0 / 32] & 7) {
     // optional int64 id = 1;
     if (has_id()) {
       total_size += 1 +
@@ -369,7 +382,7 @@ int ConnectionProto::ByteSize() const {
   }
   total_size += _extensions_.ByteSize();
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -381,7 +394,7 @@ int ConnectionProto::ByteSize() const {
 }
 
 void ConnectionProto::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const ConnectionProto* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const ConnectionProto*>(
       &from);
@@ -393,20 +406,23 @@ void ConnectionProto::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void ConnectionProto::MergeFrom(const ConnectionProto& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_id()) {
       set_id(from.id());
     }
     if (from.has_host()) {
-      set_host(from.host());
+      set_has_host();
+      host_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.host_);
     }
     if (from.has_port()) {
       set_port(from.port());
     }
   }
   _extensions_.MergeFrom(from._extensions_);
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void ConnectionProto::CopyFrom(const ::google::protobuf::Message& from) {
@@ -428,15 +444,17 @@ bool ConnectionProto::IsInitialized() const {
 }
 
 void ConnectionProto::Swap(ConnectionProto* other) {
-  if (other != this) {
-    std::swap(id_, other->id_);
-    std::swap(host_, other->host_);
-    std::swap(port_, other->port_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-    _extensions_.Swap(&other->_extensions_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void ConnectionProto::InternalSwap(ConnectionProto* other) {
+  std::swap(id_, other->id_);
+  host_.Swap(&other->host_);
+  std::swap(port_, other->port_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
+  _extensions_.Swap(&other->_extensions_);
 }
 
 ::google::protobuf::Metadata ConnectionProto::GetMetadata() const {

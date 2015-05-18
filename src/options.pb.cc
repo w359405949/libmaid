@@ -42,32 +42,32 @@ void protobuf_AssignDesc_maid_2foptions_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, notify_),
   };
   MaidServiceOptions_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       MaidServiceOptions_descriptor_,
       MaidServiceOptions::default_instance_,
       MaidServiceOptions_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, _unknown_fields_),
       -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(MaidServiceOptions));
+      -1,
+      sizeof(MaidServiceOptions),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidServiceOptions, _internal_metadata_),
+      -1);
   MaidMethodOptions_descriptor_ = file->message_type(1);
   static const int MaidMethodOptions_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, notify_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, time_out_),
   };
   MaidMethodOptions_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       MaidMethodOptions_descriptor_,
       MaidMethodOptions::default_instance_,
       MaidMethodOptions_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, _unknown_fields_),
       -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(MaidMethodOptions));
+      -1,
+      sizeof(MaidMethodOptions),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(MaidMethodOptions, _internal_metadata_),
+      -1);
 }
 
 namespace {
@@ -81,9 +81,9 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    MaidServiceOptions_descriptor_, &MaidServiceOptions::default_instance());
+      MaidServiceOptions_descriptor_, &MaidServiceOptions::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    MaidMethodOptions_descriptor_, &MaidMethodOptions::default_instance());
+      MaidMethodOptions_descriptor_, &MaidMethodOptions::default_instance());
 }
 
 }  // namespace
@@ -136,6 +136,16 @@ struct StaticDescriptorInitializer_maid_2foptions_2eproto {
   }
 } static_descriptor_initializer_maid_2foptions_2eproto_;
 
+namespace {
+
+static void MergeFromFail(int line) GOOGLE_ATTRIBUTE_COLD;
+static void MergeFromFail(int line) {
+  GOOGLE_CHECK(false) << __FILE__ << ":" << line;
+}
+
+}  // namespace
+
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -143,7 +153,7 @@ const int MaidServiceOptions::kNotifyFieldNumber;
 #endif  // !_MSC_VER
 
 MaidServiceOptions::MaidServiceOptions()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.proto.MaidServiceOptions)
 }
@@ -152,7 +162,8 @@ void MaidServiceOptions::InitAsDefaultInstance() {
 }
 
 MaidServiceOptions::MaidServiceOptions(const MaidServiceOptions& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.proto.MaidServiceOptions)
@@ -191,14 +202,20 @@ const MaidServiceOptions& MaidServiceOptions::default_instance() {
 
 MaidServiceOptions* MaidServiceOptions::default_instance_ = NULL;
 
-MaidServiceOptions* MaidServiceOptions::New() const {
-  return new MaidServiceOptions;
+MaidServiceOptions* MaidServiceOptions::New(::google::protobuf::Arena* arena) const {
+  MaidServiceOptions* n = new MaidServiceOptions;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void MaidServiceOptions::Clear() {
   notify_ = false;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool MaidServiceOptions::MergePartialFromCodedStream(
@@ -255,7 +272,7 @@ void MaidServiceOptions::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->notify(), output);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -270,7 +287,7 @@ void MaidServiceOptions::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->notify(), target);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -281,14 +298,12 @@ void MaidServiceOptions::SerializeWithCachedSizes(
 int MaidServiceOptions::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional bool notify = 1;
-    if (has_notify()) {
-      total_size += 1 + 1;
-    }
-
+  // optional bool notify = 1;
+  if (has_notify()) {
+    total_size += 1 + 1;
   }
-  if (!unknown_fields().empty()) {
+
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -300,7 +315,7 @@ int MaidServiceOptions::ByteSize() const {
 }
 
 void MaidServiceOptions::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const MaidServiceOptions* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const MaidServiceOptions*>(
       &from);
@@ -312,13 +327,15 @@ void MaidServiceOptions::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void MaidServiceOptions::MergeFrom(const MaidServiceOptions& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_notify()) {
       set_notify(from.notify());
     }
   }
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void MaidServiceOptions::CopyFrom(const ::google::protobuf::Message& from) {
@@ -339,12 +356,14 @@ bool MaidServiceOptions::IsInitialized() const {
 }
 
 void MaidServiceOptions::Swap(MaidServiceOptions* other) {
-  if (other != this) {
-    std::swap(notify_, other->notify_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void MaidServiceOptions::InternalSwap(MaidServiceOptions* other) {
+  std::swap(notify_, other->notify_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
 }
 
 ::google::protobuf::Metadata MaidServiceOptions::GetMetadata() const {
@@ -364,7 +383,7 @@ const int MaidMethodOptions::kTimeOutFieldNumber;
 #endif  // !_MSC_VER
 
 MaidMethodOptions::MaidMethodOptions()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.proto.MaidMethodOptions)
 }
@@ -373,7 +392,8 @@ void MaidMethodOptions::InitAsDefaultInstance() {
 }
 
 MaidMethodOptions::MaidMethodOptions(const MaidMethodOptions& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.proto.MaidMethodOptions)
@@ -413,8 +433,12 @@ const MaidMethodOptions& MaidMethodOptions::default_instance() {
 
 MaidMethodOptions* MaidMethodOptions::default_instance_ = NULL;
 
-MaidMethodOptions* MaidMethodOptions::New() const {
-  return new MaidMethodOptions;
+MaidMethodOptions* MaidMethodOptions::New(::google::protobuf::Arena* arena) const {
+  MaidMethodOptions* n = new MaidMethodOptions;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void MaidMethodOptions::Clear() {
@@ -423,7 +447,9 @@ void MaidMethodOptions::Clear() {
     time_out_ = GOOGLE_LONGLONG(-1);
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool MaidMethodOptions::MergePartialFromCodedStream(
@@ -500,7 +526,7 @@ void MaidMethodOptions::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt64(2, this->time_out(), output);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -520,7 +546,7 @@ void MaidMethodOptions::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(2, this->time_out(), target);
   }
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -531,7 +557,7 @@ void MaidMethodOptions::SerializeWithCachedSizes(
 int MaidMethodOptions::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+  if (_has_bits_[0 / 32] & 3) {
     // optional bool notify = 1;
     if (has_notify()) {
       total_size += 1 + 1;
@@ -545,7 +571,7 @@ int MaidMethodOptions::ByteSize() const {
     }
 
   }
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -557,7 +583,7 @@ int MaidMethodOptions::ByteSize() const {
 }
 
 void MaidMethodOptions::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const MaidMethodOptions* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const MaidMethodOptions*>(
       &from);
@@ -569,7 +595,7 @@ void MaidMethodOptions::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void MaidMethodOptions::MergeFrom(const MaidMethodOptions& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_notify()) {
       set_notify(from.notify());
@@ -578,7 +604,9 @@ void MaidMethodOptions::MergeFrom(const MaidMethodOptions& from) {
       set_time_out(from.time_out());
     }
   }
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void MaidMethodOptions::CopyFrom(const ::google::protobuf::Message& from) {
@@ -599,13 +627,15 @@ bool MaidMethodOptions::IsInitialized() const {
 }
 
 void MaidMethodOptions::Swap(MaidMethodOptions* other) {
-  if (other != this) {
-    std::swap(notify_, other->notify_);
-    std::swap(time_out_, other->time_out_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void MaidMethodOptions::InternalSwap(MaidMethodOptions* other) {
+  std::swap(notify_, other->notify_);
+  std::swap(time_out_, other->time_out_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
 }
 
 ::google::protobuf::Metadata MaidMethodOptions::GetMetadata() const {

@@ -40,16 +40,16 @@ void protobuf_AssignDesc_maid_2fsession_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(SessionProto, expired_time_),
   };
   SessionProto_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       SessionProto_descriptor_,
       SessionProto::default_instance_,
       SessionProto_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(SessionProto, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(SessionProto, _unknown_fields_),
+      -1,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(SessionProto, _extensions_),
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(SessionProto));
+      sizeof(SessionProto),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(SessionProto, _internal_metadata_),
+      -1);
 }
 
 namespace {
@@ -63,7 +63,7 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    SessionProto_descriptor_, &SessionProto::default_instance());
+      SessionProto_descriptor_, &SessionProto::default_instance());
 }
 
 }  // namespace
@@ -104,6 +104,16 @@ struct StaticDescriptorInitializer_maid_2fsession_2eproto {
   }
 } static_descriptor_initializer_maid_2fsession_2eproto_;
 
+namespace {
+
+static void MergeFromFail(int line) GOOGLE_ATTRIBUTE_COLD;
+static void MergeFromFail(int line) {
+  GOOGLE_CHECK(false) << __FILE__ << ":" << line;
+}
+
+}  // namespace
+
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -112,7 +122,7 @@ const int SessionProto::kExpiredTimeFieldNumber;
 #endif  // !_MSC_VER
 
 SessionProto::SessionProto()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.proto.SessionProto)
 }
@@ -121,7 +131,8 @@ void SessionProto::InitAsDefaultInstance() {
 }
 
 SessionProto::SessionProto(const SessionProto& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.proto.SessionProto)
@@ -130,7 +141,7 @@ SessionProto::SessionProto(const SessionProto& from)
 void SessionProto::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   expired_time_ = GOOGLE_ULONGLONG(0);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -141,9 +152,7 @@ SessionProto::~SessionProto() {
 }
 
 void SessionProto::SharedDtor() {
-  if (id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete id_;
-  }
+  id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -165,22 +174,26 @@ const SessionProto& SessionProto::default_instance() {
 
 SessionProto* SessionProto::default_instance_ = NULL;
 
-SessionProto* SessionProto::New() const {
-  return new SessionProto;
+SessionProto* SessionProto::New(::google::protobuf::Arena* arena) const {
+  SessionProto* n = new SessionProto;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void SessionProto::Clear() {
   _extensions_.Clear();
   if (_has_bits_[0 / 32] & 3) {
     if (has_id()) {
-      if (id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        id_->clear();
-      }
+      id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
     expired_time_ = GOOGLE_ULONGLONG(0);
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool SessionProto::MergePartialFromCodedStream(
@@ -201,7 +214,7 @@ bool SessionProto::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->id().data(), this->id().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "id");
+            "maid.proto.SessionProto.id");
         } else {
           goto handle_unusual;
         }
@@ -259,7 +272,7 @@ void SessionProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->id().data(), this->id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "id");
+      "maid.proto.SessionProto.id");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       1, this->id(), output);
   }
@@ -273,7 +286,7 @@ void SessionProto::SerializeWithCachedSizes(
   _extensions_.SerializeWithCachedSizes(
       1000, 536870912, output);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -288,7 +301,7 @@ void SessionProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->id().data(), this->id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "id");
+      "maid.proto.SessionProto.id");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         1, this->id(), target);
@@ -303,7 +316,7 @@ void SessionProto::SerializeWithCachedSizes(
   target = _extensions_.SerializeWithCachedSizesToArray(
       1000, 536870912, target);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -314,7 +327,7 @@ void SessionProto::SerializeWithCachedSizes(
 int SessionProto::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+  if (_has_bits_[0 / 32] & 3) {
     // optional string id = 1;
     if (has_id()) {
       total_size += 1 +
@@ -332,7 +345,7 @@ int SessionProto::ByteSize() const {
   }
   total_size += _extensions_.ByteSize();
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -344,7 +357,7 @@ int SessionProto::ByteSize() const {
 }
 
 void SessionProto::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const SessionProto* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const SessionProto*>(
       &from);
@@ -356,17 +369,20 @@ void SessionProto::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void SessionProto::MergeFrom(const SessionProto& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_id()) {
-      set_id(from.id());
+      set_has_id();
+      id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.id_);
     }
     if (from.has_expired_time()) {
       set_expired_time(from.expired_time());
     }
   }
   _extensions_.MergeFrom(from._extensions_);
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void SessionProto::CopyFrom(const ::google::protobuf::Message& from) {
@@ -388,14 +404,16 @@ bool SessionProto::IsInitialized() const {
 }
 
 void SessionProto::Swap(SessionProto* other) {
-  if (other != this) {
-    std::swap(id_, other->id_);
-    std::swap(expired_time_, other->expired_time_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-    _extensions_.Swap(&other->_extensions_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void SessionProto::InternalSwap(SessionProto* other) {
+  id_.Swap(&other->id_);
+  std::swap(expired_time_, other->expired_time_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
+  _extensions_.Swap(&other->_extensions_);
 }
 
 ::google::protobuf::Metadata SessionProto::GetMetadata() const {

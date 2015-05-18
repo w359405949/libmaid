@@ -13,15 +13,16 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-import google.protobuf.descriptor_pb2
+from google.protobuf import descriptor_pb2 as google_dot_protobuf_dot_descriptor__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/options.proto',
   package='maid.proto',
+  syntax='proto2',
   serialized_pb=_b('\n\x12maid/options.proto\x12\nmaid.proto\x1a google/protobuf/descriptor.proto\"$\n\x12MaidServiceOptions\x12\x0e\n\x06notify\x18\x01 \x01(\x08\"9\n\x11MaidMethodOptions\x12\x0e\n\x06notify\x18\x01 \x01(\x08\x12\x14\n\x08time_out\x18\x02 \x01(\x03:\x02-1:Y\n\x0fservice_options\x12\x1f.google.protobuf.ServiceOptions\x18\xe9\x07 \x01(\x0b\x32\x1e.maid.proto.MaidServiceOptions:V\n\x0emethod_options\x12\x1e.google.protobuf.MethodOptions\x18\xe9\x07 \x01(\x0b\x32\x1d.maid.proto.MaidMethodOptions')
   ,
-  dependencies=[google.protobuf.descriptor_pb2.DESCRIPTOR,])
+  dependencies=[google_dot_protobuf_dot_descriptor__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
@@ -65,6 +66,7 @@ _MAIDSERVICEOPTIONS = _descriptor.Descriptor(
   ],
   options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
@@ -102,6 +104,7 @@ _MAIDMETHODOPTIONS = _descriptor.Descriptor(
   ],
   options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
@@ -129,8 +132,8 @@ MaidMethodOptions = _reflection.GeneratedProtocolMessageType('MaidMethodOptions'
 _sym_db.RegisterMessage(MaidMethodOptions)
 
 service_options.message_type = _MAIDSERVICEOPTIONS
-google.protobuf.descriptor_pb2.ServiceOptions.RegisterExtension(service_options)
+google_dot_protobuf_dot_descriptor__pb2.ServiceOptions.RegisterExtension(service_options)
 method_options.message_type = _MAIDMETHODOPTIONS
-google.protobuf.descriptor_pb2.MethodOptions.RegisterExtension(method_options)
+google_dot_protobuf_dot_descriptor__pb2.MethodOptions.RegisterExtension(method_options)
 
 # @@protoc_insertion_point(module_scope)

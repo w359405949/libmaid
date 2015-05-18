@@ -216,7 +216,7 @@ const ::google::protobuf::Message& Middleware::GetRequestPrototype(
       return ::maid::proto::ControllerProto::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
-      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+      return *static_cast< ::google::protobuf::Message*>(NULL);
   }
 }
 
@@ -238,7 +238,7 @@ const ::google::protobuf::Message& Middleware::GetResponsePrototype(
       return ::maid::proto::ControllerProto::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
-      return *reinterpret_cast< ::google::protobuf::Message*>(NULL);
+      return *static_cast< ::google::protobuf::Message*>(NULL);
   }
 }
 

@@ -56,4 +56,6 @@ int main()
         client->Update();
     }
     client->ServeForever();
+
+    uv_run(maid_default_loop(), UV_RUN_NOWAIT);
 }

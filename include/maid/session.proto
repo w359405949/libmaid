@@ -1,3 +1,4 @@
+syntax = "proto2";
 import "maid/controller.proto";
 
 package maid.proto;

@@ -47,16 +47,16 @@ void protobuf_AssignDesc_maid_2fcontroller_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerProto, full_service_name_),
   };
   ControllerProto_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
+    ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
       ControllerProto_descriptor_,
       ControllerProto::default_instance_,
       ControllerProto_offsets_,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerProto, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerProto, _unknown_fields_),
+      -1,
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerProto, _extensions_),
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(ControllerProto));
+      sizeof(ControllerProto),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ControllerProto, _internal_metadata_),
+      -1);
 }
 
 namespace {
@@ -70,7 +70,7 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    ControllerProto_descriptor_, &ControllerProto::default_instance());
+      ControllerProto_descriptor_, &ControllerProto::default_instance());
 }
 
 }  // namespace
@@ -107,6 +107,16 @@ struct StaticDescriptorInitializer_maid_2fcontroller_2eproto {
   }
 } static_descriptor_initializer_maid_2fcontroller_2eproto_;
 
+namespace {
+
+static void MergeFromFail(int line) GOOGLE_ATTRIBUTE_COLD;
+static void MergeFromFail(int line) {
+  GOOGLE_CHECK(false) << __FILE__ << ":" << line;
+}
+
+}  // namespace
+
+
 // ===================================================================
 
 #ifndef _MSC_VER
@@ -122,7 +132,7 @@ const int ControllerProto::kFullServiceNameFieldNumber;
 #endif  // !_MSC_VER
 
 ControllerProto::ControllerProto()
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
   SharedCtor();
   // @@protoc_insertion_point(constructor:maid.proto.ControllerProto)
 }
@@ -131,7 +141,8 @@ void ControllerProto::InitAsDefaultInstance() {
 }
 
 ControllerProto::ControllerProto(const ControllerProto& from)
-  : ::google::protobuf::Message() {
+  : ::google::protobuf::Message(),
+    _internal_metadata_(NULL) {
   SharedCtor();
   MergeFrom(from);
   // @@protoc_insertion_point(copy_constructor:maid.proto.ControllerProto)
@@ -140,15 +151,15 @@ ControllerProto::ControllerProto(const ControllerProto& from)
 void ControllerProto::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  method_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  method_name_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   transmit_id_ = GOOGLE_ULONGLONG(0);
   stub_ = false;
   is_canceled_ = false;
   failed_ = false;
-  error_text_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  error_text_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   notify_ = false;
-  message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  full_service_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  message_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  full_service_name_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -158,18 +169,10 @@ ControllerProto::~ControllerProto() {
 }
 
 void ControllerProto::SharedDtor() {
-  if (method_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete method_name_;
-  }
-  if (error_text_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete error_text_;
-  }
-  if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete message_;
-  }
-  if (full_service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete full_service_name_;
-  }
+  method_name_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  error_text_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  message_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  full_service_name_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
   }
 }
@@ -191,8 +194,12 @@ const ControllerProto& ControllerProto::default_instance() {
 
 ControllerProto* ControllerProto::default_instance_ = NULL;
 
-ControllerProto* ControllerProto::New() const {
-  return new ControllerProto;
+ControllerProto* ControllerProto::New(::google::protobuf::Arena* arena) const {
+  ControllerProto* n = new ControllerProto;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
 }
 
 void ControllerProto::Clear() {
@@ -210,33 +217,27 @@ void ControllerProto::Clear() {
   if (_has_bits_[0 / 32] & 255) {
     ZR_(stub_, notify_);
     if (has_method_name()) {
-      if (method_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        method_name_->clear();
-      }
+      method_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
     transmit_id_ = GOOGLE_ULONGLONG(0);
     if (has_error_text()) {
-      if (error_text_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        error_text_->clear();
-      }
+      error_text_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
     if (has_message()) {
-      if (message_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        message_->clear();
-      }
+      message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     }
   }
   if (has_full_service_name()) {
-    if (full_service_name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      full_service_name_->clear();
-    }
+    full_service_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
 
 #undef OFFSET_OF_FIELD_
 #undef ZR_
 
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
+  if (_internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->Clear();
+  }
 }
 
 bool ControllerProto::MergePartialFromCodedStream(
@@ -257,7 +258,7 @@ bool ControllerProto::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->method_name().data(), this->method_name().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "method_name");
+            "maid.proto.ControllerProto.method_name");
         } else {
           goto handle_unusual;
         }
@@ -334,7 +335,7 @@ bool ControllerProto::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->error_text().data(), this->error_text().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "error_text");
+            "maid.proto.ControllerProto.error_text");
         } else {
           goto handle_unusual;
         }
@@ -379,7 +380,7 @@ bool ControllerProto::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
             this->full_service_name().data(), this->full_service_name().length(),
             ::google::protobuf::internal::WireFormat::PARSE,
-            "full_service_name");
+            "maid.proto.ControllerProto.full_service_name");
         } else {
           goto handle_unusual;
         }
@@ -422,7 +423,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->method_name().data(), this->method_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "method_name");
+      "maid.proto.ControllerProto.method_name");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       2, this->method_name(), output);
   }
@@ -452,7 +453,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->error_text().data(), this->error_text().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "error_text");
+      "maid.proto.ControllerProto.error_text");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       7, this->error_text(), output);
   }
@@ -473,7 +474,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->full_service_name().data(), this->full_service_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "full_service_name");
+      "maid.proto.ControllerProto.full_service_name");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       11, this->full_service_name(), output);
   }
@@ -482,7 +483,7 @@ void ControllerProto::SerializeWithCachedSizes(
   _extensions_.SerializeWithCachedSizes(
       1000, 536870912, output);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
@@ -497,7 +498,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->method_name().data(), this->method_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "method_name");
+      "maid.proto.ControllerProto.method_name");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         2, this->method_name(), target);
@@ -528,7 +529,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->error_text().data(), this->error_text().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "error_text");
+      "maid.proto.ControllerProto.error_text");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         7, this->error_text(), target);
@@ -551,7 +552,7 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
       this->full_service_name().data(), this->full_service_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE,
-      "full_service_name");
+      "maid.proto.ControllerProto.full_service_name");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
         11, this->full_service_name(), target);
@@ -561,7 +562,7 @@ void ControllerProto::SerializeWithCachedSizes(
   target = _extensions_.SerializeWithCachedSizesToArray(
       1000, 536870912, target);
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
   }
@@ -572,7 +573,7 @@ void ControllerProto::SerializeWithCachedSizes(
 int ControllerProto::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+  if (_has_bits_[0 / 32] & 255) {
     // optional string method_name = 2;
     if (has_method_name()) {
       total_size += 1 +
@@ -622,18 +623,16 @@ int ControllerProto::ByteSize() const {
     }
 
   }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
-    // optional string full_service_name = 11;
-    if (has_full_service_name()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->full_service_name());
-    }
-
+  // optional string full_service_name = 11;
+  if (has_full_service_name()) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->full_service_name());
   }
+
   total_size += _extensions_.ByteSize();
 
-  if (!unknown_fields().empty()) {
+  if (_internal_metadata_.have_unknown_fields()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         unknown_fields());
@@ -645,7 +644,7 @@ int ControllerProto::ByteSize() const {
 }
 
 void ControllerProto::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   const ControllerProto* source =
     ::google::protobuf::internal::dynamic_cast_if_available<const ControllerProto*>(
       &from);
@@ -657,10 +656,11 @@ void ControllerProto::MergeFrom(const ::google::protobuf::Message& from) {
 }
 
 void ControllerProto::MergeFrom(const ControllerProto& from) {
-  GOOGLE_CHECK_NE(&from, this);
+  if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_method_name()) {
-      set_method_name(from.method_name());
+      set_has_method_name();
+      method_name_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.method_name_);
     }
     if (from.has_transmit_id()) {
       set_transmit_id(from.transmit_id());
@@ -675,22 +675,27 @@ void ControllerProto::MergeFrom(const ControllerProto& from) {
       set_failed(from.failed());
     }
     if (from.has_error_text()) {
-      set_error_text(from.error_text());
+      set_has_error_text();
+      error_text_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.error_text_);
     }
     if (from.has_notify()) {
       set_notify(from.notify());
     }
     if (from.has_message()) {
-      set_message(from.message());
+      set_has_message();
+      message_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.message_);
     }
   }
   if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_full_service_name()) {
-      set_full_service_name(from.full_service_name());
+      set_has_full_service_name();
+      full_service_name_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.full_service_name_);
     }
   }
   _extensions_.MergeFrom(from._extensions_);
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  if (from._internal_metadata_.have_unknown_fields()) {
+    mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+  }
 }
 
 void ControllerProto::CopyFrom(const ::google::protobuf::Message& from) {
@@ -712,21 +717,23 @@ bool ControllerProto::IsInitialized() const {
 }
 
 void ControllerProto::Swap(ControllerProto* other) {
-  if (other != this) {
-    std::swap(method_name_, other->method_name_);
-    std::swap(transmit_id_, other->transmit_id_);
-    std::swap(stub_, other->stub_);
-    std::swap(is_canceled_, other->is_canceled_);
-    std::swap(failed_, other->failed_);
-    std::swap(error_text_, other->error_text_);
-    std::swap(notify_, other->notify_);
-    std::swap(message_, other->message_);
-    std::swap(full_service_name_, other->full_service_name_);
-    std::swap(_has_bits_[0], other->_has_bits_[0]);
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-    _extensions_.Swap(&other->_extensions_);
-  }
+  if (other == this) return;
+  InternalSwap(other);
+}
+void ControllerProto::InternalSwap(ControllerProto* other) {
+  method_name_.Swap(&other->method_name_);
+  std::swap(transmit_id_, other->transmit_id_);
+  std::swap(stub_, other->stub_);
+  std::swap(is_canceled_, other->is_canceled_);
+  std::swap(failed_, other->failed_);
+  error_text_.Swap(&other->error_text_);
+  std::swap(notify_, other->notify_);
+  message_.Swap(&other->message_);
+  full_service_name_.Swap(&other->full_service_name_);
+  std::swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+  std::swap(_cached_size_, other->_cached_size_);
+  _extensions_.Swap(&other->_extensions_);
 }
 
 ::google::protobuf::Metadata ControllerProto::GetMetadata() const {
