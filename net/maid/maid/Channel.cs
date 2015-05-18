@@ -9,8 +9,8 @@ namespace maid
 {
     public class Channel
     {
-        private delegate void SendRequestFunc(Controller controller, Object request);
-        private delegate void SendResponseFunc(Controller controller, Object response);
+        private delegate void SendRequestFunc(Controller controller, IExtensible request);
+        private delegate void SendResponseFunc(Controller controller, IExtensible response);
         private delegate void HandleRequestFunc(Controller controller);
         private delegate void HandleResponseFunc(Controller controller);
 
@@ -21,6 +21,9 @@ namespace maid
         private Dictionary<string, SendRequestFunc> sendRequestFunc_;
         private Dictionary<string, HandleRequestFunc> handleRequestFunc_;
         private Dictionary<string, HandleResponseFunc> handleResponseFunc_;
+
+        private Dictionary<UInt64, HandleResponseFunc> handleTransmitFunc_;
+
         private List<ConnectionFunc> ConnectedCallback_;
         private List<ConnectionFunc> DisconnectedCallback_;
 
@@ -39,13 +42,15 @@ namespace maid
         // double read buffer
         private IAsyncResult asyncRead_;
         private MemoryStream readBuffer_; //
-        private MemoryStream readBufferBack_; //
+        private MemoryStream readBufferBack_; // 
 
         private ControllerProtoSerializer serializer_;
         private ControllerProto proto_;
         private byte[] buffer_;
         private int lack_length_;
         private int controller_proto_length_ = 4;
+
+        private UInt64 transmit_id_ = 1;
 
         public List<ConnectionFunc> ConnectedCallback
         {
@@ -75,6 +80,7 @@ namespace maid
             sendRequestFunc_ = new Dictionary<string, SendRequestFunc>();
             handleRequestFunc_ = new Dictionary<string, HandleRequestFunc>();
             handleResponseFunc_ = new Dictionary<string, HandleResponseFunc>();
+            handleTransmitFunc_ = new Dictionary<ulong, HandleResponseFunc>();
 
             ConnectedCallback_ = new List<ConnectionFunc>();
             DisconnectedCallback_ = new List<ConnectionFunc>();
@@ -108,15 +114,16 @@ namespace maid
             where ResponseType : class, ProtoBuf.IExtensible
             where ResponseSerializerType : ProtoBuf.Meta.TypeModel
         {
-            Dictionary<UInt64, object> requests = new Dictionary<UInt64, object>();
-            UInt64 transmit_id_ = 0;
+            Dictionary<UInt64, ProtoBuf.IExtensible> requests = new Dictionary<UInt64, ProtoBuf.IExtensible>();
+            UInt64 transmit_id = 0;
             RequestSerializerType requestSerializer = Activator.CreateInstance<RequestSerializerType>();
             ResponseSerializerType responseSerializer = Activator.CreateInstance<ResponseSerializerType>();
 
             sendRequestFunc_[fullMethodName] = (controller, request) =>
             {
-                controller.proto.transmit_id = ++transmit_id_;
-                requests[controller.proto.transmit_id] = request as RequestType;
+                transmit_id += 2;
+                controller.proto.transmit_id = transmit_id;
+                requests[controller.proto.transmit_id] = request;
 
                 using (MemoryStream stream = new MemoryStream())
                 {
@@ -174,7 +181,6 @@ namespace maid
                 writeBufferPending_.Seek(0, SeekOrigin.End);
                 serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
-
             ConnectedCallback.Add(() =>
             {
                 requests.Clear();
@@ -184,7 +190,7 @@ namespace maid
             {
                 requests.Clear();
             });
-
+            
         }
 
         /*
@@ -217,21 +223,22 @@ namespace maid
                 serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
             };
 
-            if (method != null)
+            handleRequestFunc_[fullMethodName] = (controller) =>
             {
-                handleRequestFunc_[fullMethodName] = (controller) =>
+                RequestType request = null;
+                using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
                 {
-                    RequestType request = null;
-                    using (MemoryStream stream = new MemoryStream(controller.proto.message, 0, controller.proto.message.Length))
-                    {
-                        request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
-                    }
+                    request = requestSerializer.Deserialize(stream, null, typeof(RequestType)) as RequestType;
+                }
+
+                if (method != null)
+                {
                     method(controller, request);
                 };
-            }
+            };
         }
 
-        public void CallMethod(string fullMethodName, object request)
+        public void CallMethod(string fullMethodName, IExtensible request)
         {
             if (!sendRequestFunc_.ContainsKey(fullMethodName))
             {
@@ -254,6 +261,57 @@ namespace maid
             controller.proto.full_service_name = fullServiceName;
             controller.proto.method_name = methodName;
             sendRequestFunc_[fullMethodName](controller, request);
+        }
+
+        public void CallMethod<RequestType, RequestSerializerType, ResponseType, ResponseSerializerType>(string fullMethodName, RequestType request, RpcCallFunc<RequestType, ResponseType> callback)
+            where RequestType : class, ProtoBuf.IExtensible
+            where RequestSerializerType : ProtoBuf.Meta.TypeModel
+            where ResponseType : class, ProtoBuf.IExtensible
+            where ResponseSerializerType : ProtoBuf.Meta.TypeModel
+        {
+            int last = fullMethodName.LastIndexOf(".");
+            if (last < 0)
+            {
+                throw new Exception("invalid fullMethodName");
+            }
+
+            string fullServiceName = fullMethodName.Substring(0, last);
+            string methodName = fullMethodName.Substring(last + 1, fullMethodName.Length - last - 1);
+
+            RequestSerializerType requestSerializer = Activator.CreateInstance<RequestSerializerType>();
+            ResponseSerializerType responseSerializer = Activator.CreateInstance<ResponseSerializerType>();
+
+
+            Controller controller = new Controller();
+            controller.channel = this;
+            controller.proto = proto_;
+            controller.proto.full_service_name = fullServiceName;
+            controller.proto.method_name = methodName;
+            transmit_id_ += 2;
+            controller.proto.transmit_id = transmit_id_;
+
+            using (MemoryStream stream = new MemoryStream())
+            {
+                requestSerializer.Serialize(stream, request);
+                controller.proto.message = stream.ToArray();
+            }
+            controller.proto.stub = true;
+
+            writeBufferPending_.Seek(0, SeekOrigin.End);
+            serializer_.SerializeWithLengthPrefix(writeBufferPending_, controller.proto, typeof(ControllerProto), ProtoBuf.PrefixStyle.Fixed32BigEndian, 0);
+
+
+            handleTransmitFunc_[controller.proto.transmit_id] = (controller_res) =>
+            {
+                ResponseType response = null;
+
+                using (MemoryStream stream = new MemoryStream(controller_res.proto.message, 0, controller_res.proto.message.Length))
+                {
+                    response = responseSerializer.Deserialize(stream, null, typeof(ResponseType)) as ResponseType;
+                }
+
+                callback(controller_res, request, response);
+            };
         }
 
         public bool Connected
@@ -352,6 +410,8 @@ namespace maid
             buffer_ = new byte[connection.ReceiveBufferSize];
             connection_ = connection;
 
+            handleTransmitFunc_.Clear();
+
             foreach (ConnectionFunc callback in ConnectedCallback_)
             {
                 callback();
@@ -408,7 +468,7 @@ namespace maid
                     Handle();
                     Write();
                 }
-                catch (SocketException e)
+                catch (SocketException)
                 {
                     CloseConnection();
                     return;
@@ -541,7 +601,12 @@ namespace maid
             }
             else
             {
-                if (handleResponseFunc_.ContainsKey(fullMethodName))
+                if (handleTransmitFunc_.ContainsKey(controller.proto.transmit_id)) // global transmit
+                {
+                    handleTransmitFunc_[controller.proto.transmit_id](controller);
+                    handleTransmitFunc_.Remove(controller.proto.transmit_id);
+                }
+                else if (handleResponseFunc_.ContainsKey(fullMethodName))
                 {
                     handleResponseFunc_[fullMethodName](controller);
                 }
