@@ -28,7 +28,7 @@ include_directories(
 
 set(cxx_strict "${cxx_strict} -Wno-shadow")
 if (maid_debug)
-    set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
+    set(cxx_strict "${cxx_strict} -fPIC -ggdb3 -DDEBUG=1 -O0")
 else()
     set(cxx_strict "${cxx_strict} -O3 -fPIC")
 endif()
@@ -38,8 +38,6 @@ if (maid_static)
 else()
     cxx_shared_library(maid ${cxx_strict} ${source})
 endif()
-
-#set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
 
 target_link_libraries(maid
     uv
