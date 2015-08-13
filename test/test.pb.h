@@ -105,16 +105,16 @@ class Request : public ::google::protobuf::Message {
   // accessors -------------------------------------------------------
 
   // optional string message = 1;
-  inline bool has_message() const;
-  inline void clear_message();
+  bool has_message() const;
+  void clear_message();
   static const int kMessageFieldNumber = 1;
-  inline const ::std::string& message() const;
-  inline void set_message(const ::std::string& value);
-  inline void set_message(const char* value);
-  inline void set_message(const char* value, size_t size);
-  inline ::std::string* mutable_message();
-  inline ::std::string* release_message();
-  inline void set_allocated_message(::std::string* message);
+  const ::std::string& message() const;
+  void set_message(const ::std::string& value);
+  void set_message(const char* value);
+  void set_message(const char* value, size_t size);
+  ::std::string* mutable_message();
+  ::std::string* release_message();
+  void set_allocated_message(::std::string* message);
 
   // @@protoc_insertion_point(class_scope:Request)
  private:
@@ -199,16 +199,16 @@ class Response : public ::google::protobuf::Message {
   // accessors -------------------------------------------------------
 
   // optional string message = 1;
-  inline bool has_message() const;
-  inline void clear_message();
+  bool has_message() const;
+  void clear_message();
   static const int kMessageFieldNumber = 1;
-  inline const ::std::string& message() const;
-  inline void set_message(const ::std::string& value);
-  inline void set_message(const char* value);
-  inline void set_message(const char* value, size_t size);
-  inline ::std::string* mutable_message();
-  inline ::std::string* release_message();
-  inline void set_allocated_message(::std::string* message);
+  const ::std::string& message() const;
+  void set_message(const ::std::string& value);
+  void set_message(const char* value);
+  void set_message(const char* value, size_t size);
+  ::std::string* mutable_message();
+  ::std::string* release_message();
+  void set_allocated_message(::std::string* message);
 
   // @@protoc_insertion_point(class_scope:Response)
  private:
@@ -290,6 +290,7 @@ class TestService_Stub : public TestService {
 
 // ===================================================================
 
+#if !PROTOBUF_INLINE_NOT_IN_HEADERS
 // Request
 
 // optional string message = 1;
@@ -402,17 +403,11 @@ inline void Response::set_allocated_message(::std::string* message) {
   // @@protoc_insertion_point(field_set_allocated:Response.message)
 }
 
+#endif  // !PROTOBUF_INLINE_NOT_IN_HEADERS
+// -------------------------------------------------------------------
+
 
 // @@protoc_insertion_point(namespace_scope)
-
-#ifndef SWIG
-namespace google {
-namespace protobuf {
-
-
-}  // namespace protobuf
-}  // namespace google
-#endif  // SWIG
 
 // @@protoc_insertion_point(global_scope)
 

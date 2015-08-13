@@ -3,7 +3,6 @@
 # created: 2014-08-27
 option(maid_test "Build all of maid's tests." OFF)
 option(maid_debug "Build all of maid's tests." OFF)
-option(maid_tcmalloc "" OFF)
 
 PROJECT(maid)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
@@ -20,37 +19,41 @@ file(GLOB_RECURSE middleware_header src/middleware/*.h)
 message("  -> Prepared: maid")
 
 include_directories(
-    ${maid_SOURCE_DIR}/include
-    ${maid_SOURCE_DIR}/src
-    ${maid_SOURCE_DIR}/deps/gtest/include
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/deps/gtest/include
+    ${PROJECT_SOURCE_DIR}/deps/libuv/include
+    ${PROJECT_SOURCE_DIR}/deps/protobuf/src
+    ${PROJECT_SOURCE_DIR}/deps/glog/src
 )
 
+link_directories(
+    ${PROJECT_SOURCE_DIR}/deps/libuv/.libs
+    ${PROJECT_SOURCE_DIR}/deps/protobuf/src/.libs
+    ${PROJECT_SOURCE_DIR}/deps/glog
+)
 
-set(cxx_strict "${cxx_strict} -Wno-shadow")
-if (maid_debug)
-    set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
-else()
-    set(cxx_strict "${cxx_strict} -O3 -fPIC")
-endif()
+set(CMAKE_MACOSX_RPATH 1)
 
-if (maid_static)
+set(cxx_strict "${cxx_strict} -std=c++11 -Wno-shadow")
+set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
+#set(cxx_strict "${cxx_strict} -O3 -fPIC")
+
     cxx_library(maid ${cxx_strict} ${source})
-else()
-    cxx_shared_library(maid ${cxx_strict} ${source})
-endif()
+#cxx_shared_library(maid ${cxx_strict} ${source})
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
-
 target_link_libraries(maid
-    uv
-    protobuf
-    glog
+    libstdc++.a
+    libuv.a
+    libprotobuf.a
+    libglog.a
     )
 
 ################################
 # INSTALL
 ################################
-INSTALL(FILES libmaid.so DESTINATION lib)
+INSTALL(FILES libmaid.a DESTINATION lib)
 INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
 INSTALL(FILES ${header} DESTINATION include/maid/)
 INSTALL(FILES ${middleware_header} DESTINATION include/maid/middleware/)

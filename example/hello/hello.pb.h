@@ -28,7 +28,7 @@
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/service.h>
 #include <google/protobuf/unknown_field_set.h>
-#include "maid/options.pb.h"
+#include "google/protobuf/empty.pb.h"
 // @@protoc_insertion_point(includes)
 
 namespace maid {
@@ -54,14 +54,6 @@ class HelloRequest : public ::google::protobuf::Message {
   inline HelloRequest& operator=(const HelloRequest& from) {
     CopyFrom(from);
     return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields();
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields();
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
@@ -109,26 +101,23 @@ class HelloRequest : public ::google::protobuf::Message {
   // accessors -------------------------------------------------------
 
   // optional string message = 1;
-  inline bool has_message() const;
-  inline void clear_message();
+  void clear_message();
   static const int kMessageFieldNumber = 1;
-  inline const ::std::string& message() const;
-  inline void set_message(const ::std::string& value);
-  inline void set_message(const char* value);
-  inline void set_message(const char* value, size_t size);
-  inline ::std::string* mutable_message();
-  inline ::std::string* release_message();
-  inline void set_allocated_message(::std::string* message);
+  const ::std::string& message() const;
+  void set_message(const ::std::string& value);
+  void set_message(const char* value);
+  void set_message(const char* value, size_t size);
+  ::std::string* mutable_message();
+  ::std::string* release_message();
+  void set_allocated_message(::std::string* message);
 
   // @@protoc_insertion_point(class_scope:maid.example.HelloRequest)
  private:
-  inline void set_has_message();
-  inline void clear_has_message();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
-  ::google::protobuf::uint32 _has_bits_[1];
-  mutable int _cached_size_;
+  bool _is_default_instance_;
   ::google::protobuf::internal::ArenaStringPtr message_;
+  mutable int _cached_size_;
   friend void  protobuf_AddDesc_hello_2eproto();
   friend void protobuf_AssignDesc_hello_2eproto();
   friend void protobuf_ShutdownFile_hello_2eproto();
@@ -148,14 +137,6 @@ class HelloResponse : public ::google::protobuf::Message {
   inline HelloResponse& operator=(const HelloResponse& from) {
     CopyFrom(from);
     return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields();
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields();
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
@@ -203,26 +184,23 @@ class HelloResponse : public ::google::protobuf::Message {
   // accessors -------------------------------------------------------
 
   // optional string message = 1;
-  inline bool has_message() const;
-  inline void clear_message();
+  void clear_message();
   static const int kMessageFieldNumber = 1;
-  inline const ::std::string& message() const;
-  inline void set_message(const ::std::string& value);
-  inline void set_message(const char* value);
-  inline void set_message(const char* value, size_t size);
-  inline ::std::string* mutable_message();
-  inline ::std::string* release_message();
-  inline void set_allocated_message(::std::string* message);
+  const ::std::string& message() const;
+  void set_message(const ::std::string& value);
+  void set_message(const char* value);
+  void set_message(const char* value, size_t size);
+  ::std::string* mutable_message();
+  ::std::string* release_message();
+  void set_allocated_message(::std::string* message);
 
   // @@protoc_insertion_point(class_scope:maid.example.HelloResponse)
  private:
-  inline void set_has_message();
-  inline void clear_has_message();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
-  ::google::protobuf::uint32 _has_bits_[1];
-  mutable int _cached_size_;
+  bool _is_default_instance_;
   ::google::protobuf::internal::ArenaStringPtr message_;
+  mutable int _cached_size_;
   friend void  protobuf_AddDesc_hello_2eproto();
   friend void protobuf_AssignDesc_hello_2eproto();
   friend void protobuf_ShutdownFile_hello_2eproto();
@@ -255,7 +233,7 @@ class HelloService : public ::google::protobuf::Service {
                        ::google::protobuf::Closure* done);
   virtual void HelloNotify(::google::protobuf::RpcController* controller,
                        const ::maid::example::HelloRequest* request,
-                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Empty* response,
                        ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
@@ -296,7 +274,7 @@ class HelloService_Stub : public HelloService {
                        ::google::protobuf::Closure* done);
   void HelloNotify(::google::protobuf::RpcController* controller,
                        const ::maid::example::HelloRequest* request,
-                       ::maid::example::HelloResponse* response,
+                       ::google::protobuf::Empty* response,
                        ::google::protobuf::Closure* done);
  private:
   ::google::protobuf::RpcChannel* channel_;
@@ -310,56 +288,47 @@ class HelloService_Stub : public HelloService {
 
 // ===================================================================
 
+#if !PROTOBUF_INLINE_NOT_IN_HEADERS
 // HelloRequest
 
 // optional string message = 1;
-inline bool HelloRequest::has_message() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void HelloRequest::set_has_message() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void HelloRequest::clear_has_message() {
-  _has_bits_[0] &= ~0x00000001u;
-}
 inline void HelloRequest::clear_message() {
   message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_message();
 }
 inline const ::std::string& HelloRequest::message() const {
   // @@protoc_insertion_point(field_get:maid.example.HelloRequest.message)
   return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void HelloRequest::set_message(const ::std::string& value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.example.HelloRequest.message)
 }
 inline void HelloRequest::set_message(const char* value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.example.HelloRequest.message)
 }
 inline void HelloRequest::set_message(const char* value, size_t size) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.example.HelloRequest.message)
 }
 inline ::std::string* HelloRequest::mutable_message() {
-  set_has_message();
+  
   // @@protoc_insertion_point(field_mutable:maid.example.HelloRequest.message)
   return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* HelloRequest::release_message() {
-  clear_has_message();
+  
   return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void HelloRequest::set_allocated_message(::std::string* message) {
   if (message != NULL) {
-    set_has_message();
+    
   } else {
-    clear_has_message();
+    
   }
   message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
   // @@protoc_insertion_point(field_set_allocated:maid.example.HelloRequest.message)
@@ -370,72 +339,56 @@ inline void HelloRequest::set_allocated_message(::std::string* message) {
 // HelloResponse
 
 // optional string message = 1;
-inline bool HelloResponse::has_message() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void HelloResponse::set_has_message() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void HelloResponse::clear_has_message() {
-  _has_bits_[0] &= ~0x00000001u;
-}
 inline void HelloResponse::clear_message() {
   message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_message();
 }
 inline const ::std::string& HelloResponse::message() const {
   // @@protoc_insertion_point(field_get:maid.example.HelloResponse.message)
   return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void HelloResponse::set_message(const ::std::string& value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.example.HelloResponse.message)
 }
 inline void HelloResponse::set_message(const char* value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.example.HelloResponse.message)
 }
 inline void HelloResponse::set_message(const char* value, size_t size) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.example.HelloResponse.message)
 }
 inline ::std::string* HelloResponse::mutable_message() {
-  set_has_message();
+  
   // @@protoc_insertion_point(field_mutable:maid.example.HelloResponse.message)
   return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* HelloResponse::release_message() {
-  clear_has_message();
+  
   return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void HelloResponse::set_allocated_message(::std::string* message) {
   if (message != NULL) {
-    set_has_message();
+    
   } else {
-    clear_has_message();
+    
   }
   message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
   // @@protoc_insertion_point(field_set_allocated:maid.example.HelloResponse.message)
 }
+
+#endif  // !PROTOBUF_INLINE_NOT_IN_HEADERS
+// -------------------------------------------------------------------
 
 
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace example
 }  // namespace maid
-
-#ifndef SWIG
-namespace google {
-namespace protobuf {
-
-
-}  // namespace protobuf
-}  // namespace google
-#endif  // SWIG
 
 // @@protoc_insertion_point(global_scope)
 

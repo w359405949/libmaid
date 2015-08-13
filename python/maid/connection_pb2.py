@@ -13,27 +13,17 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from maid import controller_pb2 as maid_dot_controller__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/connection.proto',
   package='maid.proto',
-  syntax='proto2',
-  serialized_pb=_b('\n\x15maid/connection.proto\x12\nmaid.proto\x1a\x15maid/controller.proto\"D\n\x0f\x43onnectionProto\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02:M\n\nconnection\x12\x1b.maid.proto.ControllerProto\x18\xe9\x07 \x01(\x0b\x32\x1b.maid.proto.ConnectionProto')
-  ,
-  dependencies=[maid_dot_controller__pb2.DESCRIPTOR,])
+  syntax='proto3',
+  serialized_pb=_b('\n\x15maid/connection.proto\x12\nmaid.proto\"9\n\x0f\x43onnectionProto\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x62\x06proto3')
+)
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
-CONNECTION_FIELD_NUMBER = 1001
-connection = _descriptor.FieldDescriptor(
-  name='connection', full_name='maid.proto.connection', index=0,
-  number=1001, type=11, cpp_type=10, label=1,
-  has_default_value=False, default_value=None,
-  message_type=None, enum_type=None, containing_type=None,
-  is_extension=True, extension_scope=None,
-  options=None)
 
 
 _CONNECTIONPROTO = _descriptor.Descriptor(
@@ -71,17 +61,16 @@ _CONNECTIONPROTO = _descriptor.Descriptor(
   enum_types=[
   ],
   options=None,
-  is_extendable=True,
-  syntax='proto2',
-  extension_ranges=[(1000, 536870912), ],
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=60,
-  serialized_end=128,
+  serialized_start=37,
+  serialized_end=94,
 )
 
 DESCRIPTOR.message_types_by_name['ConnectionProto'] = _CONNECTIONPROTO
-DESCRIPTOR.extensions_by_name['connection'] = connection
 
 ConnectionProto = _reflection.GeneratedProtocolMessageType('ConnectionProto', (_message.Message,), dict(
   DESCRIPTOR = _CONNECTIONPROTO,
@@ -90,7 +79,5 @@ ConnectionProto = _reflection.GeneratedProtocolMessageType('ConnectionProto', (_
   ))
 _sym_db.RegisterMessage(ConnectionProto)
 
-connection.message_type = _CONNECTIONPROTO
-maid_dot_controller__pb2.ControllerProto.RegisterExtension(connection)
 
 # @@protoc_insertion_point(module_scope)

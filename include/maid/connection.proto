@@ -1,19 +1,10 @@
-syntax = "proto2";
-
-import "maid/controller.proto";
+syntax="proto3";
 
 package maid.proto;
 
 message ConnectionProto
 {
-	optional int64 id = 1;
-	optional string host = 2;
-	optional int32 port = 3;
-
-	extensions 1000 to max;
-}
-
-extend ControllerProto
-{
-	optional ConnectionProto connection = 1001;
+	int64 id = 1;
+	string host = 2;
+	int32 port = 3;
 }

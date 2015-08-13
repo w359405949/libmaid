@@ -53,14 +53,6 @@ class ControllerProto : public ::google::protobuf::Message {
     return *this;
   }
 
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields();
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields();
-  }
-
   static const ::google::protobuf::Descriptor* descriptor();
   static const ControllerProto& default_instance();
 
@@ -106,124 +98,101 @@ class ControllerProto : public ::google::protobuf::Message {
   // accessors -------------------------------------------------------
 
   // optional string method_name = 2;
-  inline bool has_method_name() const;
-  inline void clear_method_name();
+  void clear_method_name();
   static const int kMethodNameFieldNumber = 2;
-  inline const ::std::string& method_name() const;
-  inline void set_method_name(const ::std::string& value);
-  inline void set_method_name(const char* value);
-  inline void set_method_name(const char* value, size_t size);
-  inline ::std::string* mutable_method_name();
-  inline ::std::string* release_method_name();
-  inline void set_allocated_method_name(::std::string* method_name);
+  const ::std::string& method_name() const;
+  void set_method_name(const ::std::string& value);
+  void set_method_name(const char* value);
+  void set_method_name(const char* value, size_t size);
+  ::std::string* mutable_method_name();
+  ::std::string* release_method_name();
+  void set_allocated_method_name(::std::string* method_name);
 
   // optional uint64 transmit_id = 3;
-  inline bool has_transmit_id() const;
-  inline void clear_transmit_id();
+  void clear_transmit_id();
   static const int kTransmitIdFieldNumber = 3;
-  inline ::google::protobuf::uint64 transmit_id() const;
-  inline void set_transmit_id(::google::protobuf::uint64 value);
+  ::google::protobuf::uint64 transmit_id() const;
+  void set_transmit_id(::google::protobuf::uint64 value);
 
   // optional bool stub = 4;
-  inline bool has_stub() const;
-  inline void clear_stub();
+  void clear_stub();
   static const int kStubFieldNumber = 4;
-  inline bool stub() const;
-  inline void set_stub(bool value);
+  bool stub() const;
+  void set_stub(bool value);
 
   // optional bool is_canceled = 5;
-  inline bool has_is_canceled() const;
-  inline void clear_is_canceled();
+  void clear_is_canceled();
   static const int kIsCanceledFieldNumber = 5;
-  inline bool is_canceled() const;
-  inline void set_is_canceled(bool value);
+  bool is_canceled() const;
+  void set_is_canceled(bool value);
 
   // optional bool failed = 6;
-  inline bool has_failed() const;
-  inline void clear_failed();
+  void clear_failed();
   static const int kFailedFieldNumber = 6;
-  inline bool failed() const;
-  inline void set_failed(bool value);
+  bool failed() const;
+  void set_failed(bool value);
 
   // optional string error_text = 7;
-  inline bool has_error_text() const;
-  inline void clear_error_text();
+  void clear_error_text();
   static const int kErrorTextFieldNumber = 7;
-  inline const ::std::string& error_text() const;
-  inline void set_error_text(const ::std::string& value);
-  inline void set_error_text(const char* value);
-  inline void set_error_text(const char* value, size_t size);
-  inline ::std::string* mutable_error_text();
-  inline ::std::string* release_error_text();
-  inline void set_allocated_error_text(::std::string* error_text);
+  const ::std::string& error_text() const;
+  void set_error_text(const ::std::string& value);
+  void set_error_text(const char* value);
+  void set_error_text(const char* value, size_t size);
+  ::std::string* mutable_error_text();
+  ::std::string* release_error_text();
+  void set_allocated_error_text(::std::string* error_text);
 
   // optional bool notify = 9;
-  inline bool has_notify() const;
-  inline void clear_notify();
+  void clear_notify();
   static const int kNotifyFieldNumber = 9;
-  inline bool notify() const;
-  inline void set_notify(bool value);
+  bool notify() const;
+  void set_notify(bool value);
 
   // optional bytes message = 10;
-  inline bool has_message() const;
-  inline void clear_message();
+  void clear_message();
   static const int kMessageFieldNumber = 10;
-  inline const ::std::string& message() const;
-  inline void set_message(const ::std::string& value);
-  inline void set_message(const char* value);
-  inline void set_message(const void* value, size_t size);
-  inline ::std::string* mutable_message();
-  inline ::std::string* release_message();
-  inline void set_allocated_message(::std::string* message);
+  const ::std::string& message() const;
+  void set_message(const ::std::string& value);
+  void set_message(const char* value);
+  void set_message(const void* value, size_t size);
+  ::std::string* mutable_message();
+  ::std::string* release_message();
+  void set_allocated_message(::std::string* message);
 
   // optional string full_service_name = 11;
-  inline bool has_full_service_name() const;
-  inline void clear_full_service_name();
+  void clear_full_service_name();
   static const int kFullServiceNameFieldNumber = 11;
-  inline const ::std::string& full_service_name() const;
-  inline void set_full_service_name(const ::std::string& value);
-  inline void set_full_service_name(const char* value);
-  inline void set_full_service_name(const char* value, size_t size);
-  inline ::std::string* mutable_full_service_name();
-  inline ::std::string* release_full_service_name();
-  inline void set_allocated_full_service_name(::std::string* full_service_name);
+  const ::std::string& full_service_name() const;
+  void set_full_service_name(const ::std::string& value);
+  void set_full_service_name(const char* value);
+  void set_full_service_name(const char* value, size_t size);
+  ::std::string* mutable_full_service_name();
+  ::std::string* release_full_service_name();
+  void set_allocated_full_service_name(::std::string* full_service_name);
 
-  GOOGLE_PROTOBUF_EXTENSION_ACCESSORS(ControllerProto)
+  // optional int64 connection_id = 100;
+  void clear_connection_id();
+  static const int kConnectionIdFieldNumber = 100;
+  ::google::protobuf::int64 connection_id() const;
+  void set_connection_id(::google::protobuf::int64 value);
+
   // @@protoc_insertion_point(class_scope:maid.proto.ControllerProto)
  private:
-  inline void set_has_method_name();
-  inline void clear_has_method_name();
-  inline void set_has_transmit_id();
-  inline void clear_has_transmit_id();
-  inline void set_has_stub();
-  inline void clear_has_stub();
-  inline void set_has_is_canceled();
-  inline void clear_has_is_canceled();
-  inline void set_has_failed();
-  inline void clear_has_failed();
-  inline void set_has_error_text();
-  inline void clear_has_error_text();
-  inline void set_has_notify();
-  inline void clear_has_notify();
-  inline void set_has_message();
-  inline void clear_has_message();
-  inline void set_has_full_service_name();
-  inline void clear_has_full_service_name();
-
-  ::google::protobuf::internal::ExtensionSet _extensions_;
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
-  ::google::protobuf::uint32 _has_bits_[1];
-  mutable int _cached_size_;
+  bool _is_default_instance_;
   ::google::protobuf::internal::ArenaStringPtr method_name_;
   ::google::protobuf::uint64 transmit_id_;
   ::google::protobuf::internal::ArenaStringPtr error_text_;
   ::google::protobuf::internal::ArenaStringPtr message_;
   ::google::protobuf::internal::ArenaStringPtr full_service_name_;
+  ::google::protobuf::int64 connection_id_;
   bool stub_;
   bool is_canceled_;
   bool failed_;
   bool notify_;
+  mutable int _cached_size_;
   friend void  protobuf_AddDesc_maid_2fcontroller_2eproto();
   friend void protobuf_AssignDesc_maid_2fcontroller_2eproto();
   friend void protobuf_ShutdownFile_maid_2fcontroller_2eproto();
@@ -236,354 +205,271 @@ class ControllerProto : public ::google::protobuf::Message {
 
 // ===================================================================
 
+#if !PROTOBUF_INLINE_NOT_IN_HEADERS
 // ControllerProto
 
 // optional string method_name = 2;
-inline bool ControllerProto::has_method_name() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void ControllerProto::set_has_method_name() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void ControllerProto::clear_has_method_name() {
-  _has_bits_[0] &= ~0x00000001u;
-}
 inline void ControllerProto::clear_method_name() {
   method_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_method_name();
 }
 inline const ::std::string& ControllerProto::method_name() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.method_name)
   return method_name_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_method_name(const ::std::string& value) {
-  set_has_method_name();
+  
   method_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.method_name)
 }
 inline void ControllerProto::set_method_name(const char* value) {
-  set_has_method_name();
+  
   method_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.method_name)
 }
 inline void ControllerProto::set_method_name(const char* value, size_t size) {
-  set_has_method_name();
+  
   method_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.method_name)
 }
 inline ::std::string* ControllerProto::mutable_method_name() {
-  set_has_method_name();
+  
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.method_name)
   return method_name_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ControllerProto::release_method_name() {
-  clear_has_method_name();
+  
   return method_name_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_allocated_method_name(::std::string* method_name) {
   if (method_name != NULL) {
-    set_has_method_name();
+    
   } else {
-    clear_has_method_name();
+    
   }
   method_name_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), method_name);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.method_name)
 }
 
 // optional uint64 transmit_id = 3;
-inline bool ControllerProto::has_transmit_id() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void ControllerProto::set_has_transmit_id() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void ControllerProto::clear_has_transmit_id() {
-  _has_bits_[0] &= ~0x00000002u;
-}
 inline void ControllerProto::clear_transmit_id() {
   transmit_id_ = GOOGLE_ULONGLONG(0);
-  clear_has_transmit_id();
 }
 inline ::google::protobuf::uint64 ControllerProto::transmit_id() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.transmit_id)
   return transmit_id_;
 }
 inline void ControllerProto::set_transmit_id(::google::protobuf::uint64 value) {
-  set_has_transmit_id();
+  
   transmit_id_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.transmit_id)
 }
 
 // optional bool stub = 4;
-inline bool ControllerProto::has_stub() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void ControllerProto::set_has_stub() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void ControllerProto::clear_has_stub() {
-  _has_bits_[0] &= ~0x00000004u;
-}
 inline void ControllerProto::clear_stub() {
   stub_ = false;
-  clear_has_stub();
 }
 inline bool ControllerProto::stub() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.stub)
   return stub_;
 }
 inline void ControllerProto::set_stub(bool value) {
-  set_has_stub();
+  
   stub_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.stub)
 }
 
 // optional bool is_canceled = 5;
-inline bool ControllerProto::has_is_canceled() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void ControllerProto::set_has_is_canceled() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void ControllerProto::clear_has_is_canceled() {
-  _has_bits_[0] &= ~0x00000008u;
-}
 inline void ControllerProto::clear_is_canceled() {
   is_canceled_ = false;
-  clear_has_is_canceled();
 }
 inline bool ControllerProto::is_canceled() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.is_canceled)
   return is_canceled_;
 }
 inline void ControllerProto::set_is_canceled(bool value) {
-  set_has_is_canceled();
+  
   is_canceled_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.is_canceled)
 }
 
 // optional bool failed = 6;
-inline bool ControllerProto::has_failed() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void ControllerProto::set_has_failed() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void ControllerProto::clear_has_failed() {
-  _has_bits_[0] &= ~0x00000010u;
-}
 inline void ControllerProto::clear_failed() {
   failed_ = false;
-  clear_has_failed();
 }
 inline bool ControllerProto::failed() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.failed)
   return failed_;
 }
 inline void ControllerProto::set_failed(bool value) {
-  set_has_failed();
+  
   failed_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.failed)
 }
 
 // optional string error_text = 7;
-inline bool ControllerProto::has_error_text() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void ControllerProto::set_has_error_text() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void ControllerProto::clear_has_error_text() {
-  _has_bits_[0] &= ~0x00000020u;
-}
 inline void ControllerProto::clear_error_text() {
   error_text_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_error_text();
 }
 inline const ::std::string& ControllerProto::error_text() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.error_text)
   return error_text_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_error_text(const ::std::string& value) {
-  set_has_error_text();
+  
   error_text_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.error_text)
 }
 inline void ControllerProto::set_error_text(const char* value) {
-  set_has_error_text();
+  
   error_text_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.error_text)
 }
 inline void ControllerProto::set_error_text(const char* value, size_t size) {
-  set_has_error_text();
+  
   error_text_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.error_text)
 }
 inline ::std::string* ControllerProto::mutable_error_text() {
-  set_has_error_text();
+  
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.error_text)
   return error_text_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ControllerProto::release_error_text() {
-  clear_has_error_text();
+  
   return error_text_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_allocated_error_text(::std::string* error_text) {
   if (error_text != NULL) {
-    set_has_error_text();
+    
   } else {
-    clear_has_error_text();
+    
   }
   error_text_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), error_text);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.error_text)
 }
 
 // optional bool notify = 9;
-inline bool ControllerProto::has_notify() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void ControllerProto::set_has_notify() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void ControllerProto::clear_has_notify() {
-  _has_bits_[0] &= ~0x00000040u;
-}
 inline void ControllerProto::clear_notify() {
   notify_ = false;
-  clear_has_notify();
 }
 inline bool ControllerProto::notify() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.notify)
   return notify_;
 }
 inline void ControllerProto::set_notify(bool value) {
-  set_has_notify();
+  
   notify_ = value;
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.notify)
 }
 
 // optional bytes message = 10;
-inline bool ControllerProto::has_message() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void ControllerProto::set_has_message() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void ControllerProto::clear_has_message() {
-  _has_bits_[0] &= ~0x00000080u;
-}
 inline void ControllerProto::clear_message() {
   message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_message();
 }
 inline const ::std::string& ControllerProto::message() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.message)
   return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_message(const ::std::string& value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.message)
 }
 inline void ControllerProto::set_message(const char* value) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.message)
 }
 inline void ControllerProto::set_message(const void* value, size_t size) {
-  set_has_message();
+  
   message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.message)
 }
 inline ::std::string* ControllerProto::mutable_message() {
-  set_has_message();
+  
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.message)
   return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ControllerProto::release_message() {
-  clear_has_message();
+  
   return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_allocated_message(::std::string* message) {
   if (message != NULL) {
-    set_has_message();
+    
   } else {
-    clear_has_message();
+    
   }
   message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.message)
 }
 
 // optional string full_service_name = 11;
-inline bool ControllerProto::has_full_service_name() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void ControllerProto::set_has_full_service_name() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void ControllerProto::clear_has_full_service_name() {
-  _has_bits_[0] &= ~0x00000100u;
-}
 inline void ControllerProto::clear_full_service_name() {
   full_service_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  clear_has_full_service_name();
 }
 inline const ::std::string& ControllerProto::full_service_name() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.full_service_name)
   return full_service_name_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_full_service_name(const ::std::string& value) {
-  set_has_full_service_name();
+  
   full_service_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.full_service_name)
 }
 inline void ControllerProto::set_full_service_name(const char* value) {
-  set_has_full_service_name();
+  
   full_service_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
   // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.full_service_name)
 }
 inline void ControllerProto::set_full_service_name(const char* value, size_t size) {
-  set_has_full_service_name();
+  
   full_service_name_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
   // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.full_service_name)
 }
 inline ::std::string* ControllerProto::mutable_full_service_name() {
-  set_has_full_service_name();
+  
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.full_service_name)
   return full_service_name_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ControllerProto::release_full_service_name() {
-  clear_has_full_service_name();
+  
   return full_service_name_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline void ControllerProto::set_allocated_full_service_name(::std::string* full_service_name) {
   if (full_service_name != NULL) {
-    set_has_full_service_name();
+    
   } else {
-    clear_has_full_service_name();
+    
   }
   full_service_name_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), full_service_name);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.full_service_name)
 }
 
+// optional int64 connection_id = 100;
+inline void ControllerProto::clear_connection_id() {
+  connection_id_ = GOOGLE_LONGLONG(0);
+}
+inline ::google::protobuf::int64 ControllerProto::connection_id() const {
+  // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.connection_id)
+  return connection_id_;
+}
+inline void ControllerProto::set_connection_id(::google::protobuf::int64 value) {
+  
+  connection_id_ = value;
+  // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.connection_id)
+}
+
+#endif  // !PROTOBUF_INLINE_NOT_IN_HEADERS
 
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace proto
 }  // namespace maid
-
-#ifndef SWIG
-namespace google {
-namespace protobuf {
-
-
-}  // namespace protobuf
-}  // namespace google
-#endif  // SWIG
 
 // @@protoc_insertion_point(global_scope)
 

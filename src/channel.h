@@ -1,8 +1,7 @@
 #pragma once
-#include <map>
-#include <vector>
-
 #include <google/protobuf/service.h>
+#include <google/protobuf/map.h>
+#include <google/protobuf/repeated_field.h>
 #include <uv.h>
 
 #include "context.h"
@@ -30,7 +29,7 @@ public:
                             google::protobuf::RpcController* controller,
                             const google::protobuf::Message* request,
                             google::protobuf::Message* response,
-                            google::protobuf::Closure* done);
+                            google::protobuf::Closure* done) override;
 
 public:
     static inline Channel* default_instance()
@@ -50,7 +49,7 @@ private:
 class TcpChannel : public google::protobuf::RpcChannel
 {
 public:
-    TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* factory);
+    TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelFactory* factory);
     virtual ~TcpChannel();
 
     virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -83,17 +82,17 @@ public:
     static void OnCloseStream(uv_handle_t* handle);
 
 public: // unit test only
-    inline const std::map<int64_t, Context>& async_result() const
+    inline const google::protobuf::Map<int64_t, Context>& async_result() const
     {
         return async_result_;
     }
 
-    inline const std::map<uv_write_t*, std::string*>& sending_buffer() const
+    inline const google::protobuf::Map<uv_write_t*, std::string*>& sending_buffer() const
     {
         return sending_buffer_;
     }
 
-    inline const std::map<Controller*, Controller*>& router_controllers() const
+    inline const google::protobuf::Map<Controller*, Controller*>& router_controllers() const
     {
         return router_controllers_;
     }
@@ -124,11 +123,12 @@ public: // unit test only
     }
 
 private:
-    std::map<int64_t/* transmit_id */, Context> async_result_;
-    std::map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
-    std::map<Controller*, Controller*> router_controllers_;
+    google::protobuf::Map<int64_t/* transmit_id */, Context> async_result_;
+    google::protobuf::Map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
+    google::protobuf::Map<Controller*, Controller*> router_controllers_;
 
 private:
+    uv_loop_t* loop_;
     uv_stream_t* stream_;
     uv_timer_t timer_handle_;
     uv_idle_t idle_handle_;
@@ -141,7 +141,6 @@ private:
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpChannel);
 };
-
 
 class LocalMapRepoChannel : public google::protobuf::RpcChannel
 {
@@ -159,13 +158,13 @@ public:
     ~LocalMapRepoChannel();
 
 public: // unit test only
-    inline const std::map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*> service() const
+    inline const google::protobuf::Map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*> service() const
     {
         return service_;
     }
 
 private:
-    std::map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*> service_;
+    google::protobuf::Map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*> service_;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(LocalMapRepoChannel);
 };
@@ -187,15 +186,14 @@ public:
     ~LocalListRepoChannel();
 
 public:
-    inline const std::vector<google::protobuf::Service*> service() const
+    inline const google::protobuf::RepeatedField<google::protobuf::Service*> service() const
     {
         return service_;
     }
 
 private:
-    std::vector<google::protobuf::Service*> service_;
+    google::protobuf::RepeatedField<google::protobuf::Service*> service_;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(LocalListRepoChannel);
 };
-
 }

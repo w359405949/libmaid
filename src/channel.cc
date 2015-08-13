@@ -1,22 +1,21 @@
 #include <google/protobuf/service.h>
 #include <google/protobuf/message.h>
+#include <google/protobuf/empty.pb.h>
+#include <google/protobuf/any.pb.h>
+#include <google/protobuf/wrappers.pb.h>
 #include <glog/logging.h>
 
 #include "maid/controller.pb.h"
-#include "maid/connection.pb.h"
-#include "maid/middleware.pb.h"
 #include "channel.h"
 #include "channel_factory.h"
 #include "define.h"
-#include "helper.h"
 #include "controller.h"
 #include "wire_format.h"
 #include "closure.h"
-#include "uv_hook.h"
 
 namespace maid {
 
-Channel* Channel::default_instance_ = NULL;
+Channel* Channel::default_instance_ = nullptr;
 
 void InitChannel()
 {
@@ -47,8 +46,9 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
 }
 
 
-TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_factory)
-    :stream_(stream),
+TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelFactory* abs_factory)
+    :loop_(loop),
+     stream_(stream),
      factory_(abs_factory),
      transmit_id_(0)
 {
@@ -57,10 +57,10 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
     stream->data = this;
 
     timer_handle_.data = this;
-    uv_timer_init(maid_default_loop(), &timer_handle_);
+    uv_timer_init(loop_, &timer_handle_);
 
     idle_handle_.data = this;
-    uv_idle_init(maid_default_loop(), &idle_handle_);
+    uv_idle_init(loop_, &idle_handle_);
 
     uv_read_start(stream, OnAlloc, OnRead);
 }
@@ -68,18 +68,18 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
 
 AbstractTcpChannelFactory* TcpChannel::factory()
 {
-    return factory_ == NULL ? AbstractTcpChannelFactory::default_instance() : factory_;
+    return factory_;
 }
 
 
 TcpChannel::~TcpChannel()
 {
-    CHECK(stream_ == NULL)<<"call Close first";
+    CHECK(stream_ == nullptr)<<"call Close first";
 }
 
 void TcpChannel::RemoveController(Controller* controller)
 {
-    router_controllers_[controller] = NULL;
+    router_controllers_[controller] = nullptr;
     router_controllers_.erase(controller);
 }
 
@@ -89,7 +89,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    if (stream_ == NULL) {
+    if (stream_ == nullptr) {
         rpc_controller->SetFailed("disconnected");
         done->Run();
         return;
@@ -102,15 +102,20 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     controller_proto->set_stub(true);
     request->SerializeToString(controller_proto->mutable_message());
 
-    int64_t transmit_id = transmit_id_++; // TODO: check if used
-    CHECK(async_result_.find(transmit_id) == async_result_.end());
-    controller_proto->set_transmit_id(transmit_id);
-    async_result_[transmit_id].controller = google::protobuf::down_cast<Controller*>(rpc_controller);
-    async_result_[transmit_id].response = response;
-    async_result_[transmit_id].done = done;
+    // delay callback
+    if (response->GetDescriptor() != google::protobuf::Empty::descriptor()) {
+        int64_t transmit_id = transmit_id_++; // TODO: check if used
+        CHECK(async_result_.find(transmit_id) == async_result_.end());
+        controller_proto->set_transmit_id(transmit_id);
+        async_result_[transmit_id].controller = google::protobuf::down_cast<Controller*>(rpc_controller);
+        async_result_[transmit_id].response = response;
+        async_result_[transmit_id].done = done;
+    } else {
+        done->Run();
+    }
 
     std::string* send_buffer = WireFormat::Serializer(*controller_proto);
-    if (NULL == send_buffer) {
+    if (nullptr == send_buffer) {
         LOG(ERROR) << " no more memory";
         controller_proto->set_failed(true);
         HandleResponse(controller_proto);
@@ -118,7 +123,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     }
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    if (NULL == req) {
+    if (nullptr == req) {
         delete send_buffer;
         LOG(ERROR) << " no more memory";
         controller_proto->set_failed(true);
@@ -142,6 +147,8 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     }
 
     sending_buffer_[req] = send_buffer;
+
+
 }
 
 void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
@@ -152,17 +159,13 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
     self->sending_buffer_.erase(req);
     free(req);
 
-    if (helper::ProtobufHelper::notify(*controller_proto)) {
+    if (status != 0) {
+        controller_proto->set_failed(true);
+        controller_proto->set_error_text(uv_strerror(status));
+        controller_proto->clear_message();
         self->HandleResponse(controller_proto);
     } else {
-        if (status != 0) {
-            controller_proto->set_failed(true);
-            controller_proto->set_error_text(uv_strerror(status));
-            controller_proto->clear_message();
-            self->HandleResponse(controller_proto);
-        } else {
-            delete controller_proto;
-        }
+        delete controller_proto;
     }
 }
 
@@ -230,14 +233,11 @@ void TcpChannel::OnTimer(uv_timer_t* timer)
 
 int32_t TcpChannel::Handle()
 {
-    proto::ControllerProto* controller_proto = NULL;
+    proto::ControllerProto* controller_proto = nullptr;
     int32_t result = WireFormat::Deserializer(buffer_, &controller_proto);
-    if (NULL == controller_proto) {
+    if (nullptr == controller_proto) {
         return result;
     }
-
-    proto::ConnectionProto* connection = controller_proto->MutableExtension(proto::connection);
-    connection->set_id((int64_t)this);
 
     if (controller_proto->stub()) {
         return HandleRequest(controller_proto);
@@ -250,25 +250,24 @@ int32_t TcpChannel::Handle()
 
 int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
 {
-    const google::protobuf::ServiceDescriptor* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto->full_service_name());
-    if (NULL == service) {
+    const auto* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto->full_service_name());
+    if (nullptr == service) {
         DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " not exist";
         delete controller_proto;
         return ERROR_OTHER;
     }
 
-    const google::protobuf::MethodDescriptor* method = NULL;
-    method = service->FindMethodByName(controller_proto->method_name());
-    if (NULL == method) {
+    const auto* method = service->FindMethodByName(controller_proto->method_name());
+    if (nullptr == method) {
         DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " method: " << controller_proto->method_name() << " not exist";
         delete controller_proto;
         return ERROR_OTHER;
     }
 
-    Controller* controller = NULL;
-    google::protobuf::Message* request = NULL;
-    google::protobuf::Message* response = NULL;
-    TcpClosure* done = NULL;
+    Controller* controller = nullptr;
+    google::protobuf::Message* request = nullptr;
+    google::protobuf::Message* response = nullptr;
+    TcpClosure* done = nullptr;
 
     try {
         controller = new Controller();
@@ -295,6 +294,7 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
         return ERROR_BUSY;
     }
 
+    controller_proto->set_connection_id((int64_t)this);
     factory()->router_channel()->CallMethod(method, controller, request, response, done);
 
     return 0;
@@ -302,20 +302,20 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
 
 int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
 {
-    std::map<int64_t, Context>::iterator it = async_result_.find(controller_proto->transmit_id());
-    if (it == async_result_.end()) {
+    const auto& async_result_it = async_result_.find(controller_proto->transmit_id());
+    if (async_result_it == async_result_.end()) {
         delete controller_proto;
         return 0;
     }
 
-    Controller* controller = it->second.controller;
-    google::protobuf::Closure* done = it->second.done;
-    google::protobuf::Message* response = it->second.response;
+    Controller* controller = async_result_it->second.controller;
+    google::protobuf::Closure* done = async_result_it->second.done;
+    google::protobuf::Message* response = async_result_it->second.response;
 
-    it->second.reset();
-    async_result_.erase(it);
+    async_result_it->second.reset();
+    async_result_.erase(async_result_it);
 
-    if (!controller_proto->failed() && controller_proto->has_message()) {
+    if (!controller_proto->failed() && controller_proto->message().size() > 0) {
         response->ParseFromString(controller_proto->message());
     }
     controller->set_allocated_proto(controller_proto);
@@ -342,20 +342,18 @@ void TcpChannel::Close()
     uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
     uv_close((uv_handle_t*)stream_, OnCloseStream);
-    stream_ = NULL;
+    stream_ = nullptr;
 
-    std::map<Controller*, Controller*>::iterator it;
-    for (it = router_controllers_.begin(); it != router_controllers_.end(); it++) {
-        it->first->StartCancel();
+    for (auto& controller_it : router_controllers_) {
+        controller_it.first->StartCancel();
     }
     router_controllers_.clear();
 
-    std::map<int64_t, Context>::iterator context_it;
-    for (context_it = async_result_.begin(); context_it != async_result_.end(); context_it++) {
-        context_it->second.controller->StartCancel();
-        context_it->second.controller->SetFailed("canceled");
-        context_it->second.done->Run();
-        context_it->second.reset();
+    for (auto& context_it : async_result_) {
+        context_it.second.controller->StartCancel();
+        context_it.second.controller->SetFailed("canceled");
+        context_it.second.done->Run();
+        context_it.second.reset();
     }
 
     async_result_.clear();
@@ -363,11 +361,6 @@ void TcpChannel::Close()
     buffer_.reset();
 }
 
-
-/*
- *
- *
- */
 
 LocalMapRepoChannel::LocalMapRepoChannel()
 {
@@ -379,9 +372,8 @@ LocalMapRepoChannel::~LocalMapRepoChannel()
 
 void LocalMapRepoChannel::Close()
 {
-    std::map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*>::iterator service_it;
-    for (service_it = service_.begin(); service_it != service_.end(); service_it++) {
-        delete service_it->second;
+    for (auto& service_it : service_) {
+        delete service_it.second;
     }
     service_.clear();
 }
@@ -399,8 +391,7 @@ void LocalMapRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* m
                             google::protobuf::Message* response,
                             google::protobuf::Closure* done)
 {
-    std::map<const google::protobuf::ServiceDescriptor*, google::protobuf::Service*>::iterator service_it;
-    service_it = service_.find(method->service());
+    const auto& service_it = service_.find(method->service());
     if (service_.end() == service_it) {
         controller->SetFailed("service not implement");
         done->Run();
@@ -421,17 +412,17 @@ LocalListRepoChannel::~LocalListRepoChannel()
 
 void LocalListRepoChannel::Close()
 {
-    std::vector<google::protobuf::Service*>::iterator service_it;
-    for (service_it = service_.begin(); service_it != service_.end(); service_it++) {
-        delete (*service_it);
+    for (auto& service_it : service_) {
+        delete service_it;
     }
 
-    service_.clear();
+    service_.Clear();
 }
 
 void LocalListRepoChannel::Append(google::protobuf::Service* service)
 {
-    service_.push_back(service);
+
+    service_.Add(service);
 }
 
 void LocalListRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -440,9 +431,8 @@ void LocalListRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* 
                             google::protobuf::Message* response,
                             google::protobuf::Closure* done)
 {
-    std::vector<google::protobuf::Service*>::iterator service_it;
-    for (service_it = service_.begin(); service_it != service_.end(); service_it++) {
-        (*service_it)->CallMethod(method, controller, request, response, done);
+    for (auto& service_it : service_) {
+        service_it->CallMethod(method, controller, request, response, done);
     }
 };
 

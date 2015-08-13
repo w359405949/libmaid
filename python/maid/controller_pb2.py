@@ -18,8 +18,8 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/controller.proto',
   package='maid.proto',
-  syntax='proto2',
-  serialized_pb=_b('\n\x15maid/controller.proto\x12\nmaid.proto\"\xc9\x01\n\x0f\x43ontrollerProto\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\x04\x12\x0c\n\x04stub\x18\x04 \x01(\x08\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06notify\x18\t \x01(\x08\x12\x0f\n\x07message\x18\n \x01(\x0c\x12\x19\n\x11\x66ull_service_name\x18\x0b \x01(\t*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02')
+  syntax='proto3',
+  serialized_pb=_b('\n\x15maid/controller.proto\x12\nmaid.proto\"\xd5\x01\n\x0f\x43ontrollerProto\x12\x13\n\x0bmethod_name\x18\x02 \x01(\t\x12\x13\n\x0btransmit_id\x18\x03 \x01(\x04\x12\x0c\n\x04stub\x18\x04 \x01(\x08\x12\x13\n\x0bis_canceled\x18\x05 \x01(\x08\x12\x0e\n\x06\x66\x61iled\x18\x06 \x01(\x08\x12\x12\n\nerror_text\x18\x07 \x01(\t\x12\x0e\n\x06notify\x18\t \x01(\x08\x12\x0f\n\x07message\x18\n \x01(\x0c\x12\x19\n\x11\x66ull_service_name\x18\x0b \x01(\t\x12\x15\n\rconnection_id\x18\x64 \x01(\x03\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -96,6 +96,13 @@ _CONTROLLERPROTO = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='connection_id', full_name='maid.proto.ControllerProto.connection_id', index=9,
+      number=100, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -103,13 +110,13 @@ _CONTROLLERPROTO = _descriptor.Descriptor(
   enum_types=[
   ],
   options=None,
-  is_extendable=True,
-  syntax='proto2',
-  extension_ranges=[(1000, 536870912), ],
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
   oneofs=[
   ],
   serialized_start=38,
-  serialized_end=239,
+  serialized_end=251,
 )
 
 DESCRIPTOR.message_types_by_name['ControllerProto'] = _CONTROLLERPROTO

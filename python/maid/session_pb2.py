@@ -13,27 +13,17 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from maid import controller_pb2 as maid_dot_controller__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='maid/session.proto',
   package='maid.proto',
   syntax='proto2',
-  serialized_pb=_b('\n\x12maid/session.proto\x12\nmaid.proto\x1a\x15maid/controller.proto\";\n\x0cSessionProto\x12\n\n\x02id\x18\x01 \x01(\t\x12\x14\n\x0c\x65xpired_time\x18\x02 \x01(\x04*\t\x08\xe8\x07\x10\x80\x80\x80\x80\x02:G\n\x07session\x12\x1b.maid.proto.ControllerProto\x18\xea\x07 \x01(\x0b\x32\x18.maid.proto.SessionProto')
-  ,
-  dependencies=[maid_dot_controller__pb2.DESCRIPTOR,])
+  serialized_pb=_b('\n\x12maid/session.proto\x12\nmaid.proto\"0\n\x0cSessionProto\x12\n\n\x02id\x18\x01 \x01(\t\x12\x14\n\x0c\x65xpired_time\x18\x02 \x01(\x04')
+)
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
-SESSION_FIELD_NUMBER = 1002
-session = _descriptor.FieldDescriptor(
-  name='session', full_name='maid.proto.session', index=0,
-  number=1002, type=11, cpp_type=10, label=1,
-  has_default_value=False, default_value=None,
-  message_type=None, enum_type=None, containing_type=None,
-  is_extension=True, extension_scope=None,
-  options=None)
 
 
 _SESSIONPROTO = _descriptor.Descriptor(
@@ -64,17 +54,16 @@ _SESSIONPROTO = _descriptor.Descriptor(
   enum_types=[
   ],
   options=None,
-  is_extendable=True,
+  is_extendable=False,
   syntax='proto2',
-  extension_ranges=[(1000, 536870912), ],
+  extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=57,
-  serialized_end=116,
+  serialized_start=34,
+  serialized_end=82,
 )
 
 DESCRIPTOR.message_types_by_name['SessionProto'] = _SESSIONPROTO
-DESCRIPTOR.extensions_by_name['session'] = session
 
 SessionProto = _reflection.GeneratedProtocolMessageType('SessionProto', (_message.Message,), dict(
   DESCRIPTOR = _SESSIONPROTO,
@@ -83,7 +72,5 @@ SessionProto = _reflection.GeneratedProtocolMessageType('SessionProto', (_messag
   ))
 _sym_db.RegisterMessage(SessionProto)
 
-session.message_type = _SESSIONPROTO
-maid_dot_controller__pb2.ControllerProto.RegisterExtension(session)
 
 # @@protoc_insertion_point(module_scope)

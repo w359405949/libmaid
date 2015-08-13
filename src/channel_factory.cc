@@ -1,106 +1,75 @@
 #include <glog/logging.h>
-#include "maid/connection.pb.h"
-#include "maid/middleware.pb.h"
 #include "channel_factory.h"
-#include "channel_pool.h"
 #include "channel.h"
 #include "controller.h"
 #include "closure.h"
-#include "uv_hook.h"
 
 namespace maid {
-
-AbstractTcpChannelFactory* AbstractTcpChannelFactory::default_instance_ = NULL;
-
-void InitDefaultInstance()
-{
-    AbstractTcpChannelFactory::default_instance_ = new AbstractTcpChannelFactory();
-}
-
-struct StaticInitDefaultInstance
-{
-    StaticInitDefaultInstance()
-    {
-        InitDefaultInstance();
-    }
-} static_init_default_instance_;
-
 
 /*
  * AbstractTcpChannelFactory
  *
  */
 
-AbstractTcpChannelFactory::AbstractTcpChannelFactory(google::protobuf::RpcChannel* router, google::protobuf::RpcChannel* middleware, ChannelPool* pool)
+AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::protobuf::RpcChannel* router)
     :router_channel_(router),
-    middleware_channel_(middleware),
-    pool_(pool)
+    loop_(loop)
 {
-    controller_ = new Controller();
-    connection_ = new proto::ConnectionProto();
-    closure_ = new Closure();
-}
-
-
-AbstractTcpChannelFactory* AbstractTcpChannelFactory::default_instance()
-{
-    return default_instance_;
-}
-
-AbstractTcpChannelFactory::AbstractTcpChannelFactory()
-    :router_channel_(NULL),
-    middleware_channel_(NULL),
-    pool_(NULL)
-{
-    controller_ = new Controller();
-    connection_ = new proto::ConnectionProto();
-    closure_ = new Closure();
-}
-
-ChannelPool* AbstractTcpChannelFactory::pool()
-{
-    return pool_ == NULL ? ChannelPool::generated_pool() : pool_;
+    gc_.data = this;
+    uv_prepare_init(loop_, &gc_);
+    uv_prepare_start(&gc_, OnGC);
 }
 
 AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
 {
-    router_channel_ = NULL;
-    middleware_channel_ = NULL;
-    pool_ = NULL;
-
-    delete controller_;
-    delete connection_;
-    delete closure_;
+    router_channel_ = nullptr;
 }
 
-google::protobuf::RpcChannel* AbstractTcpChannelFactory::router_channel()
-{
-    router_channel_ = pool()->channel(router_channel_);
-    return router_channel_;
-}
-
-google::protobuf::RpcChannel* AbstractTcpChannelFactory::middleware_channel()
-{
-    middleware_channel_ = pool()->channel(middleware_channel_);
-    return middleware_channel_;
-}
 
 void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 {
-    pool()->AddChannel(channel);
+    channel_[channel] = channel;
 
-    connection_->set_id((int64_t)channel->stream());
-    proto::Middleware_Stub stub(middleware_channel());
-    stub.Connected(controller_, connection_, connection_, closure_);
+    DLOG(INFO)<<"connected:"<< channel_.size();
 }
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
-    connection_->set_id((int64_t)channel);
-    proto::Middleware_Stub stub(middleware_channel());
-    stub.Disconnected(controller_, connection_, connection_, closure_);
+    CHECK(channel_.find(channel) != channel_.end());
 
-    pool()->RemoveChannel(channel);
+    channel_.erase(channel);
+    channel_invalid_.Add(channel);
+
+    channel->Close();
+    DLOG(INFO)<<"disconnected:"<< channel_.size();
+}
+
+void AbstractTcpChannelFactory::OnGC(uv_prepare_t* handle)
+{
+    AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
+
+    for (auto& channel_it : self->channel_invalid_) {
+        delete channel_it;
+    }
+
+    self->channel_invalid_.Clear();
+}
+
+void AbstractTcpChannelFactory::Close()
+{
+    uv_prepare_stop(&gc_);
+    OnGC(&gc_);
+}
+
+google::protobuf::RpcChannel* AbstractTcpChannelFactory::channel(int64_t channel_id)
+{
+    TcpChannel* key = (TcpChannel*)channel_id;
+    const auto& channel_it = channel_.find(key);
+    if (channel_it != channel_.end()) {
+        return channel_it->second;
+    }
+
+    return maid::Channel::default_instance();
 }
 
 /*
@@ -109,14 +78,10 @@ void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
  *
  *
  */
-Acceptor::Acceptor(google::protobuf::RpcChannel* router, google::protobuf::RpcChannel* middleware, ChannelPool* pool)
-    :AbstractTcpChannelFactory(router, middleware, pool),
-    handle_(NULL)
-{
-}
-
-Acceptor::Acceptor()
-    :handle_(NULL)
+Acceptor::Acceptor(uv_loop_t* loop, google::protobuf::RpcChannel* router)
+    :AbstractTcpChannelFactory(loop, router),
+    loop_(loop),
+    handle_(nullptr)
 {
 }
 
@@ -132,7 +97,7 @@ void Acceptor::OnCloseListen(uv_handle_t* handle)
 
 int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
 {
-    CHECK(handle_ == NULL); // Listen only call one time
+    CHECK(handle_ == nullptr); // Listen only call one time
 
     handle_ = new uv_tcp_t();
     handle_->data = this;
@@ -145,7 +110,7 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
         return result;
     }
 
-    uv_tcp_init(maid_default_loop(), handle_);
+    uv_tcp_init(loop_, handle_);
 
     int32_t flags = 0;
     result = uv_tcp_bind(handle_, (struct sockaddr*)&address, flags);
@@ -167,16 +132,11 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
 
 void Acceptor::Close()
 {
-    std::map<TcpChannel*, TcpChannel*>::iterator it;
-    for (it = channel_.begin(); it != channel_.end(); it++) {
-        it->second->Close();
-        AbstractTcpChannelFactory::Disconnected(it->second);
-    }
-    channel_.clear();
+    AbstractTcpChannelFactory::Close();
 
-    if (NULL != handle_) {
+    if (nullptr != handle_) {
         uv_close((uv_handle_t*)handle_, OnCloseListen);
-        handle_ = NULL;
+        handle_ = nullptr;
     }
 }
 
@@ -188,12 +148,12 @@ void Acceptor::OnAccept(uv_stream_t* stream, int32_t status)
     Acceptor* self = (Acceptor*)stream->data;
 
     uv_tcp_t* peer_stream = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-    if (NULL == peer_stream) {
+    if (nullptr == peer_stream) {
         DLOG(WARNING) << " no more memory, denied";
         return;
     }
 
-    uv_tcp_init(maid_default_loop(), peer_stream);
+    uv_tcp_init(self->loop_, peer_stream);
     int result = uv_accept(stream, (uv_stream_t*)peer_stream);
     if (result) {
         DLOG(WARNING) << uv_strerror(result);
@@ -203,9 +163,9 @@ void Acceptor::OnAccept(uv_stream_t* stream, int32_t status)
     }
     uv_tcp_nodelay(peer_stream, 1);
 
-    TcpChannel* channel = NULL;
+    TcpChannel* channel = nullptr;
     try{
-        channel = new TcpChannel((uv_stream_t*)peer_stream, self);
+        channel = new TcpChannel(self->loop_, (uv_stream_t*)peer_stream, self);
     } catch (std::bad_alloc) {
         uv_close((uv_handle_t*)peer_stream, OnCloseListen);
         return;
@@ -214,50 +174,23 @@ void Acceptor::OnAccept(uv_stream_t* stream, int32_t status)
     self->Connected(channel);
 }
 
-void Acceptor::Connected(TcpChannel* channel)
-{
-    CHECK(channel_.find(channel) == channel_.end());
-    channel_[channel] = channel;
-    AbstractTcpChannelFactory::Connected(channel);
-
-    DLOG(INFO)<<"connected:"<< channel_.size();
-}
-
-void Acceptor::Disconnected(TcpChannel* channel)
-{
-    CHECK(channel_.find(channel) != channel_.end());
-
-    AbstractTcpChannelFactory::Disconnected(channel);
-    channel->Close();
-    channel_[channel] = NULL;
-    channel_.erase(channel);
-
-    DLOG(INFO)<<"connected:"<< channel_.size();
-}
-
-
 /*
  *
  * Connector
  *
  */
-Connector::Connector(google::protobuf::RpcChannel* router, google::protobuf::RpcChannel* middleware, ChannelPool* pool)
-    :AbstractTcpChannelFactory(router, middleware, pool),
-    req_(NULL),
-    channel_(NULL)
-{
-}
-
-Connector::Connector()
-    :req_(NULL),
-    channel_(NULL)
+Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
+    :AbstractTcpChannelFactory(loop, router),
+    loop_(loop),
+    req_(nullptr),
+    channel_(nullptr)
 {
 }
 
 Connector::~Connector()
 {
-    req_ = NULL;
-    channel_ = NULL;
+    req_ = nullptr;
+    channel_ = nullptr;
 }
 
 void Connector::OnCloseHandle(uv_handle_t* handle)
@@ -269,7 +202,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
     Connector* self = (Connector*)req->data;
-    CHECK(self != NULL);
+    CHECK(self != nullptr);
 
     if (status) {
         uv_close((uv_handle_t*)stream, OnCloseHandle);
@@ -277,9 +210,9 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
         return;
     }
 
-    TcpChannel* channel = NULL;
+    TcpChannel* channel = nullptr;
     try {
-        channel = new TcpChannel(stream, self);
+        channel = new TcpChannel(self->loop_, stream, self);
     } catch (std::bad_alloc) {
         uv_close((uv_handle_t*)stream, OnCloseHandle);
         return;
@@ -290,9 +223,9 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
 int32_t Connector::Connect(const char* host, int32_t port)
 {
-    CHECK(NULL == req_); // only be called one time
+    CHECK(nullptr == req_); // only be called one time
     req_ = (uv_connect_t*)malloc(sizeof(uv_connect_t));
-    if (req_ == NULL) {
+    if (req_ == nullptr) {
         return -1;
     }
     req_->data = this;
@@ -306,10 +239,10 @@ int32_t Connector::Connect(const char* host, int32_t port)
     }
 
     uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-    if (handle == NULL) {
+    if (handle == nullptr) {
         return -1;
     }
-    uv_tcp_init(maid_default_loop(), handle);
+    uv_tcp_init(loop_, handle);
     uv_tcp_nodelay(handle, 1);
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
@@ -324,16 +257,17 @@ int32_t Connector::Connect(const char* host, int32_t port)
 
 void Connector::Close()
 {
-    Disconnected(channel_);
+    AbstractTcpChannelFactory::Close();
 
-    if (NULL != req_) {
-        free(req_);
-    }
+    free(req_);
+    req_ = nullptr;
+    channel_ = nullptr;
+    loop_ = nullptr;
 }
 
 void Connector::Connected(TcpChannel* channel)
 {
-    CHECK(channel_ == NULL);
+    CHECK(channel_ == nullptr);
     channel_ = channel;
     AbstractTcpChannelFactory::Connected(channel);
 }
@@ -341,19 +275,20 @@ void Connector::Connected(TcpChannel* channel)
 void Connector::Disconnected(TcpChannel* channel)
 {
     CHECK(channel_ == channel);
-    if (channel_ != NULL) {
-        channel_ = NULL;
-        channel->Close();
-        AbstractTcpChannelFactory::Disconnected(channel);
+    if (channel_ != nullptr) {
+        channel_ = nullptr;
     }
+
+    AbstractTcpChannelFactory::Disconnected(channel);
 }
 
 google::protobuf::RpcChannel* Connector::channel()
 {
-    if (channel_ == NULL) {
-        return maid::Channel::default_instance();
+    if (channel_ != nullptr) {
+        return channel_;
     }
-    return channel_;
+
+    return maid::Channel::default_instance();
 }
 
 } // maid

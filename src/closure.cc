@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <google/protobuf/empty.pb.h>
 #include <glog/logging.h>
 #include "maid/controller.pb.h"
 #include "maid/connection.pb.h"
@@ -7,8 +7,6 @@
 #include "channel.h"
 #include "controller.h"
 #include "wire_format.h"
-#include "helper.h"
-#include "uv_hook.h"
 
 
 namespace maid {
@@ -62,14 +60,13 @@ void TcpClosure::Run()
 {
     channel_->RemoveController(controller_);
 
-    if (controller_->IsCanceled() || helper::ProtobufHelper::notify(controller_->proto())) {
+    if (controller_->IsCanceled() || response_->GetDescriptor() == google::protobuf::Empty::descriptor()) {
         delete this;
         return;
     }
 
 
     proto::ControllerProto* controller_proto = controller_->mutable_proto();
-    controller_proto->ClearExtension(proto::connection);
     controller_proto->set_stub(false);
     if (!controller_->Failed()) {
         response_->SerializeToString(controller_proto->mutable_message());

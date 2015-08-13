@@ -1,55 +1,46 @@
 #include "base.h"
-#include "uv_hook.h"
 
 namespace maid {
 
-TcpServer::TcpServer()
+TcpServer::TcpServer(uv_loop_t* loop)
+    :loop_(loop)
 {
     router_ = new LocalMapRepoChannel();
-    middleware_ = new LocalListRepoChannel();
-    pool_ = new ChannelPool();
-    pool_->AddChannel(router_);
-    pool_->AddChannel(middleware_);
 }
 
 TcpServer::~TcpServer()
 {
     delete router_;
-    delete middleware_;
-    delete pool_;
 }
 
 void TcpServer::Close()
 {
-    std::vector<Acceptor*>::iterator it;
-    for (it = acceptor_.begin(); it == acceptor_.end(); it++) {
-        (*it)->Close();
-        delete (*it);
+    for (auto& acceptor : acceptor_) {
+        acceptor->Close();
+        delete acceptor;
     }
-    acceptor_.clear();
+    acceptor_.Clear();
 
     router_->Close();
-    middleware_->Close();
-    pool_->Close();
 
-    uv_stop(maid_default_loop());
+    uv_stop(mutable_loop());
 }
 
 int32_t TcpServer::Listen(const char* host, int32_t port, int32_t backlog)
 {
-    Acceptor* acceptor = new Acceptor(router_, middleware_, pool_);
-    acceptor_.push_back(acceptor);
+    Acceptor* acceptor = new Acceptor(mutable_loop(), router_);
+    acceptor_.Add(acceptor);
     return acceptor->Listen(host, port, backlog);
 }
 
 void TcpServer::ServeForever()
 {
-    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
+    uv_run(mutable_loop(), UV_RUN_DEFAULT);
 }
 
 void TcpServer::Update()
 {
-    uv_run(maid_default_loop(), UV_RUN_NOWAIT);
+    uv_run(mutable_loop(), UV_RUN_NOWAIT);
 }
 
 void TcpServer::InsertService(google::protobuf::Service* service)
@@ -57,16 +48,17 @@ void TcpServer::InsertService(google::protobuf::Service* service)
     router_->Insert(service);
 }
 
-void TcpServer::AppendMiddleware(proto::Middleware* middleware)
+google::protobuf::RpcChannel* TcpServer::channel(int64_t channel_id)
 {
-    middleware_->Append(middleware);
-}
+    for (auto& acceptor_it : acceptor_) {
+        google::protobuf::RpcChannel* chl = acceptor_it->channel(channel_id);
+        if (chl != maid::Channel::default_instance()) {
+            return chl;
+        }
+    }
 
-ChannelPool* TcpServer::pool() const
-{
-    return pool_;
+    return maid::Channel::default_instance();
 }
-
 
 /*
  *
@@ -74,41 +66,34 @@ ChannelPool* TcpServer::pool() const
  *
  */
 
-TcpClient::TcpClient()
+TcpClient::TcpClient(uv_loop_t* loop)
+    :loop_(loop)
 {
     router_ = new LocalMapRepoChannel();
-    middleware_ = new LocalListRepoChannel();
-    pool_ = new ChannelPool();
-    pool_->AddChannel(router_);
-    pool_->AddChannel(middleware_);
 }
 
 TcpClient::~TcpClient()
 {
     delete router_;
-    delete middleware_;
-    delete pool_;
 }
 
 void TcpClient::Close()
 {
-    std::vector<Connector*>::const_iterator it;
-    for (it = connector_.begin(); it != connector_.end(); it++) {
-        (*it)->Close();
-        delete (*it);
+    for (auto& connector_it : connector_) {
+        connector_it->Close();
+        delete connector_it;
     }
-    connector_.clear();
-    router_->Close();
-    middleware_->Close();
-    pool_->Close();
 
-    uv_stop(maid_default_loop());
+    connector_.Clear();
+    router_->Close();
+
+    uv_stop(mutable_loop());
 }
 
 int32_t TcpClient::Connect(const char* host, int32_t port)
 {
-    Connector* connector = new Connector(router_, middleware_, pool_);
-    connector_.push_back(connector);
+    Connector* connector = new Connector(mutable_loop(), router_);
+    connector_.Add(connector);
     return connector->Connect(host, port);
 }
 
@@ -117,27 +102,21 @@ void TcpClient::InsertService(google::protobuf::Service* service)
     router_->Insert(service);
 }
 
-void TcpClient::AppendMiddleware(proto::Middleware* middleware)
-{
-    middleware_->Append(middleware);
-}
-
 void TcpClient::ServeForever()
 {
-    uv_run(maid_default_loop(), UV_RUN_DEFAULT);
+    uv_run(mutable_loop(), UV_RUN_DEFAULT);
 }
 
 void TcpClient::Update()
 {
-    uv_run(maid_default_loop(), UV_RUN_NOWAIT);
+    uv_run(mutable_loop(), UV_RUN_NOWAIT);
 }
 
 google::protobuf::RpcChannel* TcpClient::channel() const
 {
-    std::vector<Connector*>::const_iterator it;
-    for (it = connector_.begin(); it != connector_.end(); it++) {
-        if ((*it)->channel() != maid::Channel::default_instance()) {
-            return (*it)->channel();
+    for (auto& connector_it : connector_) {
+        if (connector_it->channel() != maid::Channel::default_instance()) {
+            return connector_it->channel();
         }
     }
 

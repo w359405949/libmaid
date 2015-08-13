@@ -137,7 +137,7 @@ const int Request::kMessageFieldNumber;
 #endif  // !_MSC_VER
 
 Request::Request()
-  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
+  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:Request)
 }
@@ -319,9 +319,9 @@ int Request::ByteSize() const {
 
 void Request::MergeFrom(const ::google::protobuf::Message& from) {
   if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
-  const Request* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const Request*>(
-      &from);
+  const Request* source = 
+      ::google::protobuf::internal::DynamicCastToGenerated<const Request>(
+          &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -378,6 +378,63 @@ void Request::InternalSwap(Request* other) {
   return metadata;
 }
 
+#if PROTOBUF_INLINE_NOT_IN_HEADERS
+// Request
+
+// optional string message = 1;
+bool Request::has_message() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+void Request::set_has_message() {
+  _has_bits_[0] |= 0x00000001u;
+}
+void Request::clear_has_message() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+void Request::clear_message() {
+  message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_message();
+}
+ const ::std::string& Request::message() const {
+  // @@protoc_insertion_point(field_get:Request.message)
+  return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void Request::set_message(const ::std::string& value) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Request.message)
+}
+ void Request::set_message(const char* value) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Request.message)
+}
+ void Request::set_message(const char* value, size_t size) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Request.message)
+}
+ ::std::string* Request::mutable_message() {
+  set_has_message();
+  // @@protoc_insertion_point(field_mutable:Request.message)
+  return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ ::std::string* Request::release_message() {
+  clear_has_message();
+  return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void Request::set_allocated_message(::std::string* message) {
+  if (message != NULL) {
+    set_has_message();
+  } else {
+    clear_has_message();
+  }
+  message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
+  // @@protoc_insertion_point(field_set_allocated:Request.message)
+}
+
+#endif  // PROTOBUF_INLINE_NOT_IN_HEADERS
 
 // ===================================================================
 
@@ -386,7 +443,7 @@ const int Response::kMessageFieldNumber;
 #endif  // !_MSC_VER
 
 Response::Response()
-  : ::google::protobuf::Message() , _internal_metadata_(NULL)  {
+  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:Response)
 }
@@ -568,9 +625,9 @@ int Response::ByteSize() const {
 
 void Response::MergeFrom(const ::google::protobuf::Message& from) {
   if (GOOGLE_PREDICT_FALSE(&from == this)) MergeFromFail(__LINE__);
-  const Response* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const Response*>(
-      &from);
+  const Response* source = 
+      ::google::protobuf::internal::DynamicCastToGenerated<const Response>(
+          &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -627,6 +684,63 @@ void Response::InternalSwap(Response* other) {
   return metadata;
 }
 
+#if PROTOBUF_INLINE_NOT_IN_HEADERS
+// Response
+
+// optional string message = 1;
+bool Response::has_message() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+void Response::set_has_message() {
+  _has_bits_[0] |= 0x00000001u;
+}
+void Response::clear_has_message() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+void Response::clear_message() {
+  message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_message();
+}
+ const ::std::string& Response::message() const {
+  // @@protoc_insertion_point(field_get:Response.message)
+  return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void Response::set_message(const ::std::string& value) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Response.message)
+}
+ void Response::set_message(const char* value) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Response.message)
+}
+ void Response::set_message(const char* value, size_t size) {
+  set_has_message();
+  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Response.message)
+}
+ ::std::string* Response::mutable_message() {
+  set_has_message();
+  // @@protoc_insertion_point(field_mutable:Response.message)
+  return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ ::std::string* Response::release_message() {
+  clear_has_message();
+  return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+ void Response::set_allocated_message(::std::string* message) {
+  if (message != NULL) {
+    set_has_message();
+  } else {
+    clear_has_message();
+  }
+  message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
+  // @@protoc_insertion_point(field_set_allocated:Response.message)
+}
+
+#endif  // PROTOBUF_INLINE_NOT_IN_HEADERS
 
 // ===================================================================
 

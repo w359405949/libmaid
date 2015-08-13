@@ -1,21 +1,22 @@
-syntax = "proto2";
+syntax="proto3";
 
 package maid.proto;
+
+//import "google/protobuf/any.proto";
 
 message ControllerProto
 {
     //optional string service_name = 1;
-    optional string method_name = 2;
-    optional uint64 transmit_id = 3;
-    optional bool stub = 4; // which side this message send
-    optional bool is_canceled = 5; // not used currently
-    optional bool failed = 6;
-    optional string error_text = 7; // or error message
-    optional bool notify = 9; // will not get an response
-    optional bytes message = 10; // message
+    string method_name = 2;
+    uint64 transmit_id = 3;
+    bool stub = 4; // which side this message send
+    bool is_canceled = 5; // not used currently
+    bool failed = 6;
+    string error_text = 7; // or error message
+    bool notify = 9; // will not get an response
+    bytes message = 10; // message
 
-    optional string full_service_name = 11;
+    string full_service_name = 11;
     //optional string full_method_name = 12;
-
-    extensions 1000 to max;
+    int64 connection_id = 100;
 }
