@@ -29,6 +29,8 @@ void TcpServer::Close()
 int32_t TcpServer::Listen(const char* host, int32_t port, int32_t backlog)
 {
     Acceptor* acceptor = new Acceptor(mutable_loop(), router_);
+    acceptor->AddConnectedCallback(std::bind(&TcpServer::ConnectedCallback, this, std::placeholders::_1));
+    acceptor->AddDisconnectedCallback(std::bind(&TcpServer::DisconnectedCallback, this, std::placeholders::_1));
     acceptor_.Add(acceptor);
     return acceptor->Listen(host, port, backlog);
 }
@@ -93,6 +95,9 @@ void TcpClient::Close()
 int32_t TcpClient::Connect(const char* host, int32_t port)
 {
     Connector* connector = new Connector(mutable_loop(), router_);
+    connector->AddConnectedCallback(std::bind(&TcpClient::ConnectedCallback, this, std::placeholders::_1));
+    connector->AddDisconnectedCallback(std::bind(&TcpClient::DisconnectedCallback, this, std::placeholders::_1));
+
     connector_.Add(connector);
     return connector->Connect(host, port);
 }

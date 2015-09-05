@@ -36,13 +36,13 @@ BUILD_IOS_ARMV7=YES
 BUILD_IOS_ARMV7S=YES
 BUILD_IOS_ARM64=YES
 
-PROTOBUF_SRC_DIR=.
+PROTOBUF_SRC_DIR=deps/protobuf
 
 DARWIN=darwin13.4.0
 
 XCODEDIR=`xcode-select --print-path`
 IOS_SDK_VERSION=`xcrun --sdk iphoneos --show-sdk-version`
-MIN_SDK_VERSION=7.1
+MIN_SDK_VERSION=6.0
 MACOSX_PLATFORM=${XCODEDIR}/Platforms/MacOSX.platform
 MACOSX_SYSROOT=${MACOSX_PLATFORM}/Developer/MacOSX10.9.sdk
 IPHONEOS_PLATFORM=`xcrun --sdk iphoneos --show-sdk-platform-path`
@@ -178,7 +178,7 @@ then
         cd ${PROTOBUF_SRC_DIR}
         make distclean
         ./configure --disable-shared --prefix=${PREFIX} --exec-prefix=${PREFIX}/platform/x86_64-mac "CC=${CC}" "CFLAGS=${CFLAGS} -arch x86_64" "CXX=${CXX}" "CXXFLAGS=${CXXFLAGS} -arch x86_64" "LDFLAGS=${LDFLAGS}" "LIBS=${LIBS}"
-        make -5
+        make -j5
         make check
         make install
     )
@@ -285,18 +285,19 @@ echo "$(tput sgr0)"
     lipo -info lib/libprotobuf.a
     lipo -info lib/libprotobuf-lite.a
 )
-if [ "${USE_GIT_MASTER}" == "YES" ]
-then
-    if [ -d "${PREFIX}-master" ]
-    then
-        rm -rf "${PREFIX}-master"
-    fi
-    mv "${PREFIX}" "${PREFIX}-master"
-else
-    if [ -d "${PREFIX}-${PROTOBUF_VERSION}" ]
-    then
-        rm -rf "${PREFIX}-${PROTOBUF_VERSION}"
-    fi
-    mv "${PREFIX}" "${PREFIX}-${PROTOBUF_VERSION}"
-fi
+
+#if [ "${USE_GIT_MASTER}" == "YES" ]
+#then
+#    if [ -d "${PREFIX}-master" ]
+#    then
+#        rm -rf "${PREFIX}-master"
+#    fi
+#    mv "${PREFIX}" "${PREFIX}-master"
+#else
+#    if [ -d "${PREFIX}-${PROTOBUF_VERSION}" ]
+#    then
+#        rm -rf "${PREFIX}-${PROTOBUF_VERSION}"
+#    fi
+#    mv "${PREFIX}" "${PREFIX}-${PROTOBUF_VERSION}"
+#fi
 echo Done!

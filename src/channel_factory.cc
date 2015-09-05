@@ -12,8 +12,8 @@ namespace maid {
  */
 
 AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::protobuf::RpcChannel* router)
-    :router_channel_(router),
-    loop_(loop)
+    :loop_(loop),
+    router_channel_(router)
 {
     gc_.data = this;
     uv_prepare_init(loop_, &gc_);
@@ -30,6 +30,10 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 {
     channel_[channel] = channel;
 
+    for (auto& function : connected_callbacks_) {
+        function((int64_t)channel);
+    }
+
     DLOG(INFO)<<"connected:"<< channel_.size();
 }
 
@@ -41,6 +45,11 @@ void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
     channel_invalid_.Add(channel);
 
     channel->Close();
+
+    for (auto& function : disconnected_callbacks_) {
+        function((int64_t)channel);
+    }
+
     DLOG(INFO)<<"disconnected:"<< channel_.size();
 }
 

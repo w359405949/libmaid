@@ -101,7 +101,8 @@ int main()
 {
     maid::TcpClient* client = new maid::TcpClient(uv_default_loop());
     client->InsertService(new HelloServiceImpl());
-    client->Connect("127.0.0.1", 5555);
+    //client->Connect("127.0.0.1", 5555);
+    client->Connect("112.124.111.91", 5555);
     for(int32_t i = 0; i < REQUESTS / 2; i++){
         maid::Controller* controller = new maid::Controller();
         maid::example::HelloRequest* request = new maid::example::HelloRequest();

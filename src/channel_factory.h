@@ -32,6 +32,16 @@ public:
     virtual void Disconnected(TcpChannel* channel);
     virtual void Close();
 
+    inline void AddConnectedCallback(std::function<void(int64_t)> callback)
+    {
+        connected_callbacks_.push_back(callback);
+    }
+
+    inline void AddDisconnectedCallback(std::function<void(int64_t)> callback)
+    {
+        disconnected_callbacks_.push_back(callback);
+    }
+
 public:
     static void OnGC(uv_prepare_t* handle);
 
@@ -43,7 +53,8 @@ private:
     google::protobuf::RepeatedField<TcpChannel*> channel_invalid_;
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;
 
-    friend void InitDefaultInstance();
+    std::vector<std::function<void(int64_t)> > connected_callbacks_;
+    std::vector<std::function<void(int64_t)> > disconnected_callbacks_;
 };
 
 
