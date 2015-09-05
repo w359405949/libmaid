@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <google/protobuf/service.h>
 #include <google/protobuf/map.h>
 #include <google/protobuf/repeated_field.h>
