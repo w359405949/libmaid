@@ -11,7 +11,7 @@ class TcpServer
 {
 public:
     TcpServer(uv_loop_t* loop=NULL);
-    ~TcpServer();
+    virtual ~TcpServer();
 
     int32_t Listen(const char* host, int32_t port, int32_t backlog=1);
 
@@ -69,7 +69,7 @@ class TcpClient
 {
 public:
     TcpClient(uv_loop_t* loop=NULL);
-    ~TcpClient();
+    virtual ~TcpClient();
 
     int32_t Connect(const char* host, int32_t port);
 
