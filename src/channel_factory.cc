@@ -33,8 +33,6 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
     for (auto& function : connected_callbacks_) {
         function((int64_t)channel);
     }
-
-    DLOG(INFO)<<"connected:"<< channel_.size();
 }
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
@@ -49,8 +47,6 @@ void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
     for (auto& function : disconnected_callbacks_) {
         function((int64_t)channel);
     }
-
-    DLOG(INFO)<<"disconnected:"<< channel_.size();
 }
 
 void AbstractTcpChannelFactory::OnGC(uv_prepare_t* handle)
