@@ -41,23 +41,13 @@ public:
     void Close();
 
 private:
-    inline void ConnectedCallback(int64_t connection_id)
-    {
-        for (auto& callback : connected_callbacks_) {
-            callback(connection_id);
-        }
-    }
-
-    inline void DisconnectedCallback(int64_t connection_id)
-    {
-        for (auto& callback : disconnected_callbacks_) {
-            callback(connection_id);
-        }
-    }
+    void ConnectedCallback(int32_t index, int64_t connection_id);
+    void DisconnectedCallback(int32_t index, int64_t connection_id);
 
 private:
     uv_loop_t* loop_;
-    google::protobuf::RepeatedField<Acceptor*> acceptor_;
+    int32_t current_index_;
+    google::protobuf::Map<int32_t, Acceptor*> acceptor_;
     LocalMapRepoChannel* router_;
 
     std::vector<std::function<void(int64_t)> > connected_callbacks_;
@@ -99,23 +89,13 @@ public:
     void Close();
 
 private:
-    void ConnectedCallback(int64_t connection_id)
-    {
-        for (auto& callback : connected_callbacks_) {
-            callback(connection_id);
-        }
-    }
-
-    void DisconnectedCallback(int64_t connection_id)
-    {
-        for (auto& callback : disconnected_callbacks_) {
-            callback(connection_id);
-        }
-    }
+    void ConnectedCallback(int32_t index, int64_t connection_id);
+    void DisconnectedCallback(int32_t index, int64_t connection_id);
 
 private:
     uv_loop_t* loop_;
-    google::protobuf::RepeatedField<Connector*> connector_;
+    int32_t current_index_;
+    google::protobuf::Map<int32_t, Connector*> connector_;
     LocalMapRepoChannel* router_;
 
 

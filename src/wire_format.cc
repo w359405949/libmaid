@@ -1,4 +1,4 @@
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 #include <arpa/inet.h>
 
 #include "maid/controller.pb.h"
@@ -38,7 +38,7 @@ int32_t WireFormat::Deserializer(Buffer& buffer, proto::ControllerProto** contro
         return ERROR_BUSY;
     }
     buffer.start += sizeof(controller_size_nl) + controller_size;
-    CHECK(buffer.start <= buffer.end);
+    GOOGLE_CHECK(buffer.start <= buffer.end);
     return 0;
 }
 

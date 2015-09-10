@@ -4,6 +4,7 @@
 #include <google/protobuf/map.h>
 #include <google/protobuf/repeated_field.h>
 #include <map>
+#include <vector>
 #include <uv.h>
 
 namespace maid {

@@ -24,18 +24,16 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/deps/gtest/include
     ${PROJECT_SOURCE_DIR}/deps/libuv/include
     ${PROJECT_SOURCE_DIR}/deps/protobuf/src
-    ${PROJECT_SOURCE_DIR}/deps/glog/src
 )
 
 link_directories(
     ${PROJECT_SOURCE_DIR}/deps/libuv/.libs
     ${PROJECT_SOURCE_DIR}/deps/protobuf/src/.libs
-    ${PROJECT_SOURCE_DIR}/deps/glog
 )
 
 set(CMAKE_MACOSX_RPATH 1)
 
-set(cxx_strict "${cxx_strict} -std=c++11 -Wno-shadow")
+set(cxx_strict "${cxx_strict} -std=c++11 -Wall -Wno-shadow")
 set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
 #set(cxx_strict "${cxx_strict} -O3 -fPIC")
 
@@ -47,7 +45,6 @@ target_link_libraries(maid
     libstdc++.a
     libuv.a
     libprotobuf.a
-    libglog.a
     )
 
 ################################

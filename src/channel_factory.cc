@@ -1,4 +1,4 @@
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 #include "channel_factory.h"
 #include "channel.h"
 #include "controller.h"
@@ -37,12 +37,11 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
-    CHECK(channel_.find(channel) != channel_.end());
-
-    channel_.erase(channel);
-    channel_invalid_.Add(channel);
-
-    channel->Close();
+    if (channel_.find(channel) != channel_.end()) {
+        channel_.erase(channel);
+        channel_invalid_.Add(channel);
+        channel->Close();
+    }
 
     for (auto& function : disconnected_callbacks_) {
         function((int64_t)channel);
@@ -102,7 +101,7 @@ void Acceptor::OnCloseListen(uv_handle_t* handle)
 
 int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
 {
-    CHECK(handle_ == nullptr); // Listen only call one time
+    GOOGLE_CHECK(handle_ == nullptr); // Listen only call one time
 
     handle_ = new uv_tcp_t();
     handle_->data = this;
@@ -111,7 +110,7 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
     struct sockaddr_in address;
     result = uv_ip4_addr(host, port, &address);
     if (result) {
-        DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(ERROR) << uv_strerror(result);
         return result;
     }
 
@@ -121,14 +120,14 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
     result = uv_tcp_bind(handle_, (struct sockaddr*)&address, flags);
     if (result) {
         Close();
-        DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(ERROR) << uv_strerror(result);
         return result;
     }
 
     result = uv_listen((uv_stream_t*)handle_, backlog, OnAccept);
     if (result) {
         Close();
-        DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(ERROR) << uv_strerror(result);
         return result;
     }
 
@@ -154,14 +153,14 @@ void Acceptor::OnAccept(uv_stream_t* stream, int32_t status)
 
     uv_tcp_t* peer_stream = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     if (nullptr == peer_stream) {
-        DLOG(WARNING) << " no more memory, denied";
+        GOOGLE_DLOG(WARNING) << " no more memory, denied";
         return;
     }
 
     uv_tcp_init(self->loop_, peer_stream);
     int result = uv_accept(stream, (uv_stream_t*)peer_stream);
     if (result) {
-        DLOG(WARNING) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         peer_stream->data = stream->data;
         uv_close((uv_handle_t*)peer_stream, OnCloseListen);
         return;
@@ -207,11 +206,12 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
     Connector* self = (Connector*)req->data;
-    CHECK(self != nullptr);
+    GOOGLE_CHECK(self != nullptr);
 
     if (status) {
         uv_close((uv_handle_t*)stream, OnCloseHandle);
-        DLOG(WARNING) << uv_strerror(status);
+        GOOGLE_DLOG(WARNING) << uv_strerror(status);
+        self->Disconnected(NULL);
         return;
     }
 
@@ -220,6 +220,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
         channel = new TcpChannel(self->loop_, stream, self);
     } catch (std::bad_alloc) {
         uv_close((uv_handle_t*)stream, OnCloseHandle);
+        self->Disconnected(NULL);
         return;
     }
 
@@ -228,7 +229,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
 int32_t Connector::Connect(const char* host, int32_t port)
 {
-    CHECK(nullptr == req_); // only be called one time
+    GOOGLE_CHECK(nullptr == req_); // only be called one time
     req_ = (uv_connect_t*)malloc(sizeof(uv_connect_t));
     if (req_ == nullptr) {
         return -1;
@@ -239,7 +240,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     int result = 0;
     result = uv_ip4_addr(host, port, &address);
     if (result) {
-        DLOG(WARNING) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         return result;
     }
 
@@ -251,7 +252,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     uv_tcp_nodelay(handle, 1);
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
-        DLOG(WARNING) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         uv_close((uv_handle_t*)handle, OnCloseHandle);
         Close();
         return result;
@@ -272,14 +273,14 @@ void Connector::Close()
 
 void Connector::Connected(TcpChannel* channel)
 {
-    CHECK(channel_ == nullptr);
+    GOOGLE_CHECK(channel_ == nullptr);
     channel_ = channel;
     AbstractTcpChannelFactory::Connected(channel);
 }
 
 void Connector::Disconnected(TcpChannel* channel)
 {
-    CHECK(channel_ == channel);
+    GOOGLE_CHECK(channel_ == channel);
     if (channel_ != nullptr) {
         channel_ = nullptr;
     }

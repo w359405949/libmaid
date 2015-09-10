@@ -1,4 +1,4 @@
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 #include "controller.h"
 #include "maid/connection.pb.h"
 #include "maid/controller.pb.h"
@@ -58,7 +58,7 @@ bool Controller::IsCanceled() const
 
 void Controller::NotifyOnCancel(google::protobuf::Closure* callback)
 {
-    CHECK(cancel_callback_ == NULL);
+    GOOGLE_CHECK(cancel_callback_ == NULL);
     cancel_callback_ = callback;
 }
 

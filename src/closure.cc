@@ -1,5 +1,5 @@
 #include <google/protobuf/empty.pb.h>
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 #include "maid/controller.pb.h"
 #include "maid/connection.pb.h"
 
@@ -34,7 +34,7 @@ GCClosure::GCClosure(google::protobuf::RpcController* controller,
 
 void GCClosure::Run()
 {
-    CHECK(controller_ != NULL);
+    GOOGLE_CHECK(controller_ != NULL);
     delete controller_;
     delete request_;
     delete response_;
@@ -78,7 +78,7 @@ void TcpClosure::Run()
     uv_buf.len = send_buffer_->size();
     int error = uv_write(&req_, channel_->stream(), &uv_buf, 1, AfterSendResponse);
     if (error) {
-        DLOG(ERROR) << uv_strerror(error);
+        GOOGLE_DLOG(ERROR) << uv_strerror(error);
         delete this;
         return;
     }

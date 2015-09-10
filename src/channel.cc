@@ -3,7 +3,7 @@
 #include <google/protobuf/empty.pb.h>
 #include <google/protobuf/any.pb.h>
 #include <google/protobuf/wrappers.pb.h>
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 
 #include "maid/controller.pb.h"
 #include "channel.h"
@@ -74,7 +74,6 @@ AbstractTcpChannelFactory* TcpChannel::factory()
 
 TcpChannel::~TcpChannel()
 {
-    CHECK(stream_ == nullptr)<<"call Close first";
 }
 
 void TcpChannel::RemoveController(Controller* controller)
@@ -105,7 +104,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     // delay callback
     if (response->GetDescriptor() != google::protobuf::Empty::descriptor()) {
         int64_t transmit_id = transmit_id_++; // TODO: check if used
-        CHECK(async_result_.find(transmit_id) == async_result_.end());
+        GOOGLE_CHECK(async_result_.find(transmit_id) == async_result_.end());
         controller_proto->set_transmit_id(transmit_id);
         async_result_[transmit_id].controller = google::protobuf::down_cast<Controller*>(rpc_controller);
         async_result_[transmit_id].response = response;
@@ -116,7 +115,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
 
     std::string* send_buffer = WireFormat::Serializer(*controller_proto);
     if (nullptr == send_buffer) {
-        LOG(ERROR) << " no more memory";
+        GOOGLE_LOG(ERROR) << " no more memory";
         controller_proto->set_failed(true);
         HandleResponse(controller_proto);
         return;
@@ -125,7 +124,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (nullptr == req) {
         delete send_buffer;
-        LOG(ERROR) << " no more memory";
+        GOOGLE_LOG(ERROR) << " no more memory";
         controller_proto->set_failed(true);
         HandleResponse(controller_proto);
         return;
@@ -139,7 +138,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     if (error) {
         free(req);
         delete send_buffer;
-        DLOG(ERROR) << uv_strerror(error);
+        GOOGLE_DLOG(ERROR) << uv_strerror(error);
         controller_proto->set_failed(true);
         controller_proto->set_error_text(uv_strerror(error));
         HandleResponse(controller_proto);
@@ -252,14 +251,14 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
 {
     const auto* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto->full_service_name());
     if (nullptr == service) {
-        DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " not exist";
+        GOOGLE_DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " not exist";
         delete controller_proto;
         return ERROR_OTHER;
     }
 
     const auto* method = service->FindMethodByName(controller_proto->method_name());
     if (nullptr == method) {
-        DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " method: " << controller_proto->method_name() << " not exist";
+        GOOGLE_DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " method: " << controller_proto->method_name() << " not exist";
         delete controller_proto;
         return ERROR_OTHER;
     }
@@ -380,7 +379,7 @@ void LocalMapRepoChannel::Close()
 
 void LocalMapRepoChannel::Insert(google::protobuf::Service* service)
 {
-    DCHECK(service_.find(service->GetDescriptor()) == service_.end());
+    GOOGLE_DCHECK(service_.find(service->GetDescriptor()) == service_.end());
 
     service_[service->GetDescriptor()] = service;
 }

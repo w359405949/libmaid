@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include <glog/logging.h>
+#include <google/protobuf/stubs/logging.h>
 #include "buffer.h"
 #include "define.h"
 #include "string.h"
@@ -8,8 +7,8 @@ using maid::Buffer;
 
 size_t Buffer::Expend(size_t expect)
 {
-    CHECK(start >= base_);
-    CHECK(end >= start);
+    GOOGLE_CHECK(start >= base_);
+    GOOGLE_CHECK(end >= start);
 
     size_t space_used = end - start;
     size_t remain = size_ - space_used;
@@ -37,7 +36,7 @@ size_t Buffer::Expend(size_t expect)
         return tail;
     }
 
-    CHECK(new_size > space_used);
+    GOOGLE_CHECK(new_size > space_used);
     memmove(new_ptr, start, space_used);
 
     free(base_);
