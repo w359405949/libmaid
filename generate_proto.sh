@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "generate proto for cpp"
 pushd include
-protoc --cpp_out=. --python_out=. --proto_path=. --proto_path=$HOME/.local/include maid/*.proto
+protoc --cpp_out=. --python_out=. --proto_path=. --proto_path=/usr/local/include maid/*.proto
 popd
 
 mv include/maid/*.pb.cc src/

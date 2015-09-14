@@ -1,7 +1,6 @@
 #include <google/protobuf/empty.pb.h>
 #include <google/protobuf/stubs/logging.h>
 #include "maid/controller.pb.h"
-#include "maid/connection.pb.h"
 
 #include "closure.h"
 #include "channel.h"

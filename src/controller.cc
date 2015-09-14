@@ -1,6 +1,5 @@
 #include <google/protobuf/stubs/logging.h>
 #include "controller.h"
-#include "maid/connection.pb.h"
 #include "maid/controller.pb.h"
 
 using maid::Controller;

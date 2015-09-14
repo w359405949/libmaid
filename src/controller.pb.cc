@@ -244,10 +244,10 @@ bool ControllerProto::MergePartialFromCodedStream(
         if (tag == 18) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_method_name()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
             this->method_name().data(), this->method_name().length(),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "maid.proto.ControllerProto.method_name");
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "maid.proto.ControllerProto.method_name"));
         } else {
           goto handle_unusual;
         }
@@ -321,10 +321,10 @@ bool ControllerProto::MergePartialFromCodedStream(
          parse_error_text:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_error_text()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
             this->error_text().data(), this->error_text().length(),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "maid.proto.ControllerProto.error_text");
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "maid.proto.ControllerProto.error_text"));
         } else {
           goto handle_unusual;
         }
@@ -366,10 +366,10 @@ bool ControllerProto::MergePartialFromCodedStream(
          parse_full_service_name:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_full_service_name()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
             this->full_service_name().data(), this->full_service_name().length(),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "maid.proto.ControllerProto.full_service_name");
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "maid.proto.ControllerProto.full_service_name"));
         } else {
           goto handle_unusual;
         }
@@ -418,9 +418,9 @@ void ControllerProto::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_start:maid.proto.ControllerProto)
   // optional string method_name = 2;
   if (this->method_name().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->method_name().data(), this->method_name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.method_name");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       2, this->method_name(), output);
@@ -448,9 +448,9 @@ void ControllerProto::SerializeWithCachedSizes(
 
   // optional string error_text = 7;
   if (this->error_text().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->error_text().data(), this->error_text().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.error_text");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       7, this->error_text(), output);
@@ -469,9 +469,9 @@ void ControllerProto::SerializeWithCachedSizes(
 
   // optional string full_service_name = 11;
   if (this->full_service_name().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->full_service_name().data(), this->full_service_name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.full_service_name");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       11, this->full_service_name(), output);
@@ -490,9 +490,9 @@ void ControllerProto::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_to_array_start:maid.proto.ControllerProto)
   // optional string method_name = 2;
   if (this->method_name().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->method_name().data(), this->method_name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.method_name");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
@@ -521,9 +521,9 @@ void ControllerProto::SerializeWithCachedSizes(
 
   // optional string error_text = 7;
   if (this->error_text().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->error_text().data(), this->error_text().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.error_text");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
@@ -544,9 +544,9 @@ void ControllerProto::SerializeWithCachedSizes(
 
   // optional string full_service_name = 11;
   if (this->full_service_name().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->full_service_name().data(), this->full_service_name().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.proto.ControllerProto.full_service_name");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
