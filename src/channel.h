@@ -139,6 +139,8 @@ private:
     // packet
     int64_t transmit_id_;
 
+    uint64_t time_interval_;
+
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpChannel);
 };
 

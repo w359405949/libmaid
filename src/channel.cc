@@ -50,7 +50,8 @@ TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelF
     :loop_(loop),
      stream_(stream),
      factory_(abs_factory),
-     transmit_id_(0)
+     transmit_id_(0),
+     time_interval_(1)
 {
     signal(SIGPIPE, SIG_IGN);
 
@@ -146,8 +147,6 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     }
 
     sending_buffer_[req] = send_buffer;
-
-
 }
 
 void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
@@ -182,13 +181,18 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
      */
     self->buffer_.end += nread;
 
-    uv_timer_start(&self->timer_handle_, OnTimer, 1, 1);
+    uv_timer_start(&self->timer_handle_, OnTimer, 0, self->time_interval_);
+    //uv_idle_start(&self->idle_handle_, OnIdle);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
 {
     TcpChannel* self = (TcpChannel*)idle->data;
     int32_t result = self->Handle();
+
+    while (result != ERROR_LACK_DATA) {
+        result = self->Handle();
+    }
 
     // scheduler
     switch (result) {
@@ -213,6 +217,10 @@ void TcpChannel::OnTimer(uv_timer_t* timer)
 {
     TcpChannel* self = (TcpChannel*)timer->data;
     int32_t result = self->Handle();
+
+    while (result != ERROR_LACK_DATA) {
+        result = self->Handle();
+    }
 
     // scheduler
     switch (result) {
