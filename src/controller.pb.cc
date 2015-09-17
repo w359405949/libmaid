@@ -87,14 +87,16 @@ void protobuf_AddDesc_maid_2fcontroller_2eproto() {
   already_here = true;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+  ::google::protobuf::protobuf_AddDesc_google_2fprotobuf_2fany_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\025maid/controller.proto\022\nmaid.proto\"\325\001\n\017"
-    "ControllerProto\022\023\n\013method_name\030\002 \001(\t\022\023\n\013"
-    "transmit_id\030\003 \001(\004\022\014\n\004stub\030\004 \001(\010\022\023\n\013is_ca"
-    "nceled\030\005 \001(\010\022\016\n\006failed\030\006 \001(\010\022\022\n\nerror_te"
-    "xt\030\007 \001(\t\022\016\n\006notify\030\t \001(\010\022\017\n\007message\030\n \001("
-    "\014\022\031\n\021full_service_name\030\013 \001(\t\022\025\n\rconnecti"
-    "on_id\030d \001(\003b\006proto3", 259);
+    "\n\025maid/controller.proto\022\nmaid.proto\032\031goo"
+    "gle/protobuf/any.proto\"\353\001\n\017ControllerPro"
+    "to\022\023\n\013method_name\030\002 \001(\t\022\023\n\013transmit_id\030\003"
+    " \001(\004\022\014\n\004stub\030\004 \001(\010\022\023\n\013is_canceled\030\005 \001(\010\022"
+    "\016\n\006failed\030\006 \001(\010\022\022\n\nerror_text\030\007 \001(\t\022\016\n\006n"
+    "otify\030\t \001(\010\022%\n\007message\030\n \001(\0132\024.google.pr"
+    "otobuf.Any\022\031\n\021full_service_name\030\013 \001(\t\022\025\n"
+    "\rconnection_id\030d \001(\003b\006proto3", 308);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "maid/controller.proto", &protobuf_RegisterTypes);
   ControllerProto::default_instance_ = new ControllerProto();
@@ -142,6 +144,7 @@ ControllerProto::ControllerProto()
 
 void ControllerProto::InitAsDefaultInstance() {
   _is_default_instance_ = true;
+  message_ = const_cast< ::google::protobuf::Any*>(&::google::protobuf::Any::default_instance());
 }
 
 ControllerProto::ControllerProto(const ControllerProto& from)
@@ -163,7 +166,7 @@ void ControllerProto::SharedCtor() {
   failed_ = false;
   error_text_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   notify_ = false;
-  message_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  message_ = NULL;
   full_service_name_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   connection_id_ = GOOGLE_LONGLONG(0);
 }
@@ -176,9 +179,9 @@ ControllerProto::~ControllerProto() {
 void ControllerProto::SharedDtor() {
   method_name_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   error_text_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  message_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   full_service_name_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != default_instance_) {
+    delete message_;
   }
 }
 
@@ -220,7 +223,8 @@ void ControllerProto::Clear() {
   method_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   transmit_id_ = GOOGLE_ULONGLONG(0);
   error_text_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (GetArenaNoVirtual() == NULL && message_ != NULL) delete message_;
+  message_ = NULL;
   full_service_name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   connection_id_ = GOOGLE_LONGLONG(0);
 
@@ -347,12 +351,12 @@ bool ControllerProto::MergePartialFromCodedStream(
         break;
       }
 
-      // optional bytes message = 10;
+      // optional .google.protobuf.Any message = 10;
       case 10: {
         if (tag == 82) {
          parse_message:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
-                input, this->mutable_message()));
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_message()));
         } else {
           goto handle_unusual;
         }
@@ -461,10 +465,10 @@ void ControllerProto::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(9, this->notify(), output);
   }
 
-  // optional bytes message = 10;
-  if (this->message().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
-      10, this->message(), output);
+  // optional .google.protobuf.Any message = 10;
+  if (this->has_message()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      10, *this->message_, output);
   }
 
   // optional string full_service_name = 11;
@@ -535,11 +539,11 @@ void ControllerProto::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(9, this->notify(), target);
   }
 
-  // optional bytes message = 10;
-  if (this->message().size() > 0) {
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
-        10, this->message(), target);
+  // optional .google.protobuf.Any message = 10;
+  if (this->has_message()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        10, *this->message_, target);
   }
 
   // optional string full_service_name = 11;
@@ -606,11 +610,11 @@ int ControllerProto::ByteSize() const {
     total_size += 1 + 1;
   }
 
-  // optional bytes message = 10;
-  if (this->message().size() > 0) {
+  // optional .google.protobuf.Any message = 10;
+  if (this->has_message()) {
     total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::BytesSize(
-        this->message());
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        *this->message_);
   }
 
   // optional string full_service_name = 11;
@@ -670,9 +674,8 @@ void ControllerProto::MergeFrom(const ControllerProto& from) {
   if (from.notify() != 0) {
     set_notify(from.notify());
   }
-  if (from.message().size() > 0) {
-
-    message_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.message_);
+  if (from.has_message()) {
+    mutable_message()->::google::protobuf::Any::MergeFrom(from.message());
   }
   if (from.full_service_name().size() > 0) {
 
@@ -712,7 +715,7 @@ void ControllerProto::InternalSwap(ControllerProto* other) {
   std::swap(failed_, other->failed_);
   error_text_.Swap(&other->error_text_);
   std::swap(notify_, other->notify_);
-  message_.Swap(&other->message_);
+  std::swap(message_, other->message_);
   full_service_name_.Swap(&other->full_service_name_);
   std::swap(connection_id_, other->connection_id_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
@@ -886,46 +889,40 @@ void ControllerProto::clear_notify() {
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.notify)
 }
 
-// optional bytes message = 10;
+// optional .google.protobuf.Any message = 10;
+bool ControllerProto::has_message() const {
+  return !_is_default_instance_ && message_ != NULL;
+}
 void ControllerProto::clear_message() {
-  message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (GetArenaNoVirtual() == NULL && message_ != NULL) delete message_;
+  message_ = NULL;
 }
- const ::std::string& ControllerProto::message() const {
+const ::google::protobuf::Any& ControllerProto::message() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.message)
-  return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return message_ != NULL ? *message_ : *default_instance_->message_;
 }
- void ControllerProto::set_message(const ::std::string& value) {
+::google::protobuf::Any* ControllerProto::mutable_message() {
   
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.message)
-}
- void ControllerProto::set_message(const char* value) {
-  
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.message)
-}
- void ControllerProto::set_message(const void* value, size_t size) {
-  
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.message)
-}
- ::std::string* ControllerProto::mutable_message() {
-  
+  if (message_ == NULL) {
+    message_ = new ::google::protobuf::Any;
+  }
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.message)
-  return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return message_;
 }
- ::std::string* ControllerProto::release_message() {
+::google::protobuf::Any* ControllerProto::release_message() {
   
-  return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  ::google::protobuf::Any* temp = message_;
+  message_ = NULL;
+  return temp;
 }
- void ControllerProto::set_allocated_message(::std::string* message) {
-  if (message != NULL) {
+void ControllerProto::set_allocated_message(::google::protobuf::Any* message) {
+  delete message_;
+  message_ = message;
+  if (message) {
     
   } else {
     
   }
-  message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.message)
 }
 

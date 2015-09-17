@@ -51,14 +51,11 @@ TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelF
      stream_(stream),
      factory_(abs_factory),
      transmit_id_(0),
-     time_interval_(1)
+     handle_deadline_(1000000)
 {
     signal(SIGPIPE, SIG_IGN);
 
     stream->data = this;
-
-    timer_handle_.data = this;
-    uv_timer_init(loop_, &timer_handle_);
 
     idle_handle_.data = this;
     uv_idle_init(loop_, &idle_handle_);
@@ -100,7 +97,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     controller_proto->set_full_service_name(method->service()->full_name());
     controller_proto->set_method_name(method->name());
     controller_proto->set_stub(true);
-    request->SerializeToString(controller_proto->mutable_message());
+    controller_proto->mutable_message()->PackFrom(*request);
 
     // delay callback
     if (response->GetDescriptor() != google::protobuf::Empty::descriptor()) {
@@ -181,16 +178,17 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
      */
     self->buffer_.end += nread;
 
-    uv_timer_start(&self->timer_handle_, OnTimer, 0, self->time_interval_);
-    //uv_idle_start(&self->idle_handle_, OnIdle);
+    uv_idle_start(&self->idle_handle_, OnIdle);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
 {
     TcpChannel* self = (TcpChannel*)idle->data;
+
+    uint64_t start = uv_hrtime();
     int32_t result = self->Handle();
 
-    while (result != ERROR_LACK_DATA) {
+    while (result != ERROR_LACK_DATA && uv_hrtime() < start + self->handle_deadline_) {
         result = self->Handle();
     }
 
@@ -209,31 +207,6 @@ void TcpChannel::OnIdle(uv_idle_t* idle)
         case ERROR_OTHER:
             break;
         default:
-            break;
-    }
-}
-
-void TcpChannel::OnTimer(uv_timer_t* timer)
-{
-    TcpChannel* self = (TcpChannel*)timer->data;
-    int32_t result = self->Handle();
-
-    while (result != ERROR_LACK_DATA) {
-        result = self->Handle();
-    }
-
-    // scheduler
-    switch (result) {
-        case ERROR_LACK_DATA:
-            uv_timer_stop(timer);
-            uv_read_start(self->stream_, OnAlloc, OnRead);
-            break;
-        case ERROR_OUT_OF_SIZE:
-        case ERROR_BUSY:
-        case ERROR_PARSE_FAILED:
-        case ERROR_OTHER:
-        default:
-            uv_timer_again(timer);
             break;
     }
 }
@@ -281,7 +254,7 @@ int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
         controller->set_allocated_proto(controller_proto);
 
         request = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->input_type())->New();
-        if (!request->ParseFromString(controller_proto->message())) {
+        if (!controller_proto->message().UnpackTo(request)) {
             delete controller;
             delete request;
             delete done;
@@ -322,8 +295,8 @@ int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
     async_result_it->second.reset();
     async_result_.erase(async_result_it);
 
-    if (!controller_proto->failed() && controller_proto->message().size() > 0) {
-        response->ParseFromString(controller_proto->message());
+    if (!controller_proto->failed()) {
+        controller_proto->message().UnpackTo(response);
     }
     controller->set_allocated_proto(controller_proto);
     done->Run();
@@ -346,7 +319,6 @@ void TcpChannel::OnCloseStream(uv_handle_t* handle)
 void TcpChannel::Close()
 {
     uv_idle_stop(&idle_handle_);
-    uv_timer_stop(&timer_handle_);
     uv_read_stop(stream_);
     uv_close((uv_handle_t*)stream_, OnCloseStream);
     stream_ = nullptr;
@@ -393,10 +365,10 @@ void LocalMapRepoChannel::Insert(google::protobuf::Service* service)
 }
 
 void LocalMapRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
-                            google::protobuf::RpcController* controller,
-                            const google::protobuf::Message* request,
-                            google::protobuf::Message* response,
-                            google::protobuf::Closure* done)
+        google::protobuf::RpcController* controller,
+        const google::protobuf::Message* request,
+        google::protobuf::Message* response,
+        google::protobuf::Closure* done)
 {
     const auto& service_it = service_.find(method->service());
     if (service_.end() == service_it) {
@@ -433,10 +405,10 @@ void LocalListRepoChannel::Append(google::protobuf::Service* service)
 }
 
 void LocalListRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
-                            google::protobuf::RpcController* controller,
-                            const google::protobuf::Message* request,
-                            google::protobuf::Message* response,
-                            google::protobuf::Closure* done)
+        google::protobuf::RpcController* controller,
+        const google::protobuf::Message* request,
+        google::protobuf::Message* response,
+        google::protobuf::Closure* done)
 {
     for (auto& service_it : service_) {
         service_it->CallMethod(method, controller, request, response, done);

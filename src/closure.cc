@@ -68,7 +68,7 @@ void TcpClosure::Run()
     proto::ControllerProto* controller_proto = controller_->mutable_proto();
     controller_proto->set_stub(false);
     if (!controller_->Failed()) {
-        response_->SerializeToString(controller_proto->mutable_message());
+        controller_proto->mutable_message()->PackFrom(*response_);
     }
     send_buffer_ = WireFormat::Serializer(controller_->proto());
 

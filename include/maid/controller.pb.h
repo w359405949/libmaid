@@ -27,6 +27,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/unknown_field_set.h>
+#include "google/protobuf/any.pb.h"
 // @@protoc_insertion_point(includes)
 
 namespace maid {
@@ -149,16 +150,14 @@ class ControllerProto : public ::google::protobuf::Message {
   bool notify() const;
   void set_notify(bool value);
 
-  // optional bytes message = 10;
+  // optional .google.protobuf.Any message = 10;
+  bool has_message() const;
   void clear_message();
   static const int kMessageFieldNumber = 10;
-  const ::std::string& message() const;
-  void set_message(const ::std::string& value);
-  void set_message(const char* value);
-  void set_message(const void* value, size_t size);
-  ::std::string* mutable_message();
-  ::std::string* release_message();
-  void set_allocated_message(::std::string* message);
+  const ::google::protobuf::Any& message() const;
+  ::google::protobuf::Any* mutable_message();
+  ::google::protobuf::Any* release_message();
+  void set_allocated_message(::google::protobuf::Any* message);
 
   // optional string full_service_name = 11;
   void clear_full_service_name();
@@ -185,7 +184,7 @@ class ControllerProto : public ::google::protobuf::Message {
   ::google::protobuf::internal::ArenaStringPtr method_name_;
   ::google::protobuf::uint64 transmit_id_;
   ::google::protobuf::internal::ArenaStringPtr error_text_;
-  ::google::protobuf::internal::ArenaStringPtr message_;
+  ::google::protobuf::Any* message_;
   ::google::protobuf::internal::ArenaStringPtr full_service_name_;
   ::google::protobuf::int64 connection_id_;
   bool stub_;
@@ -364,46 +363,40 @@ inline void ControllerProto::set_notify(bool value) {
   // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.notify)
 }
 
-// optional bytes message = 10;
+// optional .google.protobuf.Any message = 10;
+inline bool ControllerProto::has_message() const {
+  return !_is_default_instance_ && message_ != NULL;
+}
 inline void ControllerProto::clear_message() {
-  message_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (GetArenaNoVirtual() == NULL && message_ != NULL) delete message_;
+  message_ = NULL;
 }
-inline const ::std::string& ControllerProto::message() const {
+inline const ::google::protobuf::Any& ControllerProto::message() const {
   // @@protoc_insertion_point(field_get:maid.proto.ControllerProto.message)
-  return message_.GetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return message_ != NULL ? *message_ : *default_instance_->message_;
 }
-inline void ControllerProto::set_message(const ::std::string& value) {
+inline ::google::protobuf::Any* ControllerProto::mutable_message() {
   
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:maid.proto.ControllerProto.message)
-}
-inline void ControllerProto::set_message(const char* value) {
-  
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:maid.proto.ControllerProto.message)
-}
-inline void ControllerProto::set_message(const void* value, size_t size) {
-  
-  message_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:maid.proto.ControllerProto.message)
-}
-inline ::std::string* ControllerProto::mutable_message() {
-  
+  if (message_ == NULL) {
+    message_ = new ::google::protobuf::Any;
+  }
   // @@protoc_insertion_point(field_mutable:maid.proto.ControllerProto.message)
-  return message_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return message_;
 }
-inline ::std::string* ControllerProto::release_message() {
+inline ::google::protobuf::Any* ControllerProto::release_message() {
   
-  return message_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  ::google::protobuf::Any* temp = message_;
+  message_ = NULL;
+  return temp;
 }
-inline void ControllerProto::set_allocated_message(::std::string* message) {
-  if (message != NULL) {
+inline void ControllerProto::set_allocated_message(::google::protobuf::Any* message) {
+  delete message_;
+  message_ = message;
+  if (message) {
     
   } else {
     
   }
-  message_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), message);
   // @@protoc_insertion_point(field_set_allocated:maid.proto.ControllerProto.message)
 }
 

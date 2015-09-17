@@ -97,11 +97,6 @@ public: // unit test only
         return router_controllers_;
     }
 
-    inline const uv_timer_t& timer_handle() const
-    {
-        return timer_handle_;
-    }
-
     inline const uv_idle_t& idle_handle() const
     {
         return idle_handle_;
@@ -130,8 +125,13 @@ private:
 private:
     uv_loop_t* loop_;
     uv_stream_t* stream_;
-    uv_timer_t timer_handle_;
+
+    /*
+     * Warning Despite the name, idle handles will get their callbacks called on every loop iteration, not when the loop is actually “idle”.
+     * http://docs.libuv.org/en/latest/idle.html
+     */
     uv_idle_t idle_handle_;
+
     Buffer buffer_;
 
     AbstractTcpChannelFactory* factory_;
@@ -139,7 +139,7 @@ private:
     // packet
     int64_t transmit_id_;
 
-    uint64_t time_interval_;
+    uint64_t handle_deadline_; // nano second
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpChannel);
 };

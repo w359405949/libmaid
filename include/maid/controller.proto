@@ -1,8 +1,8 @@
 syntax="proto3";
 
-package maid.proto;
+import "google/protobuf/any.proto";
 
-//import "google/protobuf/any.proto";
+package maid.proto;
 
 message ControllerProto
 {
@@ -14,7 +14,7 @@ message ControllerProto
     bool failed = 6;
     string error_text = 7; // or error message
     bool notify = 9; // will not get an response
-    bytes message = 10; // message
+    google.protobuf.Any message = 10; // message
 
     string full_service_name = 11;
     //optional string full_method_name = 12;
