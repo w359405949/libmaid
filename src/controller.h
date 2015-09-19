@@ -3,39 +3,111 @@
 #include <google/protobuf/service.h>
 #include <google/protobuf/stubs/common.h>
 
+#include "maid/controller.pb.h"
+
 namespace maid
 {
-
-namespace proto
-{
-    class ControllerProto;
-}
 
 class Controller : public google::protobuf::RpcController
 {
 public:
-    Controller();
-    virtual ~Controller();
+    Controller()
+        :proto_(NULL),
+        cancel_callback_(NULL)
+    {
+    }
 
-    void Reset();
 
-    bool Failed() const;
+    virtual ~Controller()
+    {
+        delete cancel_callback_;
+        delete proto_;
+    }
 
-    std::string ErrorText() const;
+    inline void Reset() override
+    {
+        if (NULL != proto_) {
+            proto_->Clear();
+        }
+    }
 
-    void StartCancel();
+    inline bool Failed() const override
+    {
+        return proto_ == NULL ? proto::ControllerProto::default_instance().failed() : proto_->failed();
+    }
 
-    void SetFailed(const std::string& reason);
+    inline std::string ErrorText() const override
+    {
+        return proto_ == NULL ? proto::ControllerProto::default_instance().error_text() : proto_->error_text();
+    }
 
-    bool IsCanceled() const;
+    inline void StartCancel() override
+    {
+        mutable_proto();
+        proto_->set_is_canceled(true);
 
-    void NotifyOnCancel(google::protobuf::Closure* callback);
+        /*
+        if (cancel_callback_ != NULL) {
+            cancel_callback_->Run();
+        }
+        */
+    }
+
+    inline void SetFailed(const std::string& reason) override
+    {
+        mutable_proto();
+        proto_->set_failed(true);
+        proto_->set_error_text(reason);
+    }
+
+    inline bool IsCanceled() const override
+    {
+        return proto_ == NULL ? proto::ControllerProto::default_instance().is_canceled() : proto_->is_canceled();
+    }
+
+    void NotifyOnCancel(google::protobuf::Closure* callback) override
+    {
+        /*
+        GOOGLE_CHECK(cancel_callback_ == NULL);
+        cancel_callback_ = callback;
+        */
+    }
 
 public:
-    proto::ControllerProto* mutable_proto();
-    const proto::ControllerProto& proto() const;
-    proto::ControllerProto* release_proto();
-    void set_allocated_proto(proto::ControllerProto* proto);
+    inline proto::ControllerProto* mutable_proto()
+    {
+        if (proto_ == NULL) {
+            proto_ = new proto::ControllerProto();
+        }
+        return proto_;
+    }
+
+    inline const proto::ControllerProto& proto() const
+    {
+        return proto_ == NULL ? proto::ControllerProto::default_instance() : *proto_;
+    }
+
+    inline proto::ControllerProto* release_proto()
+    {
+        proto::ControllerProto* proto = proto_;
+        proto_ = NULL;
+        return proto;
+    }
+
+    inline void set_allocated_proto(proto::ControllerProto* proto)
+    {
+        if (proto == proto_) {
+            return;
+        }
+
+        // special
+        if (proto_ != nullptr) {
+            proto->set_is_canceled(proto_->is_canceled());
+        }
+
+        delete proto_;
+        proto_ = proto;
+    }
 
 public: // unit test only
     inline const google::protobuf::Closure* cancel_callback() const
