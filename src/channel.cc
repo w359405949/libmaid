@@ -329,7 +329,6 @@ void TcpChannel::Close()
     router_controllers_.clear();
 
     for (auto& context_it : async_result_) {
-        context_it.second.controller->StartCancel();
         context_it.second.controller->SetFailed("canceled");
         context_it.second.done->Run();
         context_it.second.reset();

@@ -33,7 +33,7 @@ public:
         connected_callbacks_.push_back(callback);
     }
 
-    void AddDisconnectedCallback(std::function<void(int64_t)> callback)
+    inline void AddDisconnectedCallback(std::function<void(int64_t)> callback)
     {
         disconnected_callbacks_.push_back(callback);
     }
@@ -74,12 +74,13 @@ public:
     }
 
     void InsertService(google::protobuf::Service* service);
+
     inline void AddConnectedCallback(std::function<void(int64_t)> callback)
     {
         connected_callbacks_.push_back(callback);
     }
 
-    void AddDisconnectedCallback(std::function<void(int64_t)> callback)
+    inline void AddDisconnectedCallback(std::function<void(int64_t)> callback)
     {
         disconnected_callbacks_.push_back(callback);
     }

@@ -42,7 +42,7 @@ DARWIN=darwin13.4.0
 
 XCODEDIR=`xcode-select --print-path`
 IOS_SDK_VERSION=`xcrun --sdk iphoneos --show-sdk-version`
-MIN_SDK_VERSION=6.0
+MIN_SDK_VERSION=7.1
 MACOSX_PLATFORM=${XCODEDIR}/Platforms/MacOSX.platform
 MACOSX_SYSROOT=${MACOSX_PLATFORM}/Developer/MacOSX10.9.sdk
 IPHONEOS_PLATFORM=`xcrun --sdk iphoneos --show-sdk-platform-path`
