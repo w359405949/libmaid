@@ -17,6 +17,7 @@ int32_t WireFormat::Deserializer(Buffer& buffer, proto::ControllerProto** contro
     memcpy(&controller_size_nl, buffer.start, sizeof(controller_size_nl));
     int32_t controller_size = ntohl(controller_size_nl);
 
+    GOOGLE_LOG_IF(WARNING, controller_size > CONTROLLERPROTO_MAX_SIZE) << "controller_size: " << controller_size << " out of limit: " << CONTROLLERPROTO_MAX_SIZE << " discard";;
     if (controller_size < 0 || controller_size > CONTROLLERPROTO_MAX_SIZE) {
         buffer.start = buffer.end;
         return ERROR_OUT_OF_SIZE;
