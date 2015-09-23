@@ -115,6 +115,7 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
     }
 
     uv_tcp_init(loop_, handle_);
+    uv_tcp_nodelay(handle_, 1);
 
     int32_t flags = 0;
     result = uv_tcp_bind(handle_, (struct sockaddr*)&address, flags);
@@ -250,6 +251,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
     }
     uv_tcp_init(loop_, handle);
     uv_tcp_nodelay(handle, 1);
+
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
     if (result) {
         GOOGLE_DLOG(WARNING) << uv_strerror(result);

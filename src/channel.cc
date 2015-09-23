@@ -51,7 +51,7 @@ TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelF
      stream_(stream),
      factory_(abs_factory),
      transmit_id_(0),
-     handle_deadline_(1000000)
+     handle_deadline_(500000)
 {
     signal(SIGPIPE, SIG_IGN);
 
@@ -61,6 +61,7 @@ TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelF
     uv_idle_init(loop_, &idle_handle_);
 
     uv_read_start(stream, OnAlloc, OnRead);
+    uv_idle_start(&idle_handle_, OnIdle);
 }
 
 
@@ -166,8 +167,6 @@ void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
 
 void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
-    uv_read_stop(stream);
-
     TcpChannel* self = (TcpChannel*)stream->data;
     if (nread < 0) {
         self->factory()->Disconnected(self);
@@ -177,8 +176,6 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
      * TODO: buf->base alloced by libuv (win).
      */
     self->buffer_.end += nread;
-
-    uv_idle_start(&self->idle_handle_, OnIdle);
 }
 
 void TcpChannel::OnIdle(uv_idle_t* idle)
@@ -197,8 +194,8 @@ void TcpChannel::OnIdle(uv_idle_t* idle)
         case ERROR_OUT_OF_SIZE:
             break;
         case ERROR_LACK_DATA:
-            uv_idle_stop(idle);
-            uv_read_start(self->stream_, OnAlloc, OnRead);
+            //uv_idle_stop(idle);
+            //uv_read_start(self->stream_, OnAlloc, OnRead);
             break;
         case ERROR_BUSY:
             break;
