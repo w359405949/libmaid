@@ -44,6 +44,8 @@ public:
     inline void StartCancel() override
     {
         mutable_proto();
+
+        GOOGLE_CHECK(!proto_->is_canceled()) << "controller start cancel called twice!";
         proto_->set_is_canceled(true);
 
         /*
