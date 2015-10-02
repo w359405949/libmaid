@@ -12,7 +12,7 @@ class ControllerProto;
 class WireFormat
 {
 public:
-    static int32_t Deserializer(Buffer& buffer, proto::ControllerProto** controller_proto);
+    static int32_t Deserializer(Buffer* buffer, proto::ControllerProto** controller_proto);
     static std::string* Serializer(const proto::ControllerProto& controller_proto);
 };
 

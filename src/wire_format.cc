@@ -7,30 +7,31 @@
 
 namespace maid {
 
-int32_t WireFormat::Deserializer(Buffer& buffer, proto::ControllerProto** controller_proto)
+int32_t WireFormat::Deserializer(Buffer* buffer, proto::ControllerProto** controller_proto)
 {
     int32_t controller_size_nl = 0;
-    if (buffer.start + sizeof(controller_size_nl) > buffer.end) {
+    if (buffer->start + sizeof(controller_size_nl) > buffer->end) {
         return ERROR_LACK_DATA;
     }
 
-    memcpy(&controller_size_nl, buffer.start, sizeof(controller_size_nl));
+    memcpy(&controller_size_nl, buffer->start, sizeof(controller_size_nl));
     int32_t controller_size = ntohl(controller_size_nl);
 
-    GOOGLE_LOG_IF(WARNING, controller_size > CONTROLLERPROTO_MAX_SIZE) << "controller_size: " << controller_size << " out of limit: " << CONTROLLERPROTO_MAX_SIZE << " discard";;
     if (controller_size < 0 || controller_size > CONTROLLERPROTO_MAX_SIZE) {
-        buffer.start = buffer.end;
+        buffer->start = buffer->end;
+        GOOGLE_LOG(WARNING) << "controller_size: " << controller_size << " out of limit: " << CONTROLLERPROTO_MAX_SIZE << " discard";;
         return ERROR_OUT_OF_SIZE;
     }
 
-    if (buffer.start + sizeof(controller_size_nl) + controller_size > buffer.end) {
+    if (buffer->start + sizeof(controller_size_nl) + controller_size > buffer->end) {
         return ERROR_LACK_DATA;
     }
 
     try {
         (*controller_proto) = new proto::ControllerProto();
-        if (!(*controller_proto)->ParseFromArray(buffer.start + sizeof(controller_size_nl), controller_size)) {
-            buffer.start += sizeof(controller_size_nl) + controller_size;
+        if (!(*controller_proto)->ParseFromArray(buffer->start + sizeof(controller_size_nl), controller_size)) {
+            buffer->start += sizeof(controller_size_nl) + controller_size;
+            GOOGLE_LOG(WARNING) << "controller parse failed";
             return ERROR_PARSE_FAILED;
         }
     } catch (std::bad_alloc) {
@@ -38,8 +39,8 @@ int32_t WireFormat::Deserializer(Buffer& buffer, proto::ControllerProto** contro
         (*controller_proto) = NULL;
         return ERROR_BUSY;
     }
-    buffer.start += sizeof(controller_size_nl) + controller_size;
-    GOOGLE_CHECK(buffer.start <= buffer.end);
+    buffer->start += sizeof(controller_size_nl) + controller_size;
+    GOOGLE_CHECK(buffer->start <= buffer->end);
     return 0;
 }
 

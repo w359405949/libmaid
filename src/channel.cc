@@ -211,7 +211,7 @@ void TcpChannel::OnIdle(uv_idle_t* idle)
 int32_t TcpChannel::Handle()
 {
     proto::ControllerProto* controller_proto = nullptr;
-    int32_t result = WireFormat::Deserializer(buffer_, &controller_proto);
+    int32_t result = WireFormat::Deserializer(&buffer_, &controller_proto);
     if (nullptr == controller_proto) {
         return result;
     }
