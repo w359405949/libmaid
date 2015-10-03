@@ -27,7 +27,7 @@ void TcpServer::Close()
     uv_stop(mutable_loop());
 }
 
-int32_t TcpServer::Listen(const char* host, int32_t port, int32_t backlog)
+int32_t TcpServer::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
     while (acceptor_.find(current_index_) != acceptor_.end()) {
         current_index_++;
@@ -114,7 +114,7 @@ void TcpClient::Close()
     uv_stop(mutable_loop());
 }
 
-int32_t TcpClient::Connect(const char* host, int32_t port)
+int32_t TcpClient::Connect(const std::string& host, int32_t port)
 {
     while (connector_.find(current_index_) != connector_.end()) {
         current_index_++;

@@ -99,7 +99,7 @@ void Acceptor::OnCloseListen(uv_handle_t* handle)
     delete handle;
 }
 
-int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
+int32_t Acceptor::Listen(const std::string& host, int32_t port, int32_t backlog)
 {
     GOOGLE_CHECK(handle_ == nullptr); // Listen only call one time
 
@@ -108,7 +108,7 @@ int32_t Acceptor::Listen(const char* host, int32_t port, int32_t backlog)
 
     int32_t result = 0;
     struct sockaddr_in address;
-    result = uv_ip4_addr(host, port, &address);
+    result = uv_ip4_addr(host.c_str(), port, &address);
     if (result) {
         GOOGLE_DLOG(ERROR) << uv_strerror(result);
         return result;
@@ -228,7 +228,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
     self->Connected(channel);
 }
 
-int32_t Connector::Connect(const char* host, int32_t port)
+int32_t Connector::Connect(const std::string& host, int32_t port)
 {
     GOOGLE_CHECK(nullptr == req_); // only be called one time
     req_ = (uv_connect_t*)malloc(sizeof(uv_connect_t));
@@ -239,7 +239,7 @@ int32_t Connector::Connect(const char* host, int32_t port)
 
     struct sockaddr_in address;
     int result = 0;
-    result = uv_ip4_addr(host, port, &address);
+    result = uv_ip4_addr(host.c_str(), port, &address);
     if (result) {
         GOOGLE_DLOG(WARNING) << uv_strerror(result);
         return result;

@@ -68,7 +68,7 @@ public:
     ~Acceptor();
 
 
-    int32_t Listen(const char* host, int32_t port, int32_t backlog=1);
+    int32_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
     virtual void Close();
 
 public:
@@ -98,7 +98,7 @@ public:
     void Connected(TcpChannel* channel);
     void Disconnected(TcpChannel* channel);
 
-    int32_t Connect(const char* host, int32_t port);
+    int32_t Connect(const std::string& host, int32_t port);
     google::protobuf::RpcChannel* channel();
     void Close();
 
