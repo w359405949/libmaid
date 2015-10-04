@@ -137,7 +137,7 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     if (error) {
         free(req);
         delete send_buffer;
-        GOOGLE_DLOG(ERROR) << uv_strerror(error);
+        GOOGLE_DLOG(WARNING) << uv_strerror(error);
         controller_proto->set_failed(true);
         controller_proto->set_error_text(uv_strerror(error));
         HandleResponse(controller_proto);

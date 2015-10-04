@@ -110,7 +110,7 @@ int32_t Acceptor::Listen(const std::string& host, int32_t port, int32_t backlog)
     struct sockaddr_in address;
     result = uv_ip4_addr(host.c_str(), port, &address);
     if (result) {
-        GOOGLE_DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         return result;
     }
 
@@ -121,14 +121,14 @@ int32_t Acceptor::Listen(const std::string& host, int32_t port, int32_t backlog)
     result = uv_tcp_bind(handle_, (struct sockaddr*)&address, flags);
     if (result) {
         Close();
-        GOOGLE_DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         return result;
     }
 
     result = uv_listen((uv_stream_t*)handle_, backlog, OnAccept);
     if (result) {
         Close();
-        GOOGLE_DLOG(ERROR) << uv_strerror(result);
+        GOOGLE_DLOG(WARNING) << uv_strerror(result);
         return result;
     }
 
