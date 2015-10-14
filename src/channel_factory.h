@@ -154,6 +154,7 @@ public:
 private:
     uv_connect_t* req_;
 
+    uv_mutex_t address_mutex_;
     struct sockaddr_in address;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Connector);

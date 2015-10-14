@@ -206,6 +206,7 @@ Acceptor::Acceptor(uv_loop_t* loop, google::protobuf::RpcChannel* router)
     :AbstractTcpChannelFactory(loop, router),
     handle_(nullptr)
 {
+    uv_mutex_init(&address_mutex_);
 }
 
 Acceptor::~Acceptor()
@@ -225,9 +226,9 @@ int32_t Acceptor::Listen(const std::string& host, int32_t port)
     uv_mutex_lock(&address_mutex_);
     result = uv_ip4_addr(host.c_str(), port, &address_);
     uv_mutex_unlock(&address_mutex_);
+    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
 
     uv_async_send(&inner_loop_callback_);
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
 
     return result;
 }
@@ -295,6 +296,7 @@ Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
     :AbstractTcpChannelFactory(loop, router),
     req_(nullptr)
 {
+    uv_mutex_init(&address_mutex_);
 }
 
 Connector::~Connector()
@@ -325,7 +327,9 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 int32_t Connector::Connect(const std::string& host, int32_t port)
 {
     int result = 0;
+    uv_mutex_lock(&address_mutex_);
     result = uv_ip4_addr(host.c_str(), port, &address);
+    uv_mutex_unlock(&address_mutex_);
     GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
 
     uv_async_send(&inner_loop_callback_);
@@ -352,7 +356,9 @@ void Connector::InnerCallback()
     }
 
     uv_tcp_init(inner_loop(), handle);
+    uv_mutex_lock(&address_mutex_);
     result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
+    uv_mutex_unlock(&address_mutex_);
     if (result) {
         GOOGLE_LOG(WARNING) << uv_strerror(result);
         uv_async_send(&close_inner_loop_);

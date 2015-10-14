@@ -189,12 +189,17 @@ void TcpChannel::OnHandle(uv_async_t* handle)
 {
     TcpChannel* self = (TcpChannel*)handle->data;
 
-    google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
-    while (true) {
-        //(self->read_stream_.size() > 10) {// kMaxVarintBytes = 10
+    while (self->buffer_length_ > 10) {// kMaxVarintBytes = 10
+        google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
 
-        self->read_proto_.Add()->ParseFromCodedStream(&coded_stream);
-        self->buffer_length_ -= self->read_stream_.ByteCount();
+        uint32_t length;
+        if (coded_stream.ReadVarint32(&length)) {
+
+            GOOGLE_CHECK(self->buffer_length_ > length);
+            self->read_proto_.Add()->ParseFromBoundedZeroCopyStream(&self->read_stream_, length);
+
+            self->buffer_length_ -= self->read_stream_.ByteCount();
+        }
     }
 }
 
