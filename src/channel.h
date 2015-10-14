@@ -4,8 +4,8 @@
 #include <google/protobuf/repeated_field.h>
 #include <uv.h>
 
-#include "context.h"
-#include "buffer.h"
+#include "zero_copy_stream.h"
+#include "component.h"
 
 namespace maid
 {
@@ -17,7 +17,6 @@ class ConnectionProto;
 }
 
 class AbstractTcpChannelFactory;
-class Closure;
 class Controller;
 
 
@@ -49,8 +48,9 @@ private:
 class TcpChannel : public google::protobuf::RpcChannel
 {
 public:
-    TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelFactory* factory);
-    virtual ~TcpChannel();
+    TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* factory);
+    void Update();
+    void Close();
 
     virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
                             google::protobuf::RpcController* controller,
@@ -58,88 +58,58 @@ public:
                             google::protobuf::Message* response,
                             google::protobuf::Closure* done);
 
-public:
-    virtual int32_t Handle();
-    virtual int32_t HandleRequest(proto::ControllerProto* controller_proto);
-    virtual int32_t HandleResponse(proto::ControllerProto* controller_proto);
 
-    void RemoveController(Controller* controller);
-    void Close();
+private:
+    virtual int32_t HandleRequest(const proto::ControllerProto& controller_proto);
 
-    inline uv_stream_t* stream() const
-    {
-        return stream_;
-    }
+private: //
+    void AfterHandleRequest(google::protobuf::RpcController* controller, google::protobuf::Message* request, google::protobuf::Message* response);
 
-    AbstractTcpChannelFactory* factory();
+    void* ResultCall(const google::protobuf::MethodDescriptor* method, Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done, const proto::ControllerProto&, void*);
 
-public:
-    static void AfterSendRequest(uv_write_t* req, int32_t status);
+private:
+    static void AfterWrite(uv_write_t* req, int32_t status);
+    static void OnWrite(uv_async_t* handle);
     static void OnRead(uv_stream_t* w, ssize_t nread, const uv_buf_t* buf);
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-    static void OnIdle(uv_idle_t* handle);
+    static void OnHandle(uv_async_t* handle);
     static void OnTimer(uv_timer_t* timer);
     static void OnCloseStream(uv_handle_t* handle);
 
-public: // unit test only
-    inline const google::protobuf::Map<int64_t, Context>& async_result() const
-    {
-        return async_result_;
-    }
-
-    inline const google::protobuf::Map<uv_write_t*, std::string*>& sending_buffer() const
-    {
-        return sending_buffer_;
-    }
-
-    inline const google::protobuf::Map<Controller*, Controller*>& router_controllers() const
-    {
-        return router_controllers_;
-    }
-
-    inline const uv_idle_t& idle_handle() const
-    {
-        return idle_handle_;
-    }
-
-    inline const Buffer& buffer() const
-    {
-        return buffer_;
-    }
-
+private: // unit test only
     inline const AbstractTcpChannelFactory* factory() const
     {
         return factory_;
     }
 
-    inline int64_t transmit_id() const
-    {
-        return transmit_id_;
-    }
-
 private:
-    google::protobuf::Map<int64_t/* transmit_id */, Context> async_result_;
-    google::protobuf::Map<uv_write_t*, std::string* /* send_buffer */> sending_buffer_; //
-    google::protobuf::Map<Controller*, Controller*> router_controllers_;
-
-private:
-    uv_loop_t* loop_;
     uv_stream_t* stream_;
 
-    /*
-     * Warning Despite the name, idle handles will get their callbacks called on every loop iteration, not when the loop is actually “idle”.
-     * http://docs.libuv.org/en/latest/idle.html
-     */
-    uv_idle_t idle_handle_;
+    // closure
+    google::protobuf::RepeatedField<google::protobuf::Closure*> queue_closure_;
 
-    Buffer buffer_;
+    google::protobuf::Map<int64_t, google::protobuf::ResultCallback2<void*, const proto::ControllerProto&, void*>* > result_callback_;
 
+    // write
+    uv_mutex_t write_buffer_mutex_;
+    uv_async_t write_handle_;
+    std::string write_buffer_;
+    std::string write_buffer_back_;
+
+    // read
+    google::protobuf::Map<const char*, std::string*> reading_buffer_;
+    RingInputStream read_stream_;
+    int32_t buffer_length_;
+
+    // handle
+    uv_mutex_t read_proto_mutex_;
+    uv_async_t proto_handle_;
+    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_;
+    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_back_;
+
+private:
     AbstractTcpChannelFactory* factory_;
-
-    // packet
-    int64_t transmit_id_;
-
-    uint64_t handle_deadline_; // nano second
+    ClosureComponent closure_component_;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(TcpChannel);
 };

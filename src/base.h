@@ -13,7 +13,7 @@ public:
     TcpServer(uv_loop_t* loop=NULL);
     virtual ~TcpServer();
 
-    int32_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
+    int32_t Listen(const std::string& host, int32_t port);
 
     void ServeForever();
     void Update();

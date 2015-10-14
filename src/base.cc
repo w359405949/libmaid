@@ -27,7 +27,7 @@ void TcpServer::Close()
     uv_stop(mutable_loop());
 }
 
-int32_t TcpServer::Listen(const std::string& host, int32_t port, int32_t backlog)
+int32_t TcpServer::Listen(const std::string& host, int32_t port)
 {
     while (acceptor_.find(current_index_) != acceptor_.end()) {
         current_index_++;
@@ -38,7 +38,7 @@ int32_t TcpServer::Listen(const std::string& host, int32_t port, int32_t backlog
     acceptor->AddDisconnectedCallback(std::bind(&TcpServer::DisconnectedCallback, this, current_index_, std::placeholders::_1));
     acceptor_[current_index_] = acceptor;
 
-    return acceptor->Listen(host, port, backlog);
+    return acceptor->Listen(host, port);
 }
 
 void TcpServer::ServeForever()

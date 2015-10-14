@@ -4,14 +4,12 @@
 #include <google/protobuf/any.pb.h>
 #include <google/protobuf/wrappers.pb.h>
 #include <google/protobuf/stubs/logging.h>
+#include <google/protobuf/stubs/stl_util.h>
 
 #include "maid/controller.pb.h"
 #include "channel.h"
 #include "channel_factory.h"
-#include "define.h"
 #include "controller.h"
-#include "wire_format.h"
-#include "closure.h"
 
 namespace maid {
 
@@ -46,266 +44,229 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
 }
 
 
-TcpChannel::TcpChannel(uv_loop_t* loop, uv_stream_t* stream, AbstractTcpChannelFactory* abs_factory)
-    :loop_(loop),
-     stream_(stream),
-     factory_(abs_factory),
-     transmit_id_(0),
-     handle_deadline_(500000)
+TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_factory)
+     :stream_(stream),
+     factory_(abs_factory)
 {
     signal(SIGPIPE, SIG_IGN);
 
-    stream->data = this;
+    stream_->data = this;
+    uv_tcp_nodelay((uv_tcp_t*)stream_, 1);
+    uv_read_start(stream_, OnAlloc, OnRead);
 
-    idle_handle_.data = this;
-    uv_idle_init(loop_, &idle_handle_);
+    write_handle_.data = this;
+    uv_async_init(stream_->loop, &write_handle_, OnWrite);
 
-    uv_read_start(stream, OnAlloc, OnRead);
-    uv_idle_start(&idle_handle_, OnIdle);
-}
+    proto_handle_.data = this;
+    uv_async_init(stream_->loop, &proto_handle_, OnHandle);
 
-
-AbstractTcpChannelFactory* TcpChannel::factory()
-{
-    return factory_;
-}
-
-
-TcpChannel::~TcpChannel()
-{
-}
-
-void TcpChannel::RemoveController(Controller* controller)
-{
-    router_controllers_[controller] = nullptr;
-    router_controllers_.erase(controller);
+    uv_mutex_init(&write_buffer_mutex_);
+    uv_mutex_init(&read_proto_mutex_);
 }
 
 void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
-        google::protobuf::RpcController* rpc_controller,
+        google::protobuf::RpcController* _controller,
         const google::protobuf::Message* request,
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    if (stream_ == nullptr) {
-        rpc_controller->SetFailed("disconnected");
-        done->Run();
-        return;
-    }
-
-    proto::ControllerProto* controller_proto = new proto::ControllerProto();
+    Controller* controller = (Controller*)_controller;
+    auto* controller_proto = controller->mutable_proto();
 
     controller_proto->set_full_service_name(method->service()->full_name());
     controller_proto->set_method_name(method->name());
     controller_proto->set_stub(true);
+    controller_proto->set_transmit_id((int64_t)controller_proto);
     controller_proto->mutable_message()->PackFrom(*request);
 
-    // delay callback
     if (response->GetDescriptor() != google::protobuf::Empty::descriptor()) {
-        int64_t transmit_id = transmit_id_++; // TODO: check if used
-        GOOGLE_CHECK(async_result_.find(transmit_id) == async_result_.end());
-        controller_proto->set_transmit_id(transmit_id);
-        async_result_[transmit_id].controller = google::protobuf::down_cast<Controller*>(rpc_controller);
-        async_result_[transmit_id].response = response;
-        async_result_[transmit_id].done = done;
+        result_callback_[controller_proto->transmit_id()] = google::protobuf::NewPermanentCallback(this, &TcpChannel::ResultCall, method, controller, request, response, done);
     } else {
-        done->Run();
+        queue_closure_.Add(done);
     }
 
-    std::string* send_buffer = WireFormat::Serializer(*controller_proto);
-    if (nullptr == send_buffer) {
-        GOOGLE_LOG(ERROR) << " no more memory";
-        controller_proto->set_failed(true);
-        HandleResponse(controller_proto);
+    uv_mutex_lock(&write_buffer_mutex_);
+    google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+    google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+    coded_stream.WriteVarint32(controller_proto->ByteSize());
+    controller_proto->SerializeToCodedStream(&coded_stream);
+    uv_mutex_unlock(&write_buffer_mutex_);
+
+    uv_async_send(&write_handle_);
+}
+
+
+void* TcpChannel::ResultCall(const google::protobuf::MethodDescriptor* method, Controller* controller, const google::protobuf::Message* request, google::protobuf::Message* response, google::protobuf::Closure* done, const proto::ControllerProto& controller_proto, void*)
+{
+    controller->mutable_proto()->MergeFrom(controller_proto);
+    controller->proto().message().UnpackTo(response);
+
+    queue_closure_.Add(done);
+
+    return nullptr;
+}
+
+void TcpChannel::OnWrite(uv_async_t* handle)
+{
+    TcpChannel* self = (TcpChannel*)handle->data;
+
+    uv_mutex_lock(&self->write_buffer_mutex_);
+    std::swap(self->write_buffer_, self->write_buffer_back_);
+    uv_mutex_unlock(&self->write_buffer_mutex_);
+
+    if (self->write_buffer_back_.empty()) {
         return;
     }
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (nullptr == req) {
-        delete send_buffer;
-        GOOGLE_LOG(ERROR) << " no more memory";
-        controller_proto->set_failed(true);
-        HandleResponse(controller_proto);
         return;
     }
-    req->data = controller_proto;
 
-    uv_buf_t uv_buf;
-    uv_buf.base = (char*)send_buffer->data();
-    uv_buf.len = send_buffer->size();
-    int error = uv_write(req, stream_, &uv_buf, 1, AfterSendRequest);
+    req->data = self;
+
+    uv_buf_t buf;
+    buf.base = (char*)self->write_buffer_back_.data();
+    buf.len = self->write_buffer_back_.size();
+    int error = uv_write(req, self->stream_, &buf, 1, AfterWrite);
     if (error) {
         free(req);
-        delete send_buffer;
-        GOOGLE_DLOG(WARNING) << uv_strerror(error);
-        controller_proto->set_failed(true);
-        controller_proto->set_error_text(uv_strerror(error));
-        HandleResponse(controller_proto);
-        return;
     }
-
-    sending_buffer_[req] = send_buffer;
 }
 
-void TcpChannel::AfterSendRequest(uv_write_t* req, int32_t status)
+void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
 {
-    TcpChannel* self = (TcpChannel*)req->handle->data;
-    proto::ControllerProto* controller_proto = (proto::ControllerProto*)req->data;
-    delete self->sending_buffer_[req];
-    self->sending_buffer_.erase(req);
+    TcpChannel* self = (TcpChannel*)req->data;
     free(req);
 
-    if (status != 0) {
-        controller_proto->set_failed(true);
-        controller_proto->set_error_text(uv_strerror(status));
-        controller_proto->clear_message();
-        self->HandleResponse(controller_proto);
-    } else {
-        delete controller_proto;
+    self->write_buffer_back_.clear();
+
+    if (status < 0) {
+        GOOGLE_LOG(WARNING) << uv_strerror(status);
+        return; //
     }
 }
 
-void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
-{
-    TcpChannel* self = (TcpChannel*)stream->data;
-    if (nread < 0) {
-        self->factory()->Disconnected(self);
-        return;
-    }
-    /*
-     * TODO: buf->base alloced by libuv (win).
-     */
-    self->buffer_.end += nread;
-}
-
-void TcpChannel::OnIdle(uv_idle_t* idle)
-{
-    TcpChannel* self = (TcpChannel*)idle->data;
-
-    uint64_t start = uv_hrtime();
-    int32_t result = self->Handle();
-
-    while (result != ERROR_LACK_DATA && uv_hrtime() < start + self->handle_deadline_) {
-        result = self->Handle();
-    }
-
-    // scheduler
-    switch (result) {
-        case ERROR_OUT_OF_SIZE:
-            break;
-        case ERROR_LACK_DATA:
-            //uv_idle_stop(idle);
-            //uv_read_start(self->stream_, OnAlloc, OnRead);
-            break;
-        case ERROR_BUSY:
-            break;
-        case ERROR_PARSE_FAILED:
-            break;
-        case ERROR_OTHER:
-            break;
-        default:
-            break;
-    }
-}
-
-int32_t TcpChannel::Handle()
-{
-    proto::ControllerProto* controller_proto = nullptr;
-    int32_t result = WireFormat::Deserializer(&buffer_, &controller_proto);
-    if (nullptr == controller_proto) {
-        return result;
-    }
-
-    if (controller_proto->stub()) {
-        return HandleRequest(controller_proto);
-    } else {
-        return HandleResponse(controller_proto);
-    }
-
-    return 0;
-}
-
-int32_t TcpChannel::HandleRequest(proto::ControllerProto* controller_proto)
-{
-    const auto* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto->full_service_name());
-    if (nullptr == service) {
-        GOOGLE_DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " not exist";
-        delete controller_proto;
-        return ERROR_OTHER;
-    }
-
-    const auto* method = service->FindMethodByName(controller_proto->method_name());
-    if (nullptr == method) {
-        GOOGLE_DLOG(WARNING) << " service: " << controller_proto->full_service_name() << " method: " << controller_proto->method_name() << " not exist";
-        delete controller_proto;
-        return ERROR_OTHER;
-    }
-
-    Controller* controller = nullptr;
-    google::protobuf::Message* request = nullptr;
-    google::protobuf::Message* response = nullptr;
-    TcpClosure* done = nullptr;
-
-    try {
-        controller = new Controller();
-        controller->set_allocated_proto(controller_proto);
-
-        request = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->input_type())->New();
-        if (!controller_proto->message().UnpackTo(request)) {
-            delete controller;
-            delete request;
-            delete done;
-            return ERROR_PARSE_FAILED;
-        }
-
-        response = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->output_type())->New();
-
-        done = new TcpClosure(this, controller, request, response);
-
-        router_controllers_[controller] = controller;
-    } catch (std::bad_alloc) {
-        delete controller;
-        delete request;
-        delete response;
-        delete done;
-        return ERROR_BUSY;
-    }
-
-    controller_proto->set_connection_id((int64_t)this);
-    factory()->router_channel()->CallMethod(method, controller, request, response, done);
-
-    return 0;
-}
-
-int32_t TcpChannel::HandleResponse(proto::ControllerProto* controller_proto)
-{
-    const auto& async_result_it = async_result_.find(controller_proto->transmit_id());
-    if (async_result_it == async_result_.end()) {
-        delete controller_proto;
-        return 0;
-    }
-
-    Controller* controller = async_result_it->second.controller;
-    google::protobuf::Closure* done = async_result_it->second.done;
-    google::protobuf::Message* response = async_result_it->second.response;
-
-    async_result_it->second.reset();
-    async_result_.erase(async_result_it);
-
-    if (!controller_proto->failed()) {
-        controller_proto->message().UnpackTo(response);
-    }
-    controller->set_allocated_proto(controller_proto);
-    done->Run();
-    return 0;
-}
 
 void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
     TcpChannel* self = (TcpChannel*)handle->data;
 
-    buf->len = self->buffer_.Expend(suggested_size);
-    buf->base = (char*)self->buffer_.end;
+    std::string* buffer = self->read_stream_.ReleaseCleared();
+
+    google::protobuf::STLStringResizeUninitialized(buffer, suggested_size);
+    self->reading_buffer_[buffer->data()] = buffer;
+
+    buf->base = (char*)buffer->data();
+    buf->len = buffer->capacity();
+}
+
+
+void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
+{
+    TcpChannel* self = (TcpChannel*)stream->data;
+    if (nread < 0) {
+        self->factory_->QueueChannelInvalid(self);
+        return;
+    }
+
+    /*
+     * TODO: buf->base alloced by libuv (win).
+     */
+    GOOGLE_CHECK(self->reading_buffer_.find(buf->base) != self->reading_buffer_.end());
+    std::string* buffer = self->reading_buffer_[buf->base];
+    self->reading_buffer_.erase(buf->base);
+    GOOGLE_CHECK(buffer->size() >= buf->len) << "overflowed";
+    google::protobuf::STLStringResizeUninitialized(buffer, buf->len);
+
+    self->read_stream_.AddBuffer(buffer);
+    self->buffer_length_ += buf->len;
+
+    uv_async_send(&self->proto_handle_);
+}
+
+void TcpChannel::OnHandle(uv_async_t* handle)
+{
+    TcpChannel* self = (TcpChannel*)handle->data;
+
+    google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
+    while (true) {
+        //(self->read_stream_.size() > 10) {// kMaxVarintBytes = 10
+
+        self->read_proto_.Add()->ParseFromCodedStream(&coded_stream);
+        self->buffer_length_ -= self->read_stream_.ByteCount();
+    }
+}
+
+void TcpChannel::Update()
+{
+    uv_mutex_lock(&read_proto_mutex_);
+    read_proto_back_.Swap(&read_proto_);
+    uv_mutex_unlock(&read_proto_mutex_);
+
+    for (auto& controller_proto : read_proto_back_) {
+        controller_proto.set_connection_id((int64_t)this);
+        if (controller_proto.stub()) {
+            HandleRequest(controller_proto);
+        } else {
+            GOOGLE_DCHECK(result_callback_.find(controller_proto.transmit_id()) != result_callback_.end());
+            result_callback_[controller_proto.transmit_id()]->Run(controller_proto, NULL);
+            result_callback_.erase(controller_proto.transmit_id());
+        }
+    }
+    read_proto_back_.Clear();
+
+    for (auto& closure : queue_closure_) {
+        closure->Run();
+    }
+    queue_closure_.Clear();
+}
+
+int32_t TcpChannel::HandleRequest(const proto::ControllerProto& controller_proto)
+{
+    const auto* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto.full_service_name());
+    if (nullptr == service) {
+        GOOGLE_LOG(WARNING) << " service: " << controller_proto.full_service_name() << " not exist";
+        return -1;
+    }
+
+    const auto* method = service->FindMethodByName(controller_proto.method_name());
+    if (nullptr == method) {
+        GOOGLE_LOG(WARNING) << " service: " << controller_proto.full_service_name() << " method: " << controller_proto.method_name() << " not exist";
+        return -1;
+    }
+
+    Controller* controller = new Controller();
+    auto* request = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->input_type())->New();
+    auto* response = google::protobuf::MessageFactory::generated_factory()->GetPrototype(method->output_type())->New();
+    auto* done = closure_component_.NewClosure(&TcpChannel::AfterHandleRequest, this, controller, request, response);
+
+    controller->mutable_proto()->MergeFrom(controller_proto);
+    controller->proto().message().UnpackTo(request);
+
+    factory_->router_channel()->CallMethod(method, controller, request, response, done);
+
+    return 0;
+}
+
+void TcpChannel::AfterHandleRequest(google::protobuf::RpcController* controller, google::protobuf::Message* request, google::protobuf::Message* response)
+{
+    if (response->GetDescriptor() == google::protobuf::Empty::descriptor()) {
+        return;
+    }
+
+    proto::ControllerProto* controller_proto = ((Controller*)controller)->mutable_proto();
+    controller_proto->set_stub(false);
+    controller_proto->mutable_message()->PackFrom(*response);
+
+    uv_mutex_lock(&write_buffer_mutex_);
+    google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+    google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+    coded_stream.WriteVarint32(controller_proto->ByteSize());
+    controller_proto->SerializeToCodedStream(&coded_stream);
+    uv_mutex_unlock(&write_buffer_mutex_);
+
+    uv_async_send(&write_handle_);
 }
 
 void TcpChannel::OnCloseStream(uv_handle_t* handle)
@@ -315,25 +276,12 @@ void TcpChannel::OnCloseStream(uv_handle_t* handle)
 
 void TcpChannel::Close()
 {
-    uv_idle_stop(&idle_handle_);
     uv_read_stop(stream_);
     uv_close((uv_handle_t*)stream_, OnCloseStream);
     stream_ = nullptr;
 
-    for (auto& controller_it : router_controllers_) {
-        controller_it.first->StartCancel();
-    }
-    router_controllers_.clear();
-
-    for (auto& context_it : async_result_) {
-        context_it.second.controller->SetFailed("canceled");
-        context_it.second.done->Run();
-        context_it.second.reset();
-    }
-
-    async_result_.clear();
-
-    buffer_.reset();
+    //uv_close(&proto_handle_, OnCloseHandle);
+    //uv_close(&write_handle_, OnCloseHandle);
 }
 
 

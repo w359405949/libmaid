@@ -225,10 +225,10 @@ bool HelloRequest::MergePartialFromCodedStream(
         if (tag == 10) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_message()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
             this->message().data(), this->message().length(),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "maid.example.HelloRequest.message");
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "maid.example.HelloRequest.message"));
         } else {
           goto handle_unusual;
         }
@@ -262,9 +262,9 @@ void HelloRequest::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_start:maid.example.HelloRequest)
   // optional string message = 1;
   if (this->message().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->message().data(), this->message().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.example.HelloRequest.message");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       1, this->message(), output);
@@ -278,9 +278,9 @@ void HelloRequest::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_to_array_start:maid.example.HelloRequest)
   // optional string message = 1;
   if (this->message().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->message().data(), this->message().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.example.HelloRequest.message");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
@@ -496,10 +496,10 @@ bool HelloResponse::MergePartialFromCodedStream(
         if (tag == 10) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_message()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
             this->message().data(), this->message().length(),
-            ::google::protobuf::internal::WireFormat::PARSE,
-            "maid.example.HelloResponse.message");
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "maid.example.HelloResponse.message"));
         } else {
           goto handle_unusual;
         }
@@ -533,9 +533,9 @@ void HelloResponse::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_start:maid.example.HelloResponse)
   // optional string message = 1;
   if (this->message().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->message().data(), this->message().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.example.HelloResponse.message");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
       1, this->message(), output);
@@ -549,9 +549,9 @@ void HelloResponse::SerializeWithCachedSizes(
   // @@protoc_insertion_point(serialize_to_array_start:maid.example.HelloResponse)
   // optional string message = 1;
   if (this->message().size() > 0) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8StringNamedField(
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->message().data(), this->message().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE,
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "maid.example.HelloResponse.message");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(

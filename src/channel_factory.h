@@ -15,13 +15,14 @@ class ConnectionProto;
 class Channel;
 class TcpChannel;
 class Controller;
-class Closure;
 
 class AbstractTcpChannelFactory
 {
 public:
     AbstractTcpChannelFactory(uv_loop_t* loop, google::protobuf::RpcChannel* router);
     virtual ~AbstractTcpChannelFactory();
+    virtual void Close();
+    virtual void Update();
 
     google::protobuf::RpcChannel* router_channel()
     {
@@ -29,10 +30,10 @@ public:
     }
 
     google::protobuf::RpcChannel* channel(int64_t channel_id);
+    google::protobuf::RpcChannel* channel();
 
     virtual void Connected(TcpChannel* channel);
     virtual void Disconnected(TcpChannel* channel);
-    virtual void Close();
 
     inline void AddConnectedCallback(std::function<void(int64_t)> callback)
     {
@@ -44,15 +45,54 @@ public:
         disconnected_callbacks_.push_back(callback);
     }
 
-public:
-    static void OnGC(uv_prepare_t* handle);
+    inline uv_loop_t* loop()
+    {
+        return loop_;
+    }
+
+
+    void QueueChannel(TcpChannel* channel);
+    void QueueChannelInvalid(TcpChannel* channel_invalid);
+
+protected:
+    inline uv_loop_t* inner_loop()
+    {
+        return inner_loop_;
+    }
+
+    virtual void InnerCallback();
+
+protected:
+    static void OnUpdate(uv_idle_t* update);
+    static void OnWork(uv_work_t* req);
+    static void OnAfterWork(uv_work_t* req, int32_t status);
+    static void OnCloseInnerLoop(uv_async_t* handle);
+    static void OnQueueChannel(uv_async_t* handle);
+    static void OnChannelInvalid(uv_async_t* handle);
+    static void OnInnerCallback(uv_async_t* handle);
+
+protected:
+    uv_async_t close_inner_loop_;
+    uv_async_t inner_loop_callback_;
 
 private:
     uv_loop_t* loop_;
-    uv_prepare_t gc_;
-
     google::protobuf::RpcChannel* router_channel_;
+    uv_work_t work_;
+
+    uv_mutex_t inner_loop_lock_;
+    uv_loop_t* inner_loop_;
+
+    uv_mutex_t queue_channel_mutex_;
+    uv_async_t queue_channel_async_;
+    google::protobuf::RepeatedField<TcpChannel*> queue_channel_;
+    google::protobuf::RepeatedField<TcpChannel*> queue_channel_back_;
+
+    uv_mutex_t channel_invalid_mutex_;
+    uv_async_t channel_invalid_async_;
     google::protobuf::RepeatedField<TcpChannel*> channel_invalid_;
+    google::protobuf::RepeatedField<TcpChannel*> channel_invalid_back_;
+
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;
 
     std::vector<std::function<void(int64_t)> > connected_callbacks_;
@@ -67,13 +107,13 @@ public:
 
     ~Acceptor();
 
+    int32_t Listen(const std::string& host, int32_t port);
 
-    int32_t Listen(const std::string& host, int32_t port, int32_t backlog=1);
-    virtual void Close();
+    virtual void InnerCallback();
 
 public:
     static void OnAccept(uv_stream_t* stream, int32_t status);
-    static void OnCloseListen(uv_handle_t* handle);
+    static void OnCloseHandle(uv_handle_t* handle);
 
 public: // unit test only
     inline const uv_tcp_t* handle() const
@@ -82,8 +122,10 @@ public: // unit test only
     }
 
 private:
-    uv_loop_t* loop_;
     uv_tcp_t* handle_;
+
+    uv_mutex_t address_mutex_;
+    struct sockaddr_in address_;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Acceptor);
 };
@@ -95,17 +137,13 @@ public:
     Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router);
     ~Connector();
 
-    void Connected(TcpChannel* channel);
-    void Disconnected(TcpChannel* channel);
-
     int32_t Connect(const std::string& host, int32_t port);
-    google::protobuf::RpcChannel* channel();
-    void Close();
+
+    virtual void InnerCallback();
 
 public:
     static void OnConnect(uv_connect_t* req, int32_t status);
     static void OnCloseHandle(uv_handle_t* handle);
-    static void OnGC(uv_prepare_t* handle);
 
 public:
     inline const uv_connect_t* req() const
@@ -114,9 +152,9 @@ public:
     }
 
 private:
-    uv_loop_t* loop_;
     uv_connect_t* req_;
-    TcpChannel* channel_;
+
+    struct sockaddr_in address;
 
     GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Connector);
 };
