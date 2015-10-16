@@ -49,6 +49,7 @@ class TcpChannel : public google::protobuf::RpcChannel
 {
 public:
     TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* factory);
+    ~TcpChannel();
     void Update();
     void Close();
 
@@ -75,6 +76,7 @@ private:
     static void OnHandle(uv_async_t* handle);
     static void OnTimer(uv_timer_t* timer);
     static void OnCloseStream(uv_handle_t* handle);
+    static void OnCloseHandle(uv_handle_t* handle);
 
 private: // unit test only
     inline const AbstractTcpChannelFactory* factory() const
@@ -87,7 +89,6 @@ private:
 
     // closure
     google::protobuf::RepeatedField<google::protobuf::Closure*> queue_closure_;
-
     google::protobuf::Map<int64_t, google::protobuf::ResultCallback2<void*, const proto::ControllerProto&, void*>* > result_callback_;
 
     // write
@@ -97,7 +98,7 @@ private:
     std::string write_buffer_back_;
 
     // read
-    google::protobuf::Map<const char*, std::string*> reading_buffer_;
+    google::protobuf::Map<void*, std::string*> reading_buffer_;
     RingInputStream read_stream_;
     int32_t buffer_length_;
 

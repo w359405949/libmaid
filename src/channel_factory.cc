@@ -14,9 +14,6 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::pr
     :loop_(loop),
     router_channel_(router)
 {
-    inner_loop_ = (uv_loop_t*)malloc(sizeof(uv_loop_t));
-    uv_loop_init(inner_loop_);
-
     uv_mutex_init(&queue_channel_mutex_);
     queue_channel_async_.data = this;
     uv_async_init(loop_, &queue_channel_async_, OnQueueChannel);
@@ -24,6 +21,13 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::pr
     uv_mutex_init(&channel_invalid_mutex_);
     channel_invalid_async_.data = this;
     uv_async_init(loop_, &channel_invalid_async_, OnChannelInvalid);
+
+    update_.data = this;
+    uv_idle_init(loop_, &update_);
+    uv_idle_start(&update_, OnUpdate);
+
+    inner_loop_ = (uv_loop_t*)malloc(sizeof(uv_loop_t));
+    uv_loop_init(inner_loop_);
 
     uv_mutex_init(&inner_loop_lock_);
     inner_loop_callback_.data = this;
@@ -48,6 +52,7 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
 
 void AbstractTcpChannelFactory::Close()
 {
+    uv_idle_stop(&update_);
     uv_cancel((uv_req_t*)&work_);
 
     uv_async_send(&close_inner_loop_);
@@ -76,7 +81,9 @@ void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 void AbstractTcpChannelFactory::QueueChannel(TcpChannel* channel)
 {
     uv_mutex_lock(&queue_channel_mutex_);
-    queue_channel_.Add(channel);
+    {
+        queue_channel_.Add(channel);
+    }
     uv_mutex_unlock(&queue_channel_mutex_);
 
     uv_async_send(&queue_channel_async_);
@@ -84,12 +91,12 @@ void AbstractTcpChannelFactory::QueueChannel(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::QueueChannelInvalid(TcpChannel* channel_invalid)
 {
-    if (channel_invalid != nullptr) {
-        channel_invalid->Close();
-    }
+    channel_invalid->Close();
 
     uv_mutex_lock(&channel_invalid_mutex_);
-    channel_invalid_.Add(channel_invalid);
+    {
+        channel_invalid_.Add(channel_invalid);
+    }
     uv_mutex_unlock(&channel_invalid_mutex_);
 
     uv_async_send(&channel_invalid_async_);
@@ -100,7 +107,9 @@ void AbstractTcpChannelFactory::OnQueueChannel(uv_async_t* handle)
     AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
 
     uv_mutex_lock(&self->queue_channel_mutex_);
-    self->queue_channel_.Swap(&self->queue_channel_back_);
+    {
+        self->queue_channel_.Swap(&self->queue_channel_back_);
+    }
     uv_mutex_unlock(&self->queue_channel_mutex_);
 
     for (auto& channel : self->queue_channel_back_) {
@@ -115,7 +124,9 @@ void AbstractTcpChannelFactory::OnChannelInvalid(uv_async_t* handle)
     AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
 
     uv_mutex_lock(&self->channel_invalid_mutex_);
-    self->channel_invalid_.Swap(&self->channel_invalid_back_);
+    {
+        self->channel_invalid_.Swap(&self->channel_invalid_back_);
+    }
     uv_mutex_unlock(&self->channel_invalid_mutex_);
 
     for (auto& channel_invalid : self->channel_invalid_back_) {
@@ -131,7 +142,9 @@ void AbstractTcpChannelFactory::OnWork(uv_work_t* handle)
     AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
 
     uv_mutex_lock(&self->inner_loop_lock_);
-    uv_run(self->inner_loop_, UV_RUN_DEFAULT);
+    {
+        uv_run(self->inner_loop_, UV_RUN_DEFAULT);
+    }
     uv_mutex_unlock(&self->inner_loop_lock_);
 }
 
@@ -224,7 +237,9 @@ int32_t Acceptor::Listen(const std::string& host, int32_t port)
     int32_t result = 0;
 
     uv_mutex_lock(&address_mutex_);
-    result = uv_ip4_addr(host.c_str(), port, &address_);
+    {
+        result = uv_ip4_addr(host.c_str(), port, &address_);
+    }
     uv_mutex_unlock(&address_mutex_);
     GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
 
@@ -245,7 +260,9 @@ void Acceptor::InnerCallback()
     uv_tcp_nodelay(handle_, 1);
 
     uv_mutex_lock(&address_mutex_);
-    result = uv_tcp_bind(handle_, (struct sockaddr*)&address_, 0);
+    {
+        result = uv_tcp_bind(handle_, (struct sockaddr*)&address_, 0);
+    }
     uv_mutex_unlock(&address_mutex_);
 
     if (result) {
@@ -317,7 +334,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
     if (status) {
         GOOGLE_LOG(WARNING) << uv_strerror(status);
-        self->QueueChannelInvalid(NULL);
+        self->Disconnected(NULL);
         return;
     }
 
@@ -328,7 +345,9 @@ int32_t Connector::Connect(const std::string& host, int32_t port)
 {
     int result = 0;
     uv_mutex_lock(&address_mutex_);
-    result = uv_ip4_addr(host.c_str(), port, &address);
+    {
+        result = uv_ip4_addr(host.c_str(), port, &address);
+    }
     uv_mutex_unlock(&address_mutex_);
     GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
 
@@ -357,7 +376,9 @@ void Connector::InnerCallback()
 
     uv_tcp_init(inner_loop(), handle);
     uv_mutex_lock(&address_mutex_);
-    result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
+    {
+        result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
+    }
     uv_mutex_unlock(&address_mutex_);
     if (result) {
         GOOGLE_LOG(WARNING) << uv_strerror(result);

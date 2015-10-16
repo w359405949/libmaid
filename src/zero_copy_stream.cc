@@ -13,14 +13,15 @@ RingInputStream::~RingInputStream()
 
 std::string* RingInputStream::ReleaseCleared()
 {
-    if (cleared_buffer_.empty()) {
-        return new std::string();
+    std::string* buffer = nullptr;
+    if (!cleared_buffer_.empty()) {
+        buffer = *cleared_buffer_.cbegin();
+        cleared_buffer_.erase(cleared_buffer_.cbegin());
+        buffer->clear();
+    } else {
+        buffer = new std::string();
     }
 
-    std::string* buffer = *cleared_buffer_.cbegin();
-    cleared_buffer_.RemoveLast();
-
-    buffer->clear();
     return buffer;
 }
 
@@ -34,36 +35,29 @@ void RingInputStream::AddBuffer(std::string* buffer)
 bool RingInputStream::Next(const void** data, int* size)
 {
     bool result = false;
+
     int i = 0;
     while (i < streams_.size()) {
-        result = streams_.Get(i)->Next(data, size);
+        auto* stream = streams_.Get(i);
+
+        result = stream->Next(data, size);
         if (result) {
             break;
         }
 
-        // That stream is done.  Advance to the next one.
-        bytes_retired_ += (*streams_.begin())->ByteCount();
+        bytes_retired_ += stream->ByteCount();
 
-        // reuse cleared buffer
-        std::string* buffer = reading_stream_[*streams_.begin()];
+        std::string* buffer = reading_stream_[stream];
+        GOOGLE_CHECK(buffer->size() == stream->ByteCount());
+
         cleared_buffer_.Add(buffer);
+        reading_stream_.erase(stream);
+        delete stream;
 
         i++;
     }
 
-    int num = i;
-    while(--i >= 0) {
-        auto* stream = streams_.Get(i);
-        std::string* buffer = reading_stream_[stream];
-        cleared_buffer_.Add(buffer);
-
-        GOOGLE_CHECK(buffer->size() == stream->ByteCount());
-
-        reading_stream_.erase(stream);
-        delete stream;
-    }
-
-    streams_.erase(streams_.begin(), streams_.begin() + num);
+    streams_.erase(streams_.begin(), streams_.begin() + i);
 
     return result;
 }
@@ -71,7 +65,7 @@ bool RingInputStream::Next(const void** data, int* size)
 void RingInputStream::BackUp(int count)
 {
     if (!streams_.empty()) {
-        (*streams_.begin())->BackUp(count);
+        streams_.Get(0)->BackUp(count);
     } else {
         GOOGLE_LOG(DFATAL) << "Can't BackUp() after failed Next().";
     }
@@ -79,13 +73,17 @@ void RingInputStream::BackUp(int count)
 
 bool RingInputStream::Skip(int count)
 {
+    GOOGLE_CHECK(false) << "who called skip";
+
     bool result = false;
     int i = 0;
     while (i < streams_.size()) {
+        auto* stream = streams_.Get(i);
+
         // Assume that ByteCount() can be used to find out how much we actually
         // skipped when Skip() fails.
-        int64_t target_byte_count = streams_.Get(i)->ByteCount() + count;
-        result = streams_.Get(i)->Skip(count);
+        int64_t target_byte_count = stream->ByteCount() + count;
+        result = stream->Skip(count);
         if (result) {
             break;
         }
@@ -95,23 +93,18 @@ bool RingInputStream::Skip(int count)
         int64_t final_byte_count = streams_.Get(i)->ByteCount();
         GOOGLE_DCHECK_LT(final_byte_count, target_byte_count);
 
-        // That stream is done.  Advance to the next one.
         bytes_retired_ += final_byte_count;
 
-        i++;
-    }
-
-    int num = i;
-    while (--i >= 0) {
-        auto* stream = streams_.Get(i);
         std::string* buffer = reading_stream_[stream];
 
         cleared_buffer_.Add(buffer);
         reading_stream_.erase(stream);
         delete stream;
+
+        i++;
     }
 
-    streams_.erase(streams_.begin(), streams_.begin() + num);
+    streams_.erase(streams_.begin(), streams_.begin() + i);
 
     return result;
 }

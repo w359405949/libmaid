@@ -79,6 +79,7 @@ private:
     uv_loop_t* loop_;
     google::protobuf::RpcChannel* router_channel_;
     uv_work_t work_;
+    uv_idle_t update_;
 
     uv_mutex_t inner_loop_lock_;
     uv_loop_t* inner_loop_;

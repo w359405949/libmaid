@@ -46,6 +46,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
 
 TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_factory)
      :stream_(stream),
+     buffer_length_(0),
      factory_(abs_factory)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -62,6 +63,14 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
 
     uv_mutex_init(&write_buffer_mutex_);
     uv_mutex_init(&read_proto_mutex_);
+}
+
+TcpChannel::~TcpChannel()
+{
+    GOOGLE_CHECK(reading_buffer_.empty()) << " memory leak";
+
+    stream_ = nullptr;
+    factory_ = nullptr;
 }
 
 void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -86,10 +95,12 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     }
 
     uv_mutex_lock(&write_buffer_mutex_);
-    google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
-    google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
-    coded_stream.WriteVarint32(controller_proto->ByteSize());
-    controller_proto->SerializeToCodedStream(&coded_stream);
+    {
+        google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+        google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+        coded_stream.WriteVarint32(controller_proto->ByteSize());
+        controller_proto->SerializeToCodedStream(&coded_stream);
+    }
     uv_mutex_unlock(&write_buffer_mutex_);
 
     uv_async_send(&write_handle_);
@@ -111,7 +122,9 @@ void TcpChannel::OnWrite(uv_async_t* handle)
     TcpChannel* self = (TcpChannel*)handle->data;
 
     uv_mutex_lock(&self->write_buffer_mutex_);
-    std::swap(self->write_buffer_, self->write_buffer_back_);
+    {
+        std::swap(self->write_buffer_, self->write_buffer_back_);
+    }
     uv_mutex_unlock(&self->write_buffer_mutex_);
 
     if (self->write_buffer_back_.empty()) {
@@ -143,6 +156,7 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
 
     if (status < 0) {
         GOOGLE_LOG(WARNING) << uv_strerror(status);
+        //self->factory_->QueueChannelInvalid(self);
         return; //
     }
 }
@@ -153,60 +167,81 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
     TcpChannel* self = (TcpChannel*)handle->data;
 
     std::string* buffer = self->read_stream_.ReleaseCleared();
+    GOOGLE_CHECK(buffer->empty());
 
     google::protobuf::STLStringResizeUninitialized(buffer, suggested_size);
-    self->reading_buffer_[buffer->data()] = buffer;
 
     buf->base = (char*)buffer->data();
     buf->len = buffer->capacity();
+
+    self->reading_buffer_[buf->base] = buffer;
 }
 
 
 void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
     TcpChannel* self = (TcpChannel*)stream->data;
-    if (nread < 0) {
-        self->factory_->QueueChannelInvalid(self);
-        return;
-    }
 
     /*
      * TODO: buf->base alloced by libuv (win).
      */
+
     GOOGLE_CHECK(self->reading_buffer_.find(buf->base) != self->reading_buffer_.end());
     std::string* buffer = self->reading_buffer_[buf->base];
     self->reading_buffer_.erase(buf->base);
-    GOOGLE_CHECK(buffer->size() >= buf->len) << "overflowed";
-    google::protobuf::STLStringResizeUninitialized(buffer, buf->len);
 
-    self->read_stream_.AddBuffer(buffer);
-    self->buffer_length_ += buf->len;
-
-    uv_async_send(&self->proto_handle_);
+    if (nread >= 0) {
+        GOOGLE_CHECK(buffer->capacity() >= nread) << "overflowed";
+        google::protobuf::STLStringResizeUninitialized(buffer, nread);
+        self->read_stream_.AddBuffer(buffer); // recircle
+        self->buffer_length_ += nread;
+        uv_async_send(&self->proto_handle_);
+    } else {
+        self->read_stream_.AddBuffer(buffer); // recircle
+        self->factory_->QueueChannelInvalid(self);
+    }
 }
 
 void TcpChannel::OnHandle(uv_async_t* handle)
 {
     TcpChannel* self = (TcpChannel*)handle->data;
 
-    while (self->buffer_length_ > 10) {// kMaxVarintBytes = 10
-        google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
+    google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
+    coded_stream.SetTotalBytesLimit(self->buffer_length_, self->buffer_length_);
 
+    // TODO: message trunc
+    while (coded_stream.BytesUntilTotalBytesLimit() >= 10) { // kMaxVarintBytes
         uint32_t length;
-        if (coded_stream.ReadVarint32(&length)) {
-
-            GOOGLE_CHECK(self->buffer_length_ > length);
-            self->read_proto_.Add()->ParseFromBoundedZeroCopyStream(&self->read_stream_, length);
-
-            self->buffer_length_ -= self->read_stream_.ByteCount();
+        if (!coded_stream.ReadVarint32(&length)) {
+            break;
         }
+
+        if (length > coded_stream.BytesUntilTotalBytesLimit()) {
+            break;
+        }
+
+        if (length == 0) {
+            break;
+        }
+
+        auto limit = coded_stream.PushLimit(length);
+        uv_mutex_lock(&self->read_proto_mutex_);
+        {
+            self->read_proto_.Add()->ParseFromCodedStream(&coded_stream);
+        }
+        uv_mutex_unlock(&self->read_proto_mutex_);
+        coded_stream.PopLimit(limit);
+
+        self->buffer_length_ = coded_stream.BytesUntilTotalBytesLimit();
     }
 }
 
 void TcpChannel::Update()
 {
     uv_mutex_lock(&read_proto_mutex_);
-    read_proto_back_.Swap(&read_proto_);
+    {
+        read_proto_back_.Swap(&read_proto_);
+    }
     uv_mutex_unlock(&read_proto_mutex_);
 
     for (auto& controller_proto : read_proto_back_) {
@@ -265,10 +300,12 @@ void TcpChannel::AfterHandleRequest(google::protobuf::RpcController* controller,
     controller_proto->mutable_message()->PackFrom(*response);
 
     uv_mutex_lock(&write_buffer_mutex_);
-    google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
-    google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
-    coded_stream.WriteVarint32(controller_proto->ByteSize());
-    controller_proto->SerializeToCodedStream(&coded_stream);
+    {
+        google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+        google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+        coded_stream.WriteVarint32(controller_proto->ByteSize());
+        controller_proto->SerializeToCodedStream(&coded_stream);
+    }
     uv_mutex_unlock(&write_buffer_mutex_);
 
     uv_async_send(&write_handle_);
@@ -279,14 +316,16 @@ void TcpChannel::OnCloseStream(uv_handle_t* handle)
     free(handle);
 }
 
+void TcpChannel::OnCloseHandle(uv_handle_t* handle)
+{
+}
+
 void TcpChannel::Close()
 {
     uv_read_stop(stream_);
-    uv_close((uv_handle_t*)stream_, OnCloseStream);
-    stream_ = nullptr;
 
-    //uv_close(&proto_handle_, OnCloseHandle);
-    //uv_close(&write_handle_, OnCloseHandle);
+    uv_close((uv_handle_t*)&proto_handle_, OnCloseHandle);
+    uv_close((uv_handle_t*)&write_handle_, OnCloseHandle);
 }
 
 
