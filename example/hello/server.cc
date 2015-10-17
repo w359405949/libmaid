@@ -3,29 +3,6 @@
 #include "maid/controller.h"
 #include "hello.pb.h"
 
-class MockClosure : public google::protobuf::Closure
-{
-public:
-    MockClosure(maid::Controller* controller, google::protobuf::Message* request, google::protobuf::Message* response)
-        :controller_(controller),
-        request_(request),
-        response_(response)
-    {
-    }
-
-    void Run()
-    {
-        delete controller_;
-        delete request_;
-        delete response_;
-    }
-
-private:
-    maid::Controller* controller_;
-    google::protobuf::Message* request_;
-    google::protobuf::Message* response_;
-};
-
 class HelloServiceImpl: public maid::example::HelloService
 {
 public:
@@ -40,12 +17,12 @@ public:
             google::protobuf::Closure* done) override
     {
         maid::example::HelloService_Stub stub(server_->channel(google::protobuf::down_cast<maid::Controller*>(controller)->proto().connection_id()));
-        maid::Controller* con = new maid::Controller();
-        maid::example::HelloRequest* req= new maid::example::HelloRequest();
-        google::protobuf::Empty* res = new google::protobuf::Empty();
-        req->set_message("empty");
-        MockClosure* closure = new MockClosure(con, req, res);
-        stub.HelloNotify(con, req, res, closure);
+        //maid::Controller* con = new maid::Controller();
+        //maid::example::HelloRequest* req= new maid::example::HelloRequest();
+        //google::protobuf::Empty* res = new google::protobuf::Empty();
+        //req->set_message("empty");
+        //MockClosure* closure = new MockClosure(con, req, res);
+        //stub.HelloNotify(con, req, res, closure);
 
         request->PrintDebugString();
         response->set_message("welcome to server");
@@ -57,7 +34,6 @@ public:
             google::protobuf::Empty* response,
             google::protobuf::Closure* done) override
     {
-        printf("channel:%lld\n", google::protobuf::down_cast<maid::Controller*>(controller)->proto().connection_id());
         request->PrintDebugString();
         done->Run();
     }
@@ -66,9 +42,25 @@ private:
     maid::TcpServer* server_;
 };
 
+
+void OnCtrlC(uv_signal_t* handle, int statu)
+{
+    printf("ctrl_c pressed:\n");
+
+    maid::TcpServer* server = (maid::TcpServer*)handle->data;
+    server->Close();
+}
+
+
 int main()
 {
+    uv_signal_t ctrl_c_;
+    uv_signal_init(uv_default_loop(), &ctrl_c_);
+    uv_signal_start(&ctrl_c_, OnCtrlC, SIGINT);
+
     maid::TcpServer* server = new maid::TcpServer();
+    ctrl_c_.data = server;
+
     server->InsertService(new HelloServiceImpl(server));
     server->Listen("0.0.0.0", 5555);
     server->ServeForever();

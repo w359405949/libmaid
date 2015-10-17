@@ -65,11 +65,12 @@ protected:
 protected:
     static void OnUpdate(uv_idle_t* update);
     static void OnWork(uv_work_t* req);
-    static void OnAfterWork(uv_work_t* req, int32_t status);
+    static void OnAfterWork(uv_async_t* handle);
     static void OnCloseInnerLoop(uv_async_t* handle);
     static void OnQueueChannel(uv_async_t* handle);
     static void OnChannelInvalid(uv_async_t* handle);
     static void OnInnerCallback(uv_async_t* handle);
+    static void OnFinishWork(uv_work_t* req, int status);
 
 protected:
     uv_async_t close_inner_loop_;
@@ -77,22 +78,20 @@ protected:
 
 private:
     uv_loop_t* loop_;
-    google::protobuf::RpcChannel* router_channel_;
-    uv_work_t work_;
     uv_idle_t update_;
+    uv_async_t after_work_async_;
+    google::protobuf::RpcChannel* router_channel_;
 
-    uv_mutex_t inner_loop_lock_;
     uv_loop_t* inner_loop_;
+    uv_mutex_t inner_loop_lock_;
 
     uv_mutex_t queue_channel_mutex_;
     uv_async_t queue_channel_async_;
     google::protobuf::RepeatedField<TcpChannel*> queue_channel_;
-    google::protobuf::RepeatedField<TcpChannel*> queue_channel_back_;
 
     uv_mutex_t channel_invalid_mutex_;
     uv_async_t channel_invalid_async_;
     google::protobuf::RepeatedField<TcpChannel*> channel_invalid_;
-    google::protobuf::RepeatedField<TcpChannel*> channel_invalid_back_;
 
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;
 

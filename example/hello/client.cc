@@ -3,7 +3,7 @@
 #include "maid/base.h"
 #include "maid/controller.h"
 #include "hello.pb.h"
-#define REQUESTS 1000
+#define REQUESTS 100000
 
 static int32_t count = 0;
 
@@ -21,8 +21,8 @@ public:
     void Run()
     {
         ++count;
-        printf("%d:client:%s, server:%s\n", count, request_->message().c_str(), response_->message().c_str());
-        if(count >= REQUESTS){
+        printf("count:%d, :client:%s, server:%s\n", count, request_->message().c_str(), response_->message().c_str());
+        if(count == REQUESTS){
             client_->Close();
         }
 
@@ -96,10 +96,23 @@ private:
 };
 
 
+void OnCtrlC(uv_signal_t* handle, int statu)
+{
+    printf("ctrl_c pressed:\n");
+    maid::TcpClient* client = (maid::TcpClient*)handle->data;
+    client->Close();
+}
+
+
 
 int main()
 {
+    uv_signal_t ctrl_c_;
+    uv_signal_init(uv_default_loop(), &ctrl_c_);
+    uv_signal_start(&ctrl_c_, OnCtrlC, SIGINT);
+
     maid::TcpClient* client = new maid::TcpClient(uv_default_loop());
+    ctrl_c_.data = client;
     client->InsertService(new HelloServiceImpl());
     client->Connect("127.0.0.1", 5555);
     for(int32_t i = 0; i < REQUESTS / 2; i++){

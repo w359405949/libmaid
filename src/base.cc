@@ -11,7 +11,11 @@ TcpServer::TcpServer(uv_loop_t* loop)
 
 TcpServer::~TcpServer()
 {
+    loop_ = nullptr;
+
+    router_->Close();
     delete router_;
+    router_ = nullptr;
 }
 
 void TcpServer::Close()
@@ -21,8 +25,6 @@ void TcpServer::Close()
         delete acceptor_it.second;
     }
     acceptor_.clear();
-
-    router_->Close();
 
     uv_stop(mutable_loop());
 }
@@ -73,14 +75,15 @@ void TcpServer::InsertService(google::protobuf::Service* service)
 
 google::protobuf::RpcChannel* TcpServer::channel(int64_t channel_id)
 {
+    google::protobuf::RpcChannel* chl = maid::Channel::default_instance();
     for (auto acceptor_it : acceptor_) {
-        google::protobuf::RpcChannel* chl = acceptor_it.second->channel(channel_id);
+        chl = acceptor_it.second->channel(channel_id);
         if (chl != maid::Channel::default_instance()) {
-            return chl;
+            break;
         }
     }
 
-    return maid::Channel::default_instance();
+    return chl;
 }
 
 /*
@@ -98,7 +101,9 @@ TcpClient::TcpClient(uv_loop_t* loop)
 
 TcpClient::~TcpClient()
 {
+    router_->Close();
     delete router_;
+    router_ = nullptr;
 }
 
 void TcpClient::Close()
@@ -107,11 +112,10 @@ void TcpClient::Close()
         connector_it.second->Close();
         delete connector_it.second;
     }
-
     connector_.clear();
-    router_->Close();
 
     uv_stop(mutable_loop());
+
 }
 
 int32_t TcpClient::Connect(const std::string& host, int32_t port)
@@ -123,8 +127,8 @@ int32_t TcpClient::Connect(const std::string& host, int32_t port)
     Connector* connector = new Connector(mutable_loop(), router_);
     connector->AddConnectedCallback(std::bind(&TcpClient::ConnectedCallback, this, current_index_, std::placeholders::_1));
     connector->AddDisconnectedCallback(std::bind(&TcpClient::DisconnectedCallback, this, current_index_, std::placeholders::_1));
-
     connector_[current_index_] = connector;
+
     return connector->Connect(host, port);
 }
 

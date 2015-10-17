@@ -9,6 +9,20 @@ RingInputStream::RingInputStream()
 
 RingInputStream::~RingInputStream()
 {
+    for (auto stream : streams_) {
+        delete stream;
+    }
+    streams_.Clear();
+
+    for (auto buffer : cleared_buffer_) {
+        delete buffer;
+    }
+
+    cleared_buffer_.Clear();
+
+    reading_stream_.clear();
+
+    bytes_retired_ = 0;
 }
 
 std::string* RingInputStream::ReleaseCleared()

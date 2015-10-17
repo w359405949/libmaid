@@ -67,10 +67,15 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
 
 TcpChannel::~TcpChannel()
 {
-    GOOGLE_CHECK(reading_buffer_.empty()) << " memory leak";
+    GOOGLE_CHECK(reading_buffer_.empty());
+    GOOGLE_CHECK(queue_closure_.empty());
+    GOOGLE_CHECK(result_callback_.empty());
 
     stream_ = nullptr;
     factory_ = nullptr;
+
+    uv_mutex_destroy(&write_buffer_mutex_);
+    uv_mutex_destroy(&read_proto_mutex_);
 }
 
 void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
@@ -182,19 +187,18 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
     TcpChannel* self = (TcpChannel*)stream->data;
 
-    /*
-     * TODO: buf->base alloced by libuv (win).
-     */
+    GOOGLE_CHECK(self->reading_buffer_.find(buf->base) != self->reading_buffer_.end());//TODO: buf->base alloced by libuv (win).
 
-    GOOGLE_CHECK(self->reading_buffer_.find(buf->base) != self->reading_buffer_.end());
     std::string* buffer = self->reading_buffer_[buf->base];
     self->reading_buffer_.erase(buf->base);
 
     if (nread >= 0) {
         GOOGLE_CHECK(buffer->capacity() >= nread) << "overflowed";
+
         google::protobuf::STLStringResizeUninitialized(buffer, nread);
-        self->read_stream_.AddBuffer(buffer); // recircle
+        self->read_stream_.AddBuffer(buffer);
         self->buffer_length_ += nread;
+
         uv_async_send(&self->proto_handle_);
     } else {
         self->read_stream_.AddBuffer(buffer); // recircle
@@ -238,13 +242,14 @@ void TcpChannel::OnHandle(uv_async_t* handle)
 
 void TcpChannel::Update()
 {
+    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_back;
     uv_mutex_lock(&read_proto_mutex_);
     {
-        read_proto_back_.Swap(&read_proto_);
+        read_proto_back.Swap(&read_proto_);
     }
     uv_mutex_unlock(&read_proto_mutex_);
 
-    for (auto& controller_proto : read_proto_back_) {
+    for (auto& controller_proto : read_proto_back) {
         controller_proto.set_connection_id((int64_t)this);
         if (controller_proto.stub()) {
             HandleRequest(controller_proto);
@@ -254,7 +259,6 @@ void TcpChannel::Update()
             result_callback_.erase(controller_proto.transmit_id());
         }
     }
-    read_proto_back_.Clear();
 
     for (auto& closure : queue_closure_) {
         closure->Run();
@@ -316,16 +320,12 @@ void TcpChannel::OnCloseStream(uv_handle_t* handle)
     free(handle);
 }
 
-void TcpChannel::OnCloseHandle(uv_handle_t* handle)
-{
-}
-
 void TcpChannel::Close()
 {
     uv_read_stop(stream_);
 
-    uv_close((uv_handle_t*)&proto_handle_, OnCloseHandle);
-    uv_close((uv_handle_t*)&write_handle_, OnCloseHandle);
+    uv_close((uv_handle_t*)&proto_handle_, nullptr);
+    uv_close((uv_handle_t*)&write_handle_, nullptr);
 }
 
 
@@ -347,7 +347,7 @@ void LocalMapRepoChannel::Close()
 
 void LocalMapRepoChannel::Insert(google::protobuf::Service* service)
 {
-    GOOGLE_DCHECK(service_.find(service->GetDescriptor()) == service_.end());
+    GOOGLE_CHECK(service_.find(service->GetDescriptor()) == service_.end());
 
     service_[service->GetDescriptor()] = service;
 }
@@ -358,7 +358,7 @@ void LocalMapRepoChannel::CallMethod(const google::protobuf::MethodDescriptor* m
         google::protobuf::Message* response,
         google::protobuf::Closure* done)
 {
-    const auto& service_it = service_.find(method->service());
+    auto service_it = service_.find(method->service());
     if (service_.end() == service_it) {
         controller->SetFailed("service not implement");
         done->Run();
