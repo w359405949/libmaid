@@ -75,7 +75,7 @@ private:
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
     static void OnHandle(uv_async_t* handle);
     static void OnTimer(uv_timer_t* timer);
-    static void OnCloseStream(uv_handle_t* handle);
+    static void OnClose(uv_handle_t* handle);
 
 private: // unit test only
     inline const AbstractTcpChannelFactory* factory() const
@@ -92,7 +92,7 @@ private:
 
     // write
     uv_mutex_t write_buffer_mutex_;
-    uv_async_t write_handle_;
+    uv_async_t* write_handle_;
     std::string write_buffer_;
     std::string write_buffer_back_;
 
@@ -103,7 +103,7 @@ private:
 
     // handle
     uv_mutex_t read_proto_mutex_;
-    uv_async_t proto_handle_;
+    uv_async_t* proto_handle_;
     google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_;
 
 private:

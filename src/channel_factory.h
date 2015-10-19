@@ -22,7 +22,6 @@ public:
     AbstractTcpChannelFactory(uv_loop_t* loop, google::protobuf::RpcChannel* router);
     virtual ~AbstractTcpChannelFactory();
     virtual void Close();
-    virtual void Update();
 
     google::protobuf::RpcChannel* router_channel()
     {
@@ -63,34 +62,38 @@ protected:
     virtual void InnerCallback();
 
 protected:
-    static void OnUpdate(uv_idle_t* update);
+    static void OnUpdate(uv_idle_t* handle);
     static void OnWork(uv_work_t* req);
     static void OnAfterWork(uv_async_t* handle);
     static void OnCloseInnerLoop(uv_async_t* handle);
     static void OnQueueChannel(uv_async_t* handle);
     static void OnChannelInvalid(uv_async_t* handle);
     static void OnInnerCallback(uv_async_t* handle);
-    static void OnFinishWork(uv_work_t* req, int status);
+    static void OnClose(uv_handle_t* handle);
+    static void OnFinishWork(uv_work_t* work, int status);
+    static void OnCloseFactory(uv_async_t* handle);
 
 protected:
-    uv_async_t close_inner_loop_;
     uv_async_t inner_loop_callback_;
 
 private:
     uv_loop_t* loop_;
+    uv_async_t* close_factory_;
     uv_idle_t update_;
-    uv_async_t after_work_async_;
+    uv_async_t* after_work_async_;
     google::protobuf::RpcChannel* router_channel_;
 
     uv_loop_t* inner_loop_;
-    uv_mutex_t inner_loop_lock_;
+    uv_mutex_t inner_loop_mutex_;
+    uv_sem_t inner_loop_sem_;
+    uv_async_t close_inner_loop_;
 
     uv_mutex_t queue_channel_mutex_;
-    uv_async_t queue_channel_async_;
+    uv_async_t* queue_channel_async_;
     google::protobuf::RepeatedField<TcpChannel*> queue_channel_;
 
     uv_mutex_t channel_invalid_mutex_;
-    uv_async_t channel_invalid_async_;
+    uv_async_t* channel_invalid_async_;
     google::protobuf::RepeatedField<TcpChannel*> channel_invalid_;
 
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;
@@ -113,7 +116,6 @@ public:
 
 public:
     static void OnAccept(uv_stream_t* stream, int32_t status);
-    static void OnCloseHandle(uv_handle_t* handle);
 
 public: // unit test only
     inline const uv_tcp_t* handle() const
@@ -143,7 +145,6 @@ public:
 
 public:
     static void OnConnect(uv_connect_t* req, int32_t status);
-    static void OnCloseHandle(uv_handle_t* handle);
 
 public:
     inline const uv_connect_t* req() const

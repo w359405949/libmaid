@@ -55,11 +55,13 @@ TcpChannel::TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* abs_facto
     uv_tcp_nodelay((uv_tcp_t*)stream_, 1);
     uv_read_start(stream_, OnAlloc, OnRead);
 
-    write_handle_.data = this;
-    uv_async_init(stream_->loop, &write_handle_, OnWrite);
+    write_handle_ = (uv_async_t*)malloc(sizeof(uv_async_t));
+    write_handle_->data = this;
+    uv_async_init(stream_->loop, write_handle_, OnWrite);
 
-    proto_handle_.data = this;
-    uv_async_init(stream_->loop, &proto_handle_, OnHandle);
+    proto_handle_ = (uv_async_t*)malloc(sizeof(uv_async_t));
+    proto_handle_->data = this;
+    uv_async_init(stream_->loop, proto_handle_, OnHandle);
 
     uv_mutex_init(&write_buffer_mutex_);
     uv_mutex_init(&read_proto_mutex_);
@@ -106,9 +108,10 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
         coded_stream.WriteVarint32(controller_proto->ByteSize());
         controller_proto->SerializeToCodedStream(&coded_stream);
     }
+    if (write_handle_ != nullptr) {
+        uv_async_send(write_handle_);
+    }
     uv_mutex_unlock(&write_buffer_mutex_);
-
-    uv_async_send(&write_handle_);
 }
 
 
@@ -124,6 +127,10 @@ void* TcpChannel::ResultCall(const google::protobuf::MethodDescriptor* method, C
 
 void TcpChannel::OnWrite(uv_async_t* handle)
 {
+    if (uv_is_closing((uv_handle_t*)handle)) {
+        return;
+    }
+
     TcpChannel* self = (TcpChannel*)handle->data;
 
     uv_mutex_lock(&self->write_buffer_mutex_);
@@ -137,10 +144,6 @@ void TcpChannel::OnWrite(uv_async_t* handle)
     }
 
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    if (nullptr == req) {
-        return;
-    }
-
     req->data = self;
 
     uv_buf_t buf;
@@ -199,7 +202,7 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         self->read_stream_.AddBuffer(buffer);
         self->buffer_length_ += nread;
 
-        uv_async_send(&self->proto_handle_);
+        uv_async_send(self->proto_handle_);
     } else {
         self->read_stream_.AddBuffer(buffer); // recircle
         self->factory_->QueueChannelInvalid(self);
@@ -208,6 +211,10 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
 void TcpChannel::OnHandle(uv_async_t* handle)
 {
+    if (uv_is_closing((uv_handle_t*)handle)) {
+        return;
+    }
+
     TcpChannel* self = (TcpChannel*)handle->data;
 
     google::protobuf::io::CodedInputStream coded_stream(&self->read_stream_);
@@ -310,22 +317,30 @@ void TcpChannel::AfterHandleRequest(google::protobuf::RpcController* controller,
         coded_stream.WriteVarint32(controller_proto->ByteSize());
         controller_proto->SerializeToCodedStream(&coded_stream);
     }
+    if (write_handle_ != nullptr) {
+        uv_async_send(write_handle_);
+    }
     uv_mutex_unlock(&write_buffer_mutex_);
-
-    uv_async_send(&write_handle_);
 }
 
-void TcpChannel::OnCloseStream(uv_handle_t* handle)
+void TcpChannel::OnClose(uv_handle_t* handle)
 {
     free(handle);
 }
 
 void TcpChannel::Close()
 {
-    uv_read_stop(stream_);
+    uv_close((uv_handle_t*)stream_, OnClose);
+    uv_close((uv_handle_t*)proto_handle_, OnClose);
 
-    uv_close((uv_handle_t*)&proto_handle_, nullptr);
-    uv_close((uv_handle_t*)&write_handle_, nullptr);
+    uv_mutex_lock(&write_buffer_mutex_);
+    {
+        if (write_handle_ != nullptr) {
+            uv_close((uv_handle_t*)write_handle_, OnClose);
+            write_handle_ = nullptr;
+        }
+    }
+    uv_mutex_unlock(&write_buffer_mutex_);
 }
 
 

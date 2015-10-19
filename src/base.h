@@ -10,7 +10,7 @@ namespace maid {
 class TcpServer
 {
 public:
-    TcpServer(uv_loop_t* loop=NULL);
+    TcpServer();
     virtual ~TcpServer();
 
     int32_t Listen(const std::string& host, int32_t port);
@@ -19,10 +19,7 @@ public:
     void Update();
     uv_loop_t* mutable_loop()
     {
-        if (loop_ != NULL) {
-            return loop_;
-        }
-        return uv_default_loop();
+        return loop_;
     }
 
     google::protobuf::RpcChannel* channel(int64_t channel_id);
@@ -41,13 +38,18 @@ public:
     void Close();
 
 private:
+    static void OnGC(uv_async_t* handle);
+
+private:
     void ConnectedCallback(int32_t index, int64_t connection_id);
     void DisconnectedCallback(int32_t index, int64_t connection_id);
 
 private:
     uv_loop_t* loop_;
+    uv_async_t gc_;
     int32_t current_index_;
     google::protobuf::Map<int32_t, Acceptor*> acceptor_;
+    google::protobuf::RepeatedField<Acceptor*> acceptor_invalid_;
     LocalMapRepoChannel* router_;
 
     std::vector<std::function<void(int64_t)> > connected_callbacks_;
@@ -58,7 +60,7 @@ private:
 class TcpClient
 {
 public:
-    TcpClient(uv_loop_t* loop=NULL);
+    TcpClient();
     virtual ~TcpClient();
 
     int32_t Connect(const std::string& host, int32_t port);
@@ -90,13 +92,18 @@ public:
     void Close();
 
 private:
+    static void OnGC(uv_async_t* handle);
+
+private:
     void ConnectedCallback(int32_t index, int64_t connection_id);
     void DisconnectedCallback(int32_t index, int64_t connection_id);
 
 private:
     uv_loop_t* loop_;
+    uv_async_t gc_;
     int32_t current_index_;
     google::protobuf::Map<int32_t, Connector*> connector_;
+    google::protobuf::RepeatedField<Connector*> connector_invalid_;
     LocalMapRepoChannel* router_;
 
 
