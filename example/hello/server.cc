@@ -54,14 +54,16 @@ void OnCtrlC(uv_signal_t* handle, int statu)
 
 int main()
 {
-    uv_signal_t ctrl_c_;
-    uv_signal_init(uv_default_loop(), &ctrl_c_);
-    uv_signal_start(&ctrl_c_, OnCtrlC, SIGINT);
-
     maid::TcpServer* server = new maid::TcpServer();
-    ctrl_c_.data = server;
+
+    uv_signal_t ctrl_c;
+    ctrl_c.data = server;
+    uv_signal_init(server->mutable_loop(), &ctrl_c);
+    uv_signal_start(&ctrl_c, OnCtrlC, SIGINT);
 
     server->InsertService(new HelloServiceImpl(server));
     server->Listen("0.0.0.0", 5555);
     server->ServeForever();
+
+    delete server;
 }

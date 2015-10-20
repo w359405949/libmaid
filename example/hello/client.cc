@@ -3,7 +3,7 @@
 #include "maid/base.h"
 #include "maid/controller.h"
 #include "hello.pb.h"
-#define REQUESTS 1000
+#define REQUESTS 100000
 
 static int32_t count = 0;
 
@@ -109,11 +109,11 @@ int main()
 {
     maid::TcpClient* client = new maid::TcpClient();
 
-    uv_signal_t ctrl_c_;
-    uv_signal_init(client->mutable_loop(), &ctrl_c_);
-    uv_signal_start(&ctrl_c_, OnCtrlC, SIGINT);
+    uv_signal_t ctrl_c;
+    ctrl_c.data = client;
+    uv_signal_init(client->mutable_loop(), &ctrl_c);
+    uv_signal_start(&ctrl_c, OnCtrlC, SIGINT);
 
-    ctrl_c_.data = client;
     client->InsertService(new HelloServiceImpl());
     client->Connect("127.0.0.1", 5555);
     for(int32_t i = 0; i < REQUESTS / 2; i++){
@@ -137,8 +137,9 @@ int main()
 
         maid::example::HelloService_Stub stub(client->channel());
         stub.HelloNotify(controller, request, response, closure);
-        client->Update();
     }
 
     client->ServeForever();
+
+    delete client;
 }

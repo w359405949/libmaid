@@ -12,11 +12,11 @@ class TcpServer
 public:
     TcpServer();
     virtual ~TcpServer();
+    void Update();
+    void ServeForever();
 
     int32_t Listen(const std::string& host, int32_t port);
 
-    void ServeForever();
-    void Update();
     uv_loop_t* mutable_loop()
     {
         return loop_;
@@ -39,6 +39,7 @@ public:
 
 private:
     static void OnGC(uv_async_t* handle);
+    static void OnClose(uv_async_t* handle);
 
 private:
     void ConnectedCallback(int32_t index, int64_t connection_id);
@@ -47,6 +48,8 @@ private:
 private:
     uv_loop_t* loop_;
     uv_async_t gc_;
+    uv_async_t close_;
+
     int32_t current_index_;
     google::protobuf::Map<int32_t, Acceptor*> acceptor_;
     google::protobuf::RepeatedField<Acceptor*> acceptor_invalid_;
@@ -62,11 +65,11 @@ class TcpClient
 public:
     TcpClient();
     virtual ~TcpClient();
+    void Update();
+    void ServeForever();
 
     int32_t Connect(const std::string& host, int32_t port);
 
-    void Update();
-    void ServeForever();
     uv_loop_t* mutable_loop()
     {
         if (loop_ != NULL) {
@@ -93,6 +96,7 @@ public:
 
 private:
     static void OnGC(uv_async_t* handle);
+    static void OnClose(uv_async_t* handle);
 
 private:
     void ConnectedCallback(int32_t index, int64_t connection_id);
@@ -101,11 +105,12 @@ private:
 private:
     uv_loop_t* loop_;
     uv_async_t gc_;
+    uv_async_t close_;
+
     int32_t current_index_;
     google::protobuf::Map<int32_t, Connector*> connector_;
     google::protobuf::RepeatedField<Connector*> connector_invalid_;
     LocalMapRepoChannel* router_;
-
 
     std::vector<std::function<void(int64_t)> > connected_callbacks_;
     std::vector<std::function<void(int64_t)> > disconnected_callbacks_;

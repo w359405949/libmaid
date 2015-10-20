@@ -12,12 +12,15 @@ TcpServer::TcpServer()
 
     gc_.data = this;
     uv_async_init(loop_, &gc_, OnGC);
+
+    close_.data = this;
+    uv_async_init(loop_, &close_, OnClose);
 }
 
 TcpServer::~TcpServer()
 {
-    uv_loop_close(loop_);
     OnGC(&gc_);
+    uv_loop_close(loop_);
     free(loop_);
     loop_ = nullptr;
 
@@ -26,16 +29,28 @@ TcpServer::~TcpServer()
     router_ = nullptr;
 }
 
+void TcpServer::OnClose(uv_async_t* handle)
+{
+    if (uv_is_closing((uv_handle_t*)handle)) {
+        return;
+    }
+
+    uv_close((uv_handle_t*)handle, nullptr);
+
+    TcpServer* self = (TcpServer*)handle->data;
+
+    for (auto acceptor_it : self->acceptor_) {
+        acceptor_it.second->Close();
+        self->acceptor_invalid_.Add(acceptor_it.second);
+    }
+    self->acceptor_.clear();
+
+    uv_stop(self->loop_);
+}
+
 void TcpServer::Close()
 {
-    google::protobuf::Map<int32_t, Acceptor*> acceptors(acceptor_);
-    for (auto acceptor_it : acceptors) {
-        acceptor_it.second->Close();
-        acceptor_invalid_.Add(acceptor_it.second);
-    }
-    acceptor_.clear();
-
-    uv_stop(loop_);
+    uv_async_send(&close_);
 }
 
 void TcpServer::OnGC(uv_async_t* handle)
@@ -63,16 +78,19 @@ int32_t TcpServer::Listen(const std::string& host, int32_t port)
     return acceptor->Listen(host, port);
 }
 
-void TcpServer::ServeForever()
-{
-    uv_run(loop_, UV_RUN_DEFAULT);
-}
-
 void TcpServer::Update()
 {
-    uv_run(loop_, UV_RUN_NOWAIT);
+    if (uv_is_active((uv_handle_t*)&close_)) {
+        uv_run(loop_, UV_RUN_NOWAIT);
+    }
 }
 
+void TcpServer::ServeForever()
+{
+    while (uv_is_active((uv_handle_t*)&close_)) {
+        uv_run(loop_, UV_RUN_ONCE);
+    }
+}
 
 void TcpServer::ConnectedCallback(int32_t index, int64_t connection_id)
 {
@@ -132,12 +150,15 @@ TcpClient::TcpClient()
 
     gc_.data = this;
     uv_async_init(loop_, &gc_, OnGC);
+
+    close_.data = this;
+    uv_async_init(loop_, &close_, OnClose);
 }
 
 TcpClient::~TcpClient()
 {
-    uv_loop_close(loop_);
     OnGC(&gc_);
+    uv_loop_close(loop_);
     free(loop_);
     loop_ = nullptr;
 
@@ -146,18 +167,29 @@ TcpClient::~TcpClient()
     router_ = nullptr;
 }
 
-void TcpClient::Close()
+void TcpClient::OnClose(uv_async_t* handle)
 {
-    google::protobuf::Map<int32_t, Connector*> connectors;
-    for (auto connector_it : connectors) {
-        connector_it.second->Close();
-        connector_invalid_.Add(connector_it.second);
+    if (uv_is_closing((uv_handle_t*)handle)) {
+        return;
     }
-    connector_.clear();
 
-    uv_stop(loop_);
+    TcpClient* self = (TcpClient*)handle->data;
+
+    uv_close((uv_handle_t*)handle, nullptr);
+
+    for (auto connector_it : self->connector_) {
+        connector_it.second->Close();
+        self->connector_invalid_.Add(connector_it.second);
+    }
+    self->connector_.clear();
+
+    uv_stop(self->loop_);
 }
 
+void TcpClient::Close()
+{
+    uv_async_send(&close_);
+}
 
 void TcpClient::OnGC(uv_async_t* handle)
 {
@@ -202,6 +234,7 @@ void TcpClient::DisconnectedCallback(int32_t index, int64_t connection_id)
     connector_.erase(index);
     connector_invalid_.Add(connector);
     uv_async_send(&gc_);
+
 }
 
 void TcpClient::InsertService(google::protobuf::Service* service)
@@ -209,15 +242,20 @@ void TcpClient::InsertService(google::protobuf::Service* service)
     router_->Insert(service);
 }
 
-void TcpClient::ServeForever()
-{
-    uv_run(loop_, UV_RUN_DEFAULT);
-}
-
 void TcpClient::Update()
 {
-    uv_run(loop_, UV_RUN_NOWAIT);
+    if (uv_is_active((uv_handle_t*)&close_)) {
+        uv_run(loop_, UV_RUN_NOWAIT);
+    }
 }
+
+void TcpClient::ServeForever()
+{
+    while (uv_is_active((uv_handle_t*)&close_)) {
+        uv_run(loop_, UV_RUN_ONCE);
+    }
+}
+
 
 google::protobuf::RpcChannel* TcpClient::channel() const
 {

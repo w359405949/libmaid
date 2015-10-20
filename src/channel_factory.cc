@@ -142,8 +142,6 @@ void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::QueueChannel(TcpChannel* channel)
 {
-    GOOGLE_LOG(INFO)<<"queue channel" << (int64_t)channel;
-
     uv_mutex_lock(&queue_channel_mutex_);
     {
         queue_channel_.Add(channel);
@@ -154,7 +152,6 @@ void AbstractTcpChannelFactory::QueueChannel(TcpChannel* channel)
 
 void AbstractTcpChannelFactory::QueueChannelInvalid(TcpChannel* channel_invalid)
 {
-    GOOGLE_LOG(INFO)<<"channel invalid" << (int64_t)channel_invalid;
     if (channel_invalid != nullptr) {
         channel_invalid->Close();
     }
@@ -349,15 +346,15 @@ void Acceptor::InnerCallback()
     }
     uv_mutex_unlock(&address_mutex_);
 
+    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
     if (result) {
-        GOOGLE_LOG(WARNING) << uv_strerror(result);
         Close();
         return;
     }
 
     result = uv_listen((uv_stream_t*)handle_, 65535, OnAccept);
+    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
     if (result) {
-        GOOGLE_LOG(WARNING) << uv_strerror(result);
         Close();
         return;
     }

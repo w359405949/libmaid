@@ -162,8 +162,8 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
 
     self->write_buffer_back_.clear();
 
+    GOOGLE_LOG_IF(WARNING, status != 0) << uv_strerror(status);
     if (status < 0) {
-        GOOGLE_LOG(WARNING) << uv_strerror(status);
         //self->factory_->QueueChannelInvalid(self);
         return; //
     }
@@ -276,14 +276,14 @@ void TcpChannel::Update()
 int32_t TcpChannel::HandleRequest(const proto::ControllerProto& controller_proto)
 {
     const auto* service = google::protobuf::DescriptorPool::generated_pool()->FindServiceByName(controller_proto.full_service_name());
+    GOOGLE_LOG_IF(WARNING, service == nullptr) << " service: " << controller_proto.full_service_name() << " not exist";
     if (nullptr == service) {
-        GOOGLE_LOG(WARNING) << " service: " << controller_proto.full_service_name() << " not exist";
         return -1;
     }
 
     const auto* method = service->FindMethodByName(controller_proto.method_name());
+    GOOGLE_LOG_IF(WARNING, method == nullptr) << " service: " << controller_proto.full_service_name() << " method: " << controller_proto.method_name() << " not exist";
     if (nullptr == method) {
-        GOOGLE_LOG(WARNING) << " service: " << controller_proto.full_service_name() << " method: " << controller_proto.method_name() << " not exist";
         return -1;
     }
 
