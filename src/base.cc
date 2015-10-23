@@ -46,8 +46,6 @@ void TcpServer::OnClose(uv_async_t* handle)
         acceptor_it.second->Close();
     }
     self->acceptor_.clear();
-
-    //uv_stop(self->loop_);
 }
 
 void TcpServer::Close()
@@ -110,6 +108,7 @@ void TcpServer::DisconnectedCallback(int32_t index, int64_t connection_id)
     if (connection_id != 0) {
         return;
     }
+
     current_index_ = index;
 
     Acceptor* acceptor = acceptor_[index];
@@ -186,8 +185,6 @@ void TcpClient::OnClose(uv_async_t* handle)
         connector_it.second->Close();
     }
     self->connector_.clear();
-
-    //uv_stop(self->loop_);
 }
 
 void TcpClient::Close()
@@ -232,6 +229,11 @@ void TcpClient::DisconnectedCallback(int32_t index, int64_t connection_id)
     for (auto& callback : disconnected_callbacks_) {
         callback(connection_id);
     }
+
+    if (connection_id != 0) {
+        return;
+    }
+
     current_index_ = index;
 
     Connector* connector = connector_[index];

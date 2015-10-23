@@ -54,6 +54,9 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
     GOOGLE_CHECK(queue_channel_.empty());
     GOOGLE_CHECK(channel_.empty()) << channel_.size();
 
+    connected_callbacks_.clear();
+    disconnected_callbacks_.clear();
+
     uv_mutex_destroy(&queue_channel_mutex_);
     uv_mutex_destroy(&channel_invalid_mutex_);
     uv_mutex_destroy(&inner_loop_mutex_);
@@ -78,6 +81,10 @@ void AbstractTcpChannelFactory::OnCloseFactory(uv_async_t* handle)
     }
 
     AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
+
+    uv_close((uv_handle_t*)self->after_work_async_, OnClose);
+    uv_close((uv_handle_t*)self->close_factory_, OnClose);
+
     uv_async_send(&self->close_inner_loop_);
     uv_sem_wait(&self->inner_loop_sem_);
     uv_mutex_lock(&self->inner_loop_mutex_);
@@ -91,12 +98,6 @@ void AbstractTcpChannelFactory::OnCloseFactory(uv_async_t* handle)
     for (auto& channel : self->channel_) {
         channel.second->Close();
     }
-
-    uv_close((uv_handle_t*)self->after_work_async_, OnClose);
-    uv_close((uv_handle_t*)self->close_factory_, OnClose);
-
-    self->connected_callbacks_.clear();
-    self->disconnected_callbacks_.clear();
 
     self->close_factory_ = nullptr;
 }

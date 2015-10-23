@@ -12,6 +12,7 @@ public:
 
     std::string* ReleaseCleared();
     void AddBuffer(std::string* buffer);
+    void AddCleared(std::string* buffer);
 
 public:
     // implements ZeroCopyInputStream ----------------------------------

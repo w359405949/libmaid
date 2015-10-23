@@ -217,9 +217,8 @@ void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 {
     TcpChannel* self = (TcpChannel*)handle->data;
 
-    if (self->buffer_size_ > 64 << 20) {
+    if (self->buffer_size_ > (64 << 20)) {
         buf->base = nullptr;
-        buf->len = 0;
         return;
     }
 
@@ -290,12 +289,11 @@ void TcpChannel::OnHandle(uv_async_t* handle)
             break;
         }
 
-        int size = 0;
         bool success = false;
         uv_mutex_lock(&self->read_proto_mutex_);
         {
             success = self->read_proto_.Add()->ParseFromCodedStream(self->coded_stream_);
-            size = self->read_proto_.size();
+            self->read_proto_.size();
         }
         uv_mutex_unlock(&self->read_proto_mutex_);
 
@@ -306,10 +304,6 @@ void TcpChannel::OnHandle(uv_async_t* handle)
 
         self->lack_size_ = 0;
         self->coded_stream_->PopLimit(self->prev_limit_);
-
-        if (size > 50) {
-            break;
-        }
     }
 
 

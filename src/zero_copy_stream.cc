@@ -49,6 +49,16 @@ void RingInputStream::AddBuffer(std::string* buffer)
     streams_.Add(stream);
 }
 
+void RingInputStream::AddCleared(std::string* buffer)
+{
+    if (cleared_buffer_.size() > 10) {
+        delete buffer;
+        return;
+    }
+
+    cleared_buffer_.Add(buffer);
+}
+
 bool RingInputStream::Next(const void** data, int* size)
 {
     bool result = false;
@@ -67,7 +77,7 @@ bool RingInputStream::Next(const void** data, int* size)
 
         GOOGLE_CHECK(buffer->size() == stream->ByteCount());
 
-        cleared_buffer_.Add(buffer);
+        AddCleared(buffer);
         reading_stream_.erase(stream);
         delete stream;
 
@@ -114,7 +124,7 @@ bool RingInputStream::Skip(int count)
 
         std::string* buffer = reading_stream_[stream];
 
-        cleared_buffer_.Add(buffer);
+        AddCleared(buffer);
         reading_stream_.erase(stream);
         delete stream;
 
