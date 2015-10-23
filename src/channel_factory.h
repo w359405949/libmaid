@@ -22,6 +22,7 @@ public:
     AbstractTcpChannelFactory(uv_loop_t* loop, google::protobuf::RpcChannel* router);
     virtual ~AbstractTcpChannelFactory();
     virtual void Close();
+    virtual void Update();
 
     google::protobuf::RpcChannel* router_channel()
     {
@@ -66,8 +67,6 @@ protected:
     static void OnWork(uv_work_t* req);
     static void OnAfterWork(uv_async_t* handle);
     static void OnCloseInnerLoop(uv_async_t* handle);
-    static void OnQueueChannel(uv_async_t* handle);
-    static void OnChannelInvalid(uv_async_t* handle);
     static void OnInnerCallback(uv_async_t* handle);
     static void OnClose(uv_handle_t* handle);
     static void OnFinishWork(uv_work_t* work, int status);
@@ -89,11 +88,9 @@ private:
     uv_async_t close_inner_loop_;
 
     uv_mutex_t queue_channel_mutex_;
-    uv_async_t* queue_channel_async_;
     google::protobuf::RepeatedField<TcpChannel*> queue_channel_;
 
     uv_mutex_t channel_invalid_mutex_;
-    uv_async_t* channel_invalid_async_;
     google::protobuf::RepeatedField<TcpChannel*> channel_invalid_;
 
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;

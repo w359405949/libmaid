@@ -2,74 +2,8 @@
 #include <google/protobuf/empty.pb.h>
 #include "maid/base.h"
 #include "maid/controller.h"
+#include "maid/callbacks.h"
 #include "hello.pb.h"
-#define REQUESTS 100000
-
-static int32_t count = 0;
-
-class Closure : public google::protobuf::Closure
-{
-public:
-    Closure(maid::Controller* controller, maid::example::HelloRequest* request, maid::example::HelloResponse* response, maid::TcpClient* client)
-        :response_(response),
-        request_(request),
-        controller_(controller),
-        client_(client)
-    {
-    }
-
-    void Run()
-    {
-        ++count;
-        printf("count:%d, :client:%s, server:%s\n", count, request_->message().c_str(), response_->message().c_str());
-        if(count == REQUESTS){
-            client_->Close();
-        }
-
-        delete request_;
-        delete response_;
-        delete controller_;
-    }
-
-private:
-    maid::Controller* controller_;
-    maid::example::HelloRequest* request_;
-    maid::example::HelloResponse* response_;
-    maid::TcpClient* client_;
-};
-
-
-class EmptyClosure : public google::protobuf::Closure
-{
-public:
-    EmptyClosure(maid::Controller* controller, maid::example::HelloRequest* request, google::protobuf::Empty* response, maid::TcpClient* client)
-        :response_(response),
-        request_(request),
-        controller_(controller),
-        client_(client)
-    {
-    }
-
-    void Run()
-    {
-        ++count;
-        printf("%d:client:%s\n", count, request_->message().c_str());
-        if(count >= REQUESTS){
-            client_->Close();
-        }
-
-        delete request_;
-        delete response_;
-        delete controller_;
-    }
-
-private:
-    maid::Controller* controller_;
-    maid::example::HelloRequest* request_;
-    google::protobuf::Empty* response_;
-    maid::TcpClient* client_;
-};
-
 
 class HelloServiceImpl: public maid::example::HelloService
 {
@@ -88,58 +22,102 @@ public:
             google::protobuf::Empty* response,
             google::protobuf::Closure* done) override
     {
-        request->PrintDebugString();
+        //request->PrintDebugString();
         done->Run();
     }
 
 private:
 };
 
-
-void OnCtrlC(uv_signal_t* handle, int statu)
+class Client : public maid::TcpClient
 {
-    printf("ctrl_c pressed:\n");
-    maid::TcpClient* client = (maid::TcpClient*)handle->data;
-    client->Close();
-}
+public:
+    Client()
+        :count_(0)
+    {
+        ctrl_c_.data = this;
+        uv_signal_init(mutable_loop(), &ctrl_c_);
+        uv_signal_start(&ctrl_c_, &OnCtrlC, SIGINT);
+
+        update_.data = this;
+        uv_timer_init(mutable_loop(), &update_);
+        uv_timer_start(&update_, &OnTimer, 0, 1);
+    }
+
+    void Close() override
+    {
+        maid::TcpClient::Close();
+        uv_signal_stop(&ctrl_c_);
+        uv_timer_stop(&update_);
+        closure_component_.Clear();
+    }
 
 
+    void Timer()
+    {
+        count_++;
+
+        //GOOGLE_LOG(INFO)<<"count:"<<count_;
+
+        int c = 500;
+        //if (count_ < 5000) {
+        if (true) {
+            while (c--) {
+                maid::Controller* controller = new maid::Controller();
+                maid::example::HelloRequest* request = new maid::example::HelloRequest();
+                request->set_message("hello");
+                maid::example::HelloResponse* response = new maid::example::HelloResponse();
+
+                maid::example::HelloService_Stub stub(channel());
+                stub.Hello(controller, request, response, closure_component_.NewClosure(&Client::Callback, this, controller, request, response));
+            }
+        } else if (count_ < 10000) {
+            while (c--) {
+                maid::Controller* controller = new maid::Controller();
+                maid::example::HelloRequest* request = new maid::example::HelloRequest();
+                request->set_message("empty");
+                google::protobuf::Empty* response = new google::protobuf::Empty();
+
+                maid::example::HelloService_Stub stub(channel());
+                stub.HelloNotify(controller, request, response, closure_component_.NewClosure(controller, request, response));
+            }
+        } else {
+            //Close();
+        }
+    }
+
+private:
+    void Callback(google::protobuf::RpcController* controller, maid::example::HelloRequest* request, maid::example::HelloResponse* response)
+    {
+        response->PrintDebugString();
+    }
+
+private:
+    static void OnTimer(uv_timer_t* handle)
+    {
+        Client* self = (Client*)handle->data;
+        self->Timer();
+    }
+
+    static void OnCtrlC(uv_signal_t* handle, int statu)
+    {
+        Client* self = (Client*)handle->data;
+        self->Close();
+    }
+
+private:
+    uv_signal_t ctrl_c_;
+    uv_timer_t update_;
+    maid::ClosureComponent closure_component_;
+
+    int count_;
+};
 
 int main()
 {
-    maid::TcpClient* client = new maid::TcpClient();
-
-    uv_signal_t ctrl_c;
-    ctrl_c.data = client;
-    uv_signal_init(client->mutable_loop(), &ctrl_c);
-    uv_signal_start(&ctrl_c, OnCtrlC, SIGINT);
-
+    Client* client = new Client();
     client->InsertService(new HelloServiceImpl());
     client->Connect("127.0.0.1", 5555);
-    for(int32_t i = 0; i < REQUESTS / 2; i++){
-        maid::Controller* controller = new maid::Controller();
-        maid::example::HelloRequest* request = new maid::example::HelloRequest();
-        request->set_message("hello");
-        maid::example::HelloResponse* response = new maid::example::HelloResponse();
-        Closure* closure = new Closure(controller, request, response, client);
-
-        maid::example::HelloService_Stub stub(client->channel());
-        stub.Hello(controller, request, response, closure);
-        client->Update();
-    }
-
-    for(int32_t i = 0; i < REQUESTS / 2; i++) {
-        maid::Controller* controller = new maid::Controller();
-        maid::example::HelloRequest* request = new maid::example::HelloRequest();
-        request->set_message("empty");
-        google::protobuf::Empty* response = new google::protobuf::Empty();
-        EmptyClosure* closure = new EmptyClosure(controller, request, response, client);
-
-        maid::example::HelloService_Stub stub(client->channel());
-        stub.HelloNotify(controller, request, response, closure);
-    }
-
     client->ServeForever();
-
     delete client;
 }

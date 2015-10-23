@@ -47,12 +47,13 @@ private:
 
 class TcpChannel : public google::protobuf::RpcChannel
 {
-public:
+public: // inner thread
     TcpChannel(uv_stream_t* stream, AbstractTcpChannelFactory* factory);
     ~TcpChannel();
+
+public: // user thread
     void Update();
     void Close();
-
     virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
                             google::protobuf::RpcController* controller,
                             const google::protobuf::Message* request,
@@ -75,7 +76,8 @@ private:
     static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
     static void OnHandle(uv_async_t* handle);
     static void OnTimer(uv_timer_t* timer);
-    static void OnClose(uv_handle_t* handle);
+    static void OnCloseHandle(uv_handle_t* handle);
+    static void OnClose(uv_async_t* handle);
 
 private: // unit test only
     inline const AbstractTcpChannelFactory* factory() const
@@ -84,6 +86,8 @@ private: // unit test only
     }
 
 private:
+    uv_mutex_t close_mutex_;
+    uv_async_t* close_;
     uv_stream_t* stream_;
 
     // closure
@@ -99,12 +103,16 @@ private:
     // read
     google::protobuf::Map<void*, std::string*> reading_buffer_;
     RingInputStream read_stream_;
-    int32_t buffer_length_;
+    google::protobuf::io::CodedInputStream* coded_stream_;
+    google::protobuf::io::CodedInputStream::Limit prev_limit_;
+    int64_t buffer_size_;
+    int64_t lack_size_;
 
     // handle
     uv_mutex_t read_proto_mutex_;
     uv_async_t* proto_handle_;
     google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_;
+    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_back_;
 
 private:
     AbstractTcpChannelFactory* factory_;

@@ -12,6 +12,7 @@ class TcpServer
 public:
     TcpServer();
     virtual ~TcpServer();
+    virtual void Close();
     void Update();
     void ServeForever();
 
@@ -35,7 +36,6 @@ public:
         disconnected_callbacks_.push_back(callback);
     }
 
-    void Close();
 
 private:
     static void OnGC(uv_async_t* handle);
@@ -65,6 +65,7 @@ class TcpClient
 public:
     TcpClient();
     virtual ~TcpClient();
+    virtual void Close();
     void Update();
     void ServeForever();
 
@@ -92,7 +93,6 @@ public:
 
     google::protobuf::RpcChannel* channel() const;
 
-    void Close();
 
 private:
     static void OnGC(uv_async_t* handle);

@@ -27,6 +27,9 @@ TcpServer::~TcpServer()
     router_->Close();
     delete router_;
     router_ = nullptr;
+
+    GOOGLE_CHECK(acceptor_.empty());
+    GOOGLE_CHECK(acceptor_invalid_.empty());
 }
 
 void TcpServer::OnClose(uv_async_t* handle)
@@ -41,11 +44,10 @@ void TcpServer::OnClose(uv_async_t* handle)
 
     for (auto acceptor_it : self->acceptor_) {
         acceptor_it.second->Close();
-        self->acceptor_invalid_.Add(acceptor_it.second);
     }
     self->acceptor_.clear();
 
-    uv_stop(self->loop_);
+    //uv_stop(self->loop_);
 }
 
 void TcpServer::Close()
@@ -80,14 +82,14 @@ int32_t TcpServer::Listen(const std::string& host, int32_t port)
 
 void TcpServer::Update()
 {
-    if (uv_is_active((uv_handle_t*)&close_)) {
+    if (uv_is_active((uv_handle_t*)&close_) || !acceptor_.empty()) {
         uv_run(loop_, UV_RUN_NOWAIT);
     }
 }
 
 void TcpServer::ServeForever()
 {
-    while (uv_is_active((uv_handle_t*)&close_)) {
+    while (uv_is_active((uv_handle_t*)&close_) || !acceptor_.empty()) {
         uv_run(loop_, UV_RUN_ONCE);
     }
 }
@@ -165,6 +167,9 @@ TcpClient::~TcpClient()
     router_->Close();
     delete router_;
     router_ = nullptr;
+
+    GOOGLE_CHECK(connector_.empty());
+    GOOGLE_CHECK(connector_invalid_.empty());
 }
 
 void TcpClient::OnClose(uv_async_t* handle)
@@ -179,11 +184,10 @@ void TcpClient::OnClose(uv_async_t* handle)
 
     for (auto connector_it : self->connector_) {
         connector_it.second->Close();
-        self->connector_invalid_.Add(connector_it.second);
     }
     self->connector_.clear();
 
-    uv_stop(self->loop_);
+    //uv_stop(self->loop_);
 }
 
 void TcpClient::Close()
@@ -234,7 +238,6 @@ void TcpClient::DisconnectedCallback(int32_t index, int64_t connection_id)
     connector_.erase(index);
     connector_invalid_.Add(connector);
     uv_async_send(&gc_);
-
 }
 
 void TcpClient::InsertService(google::protobuf::Service* service)
@@ -244,14 +247,14 @@ void TcpClient::InsertService(google::protobuf::Service* service)
 
 void TcpClient::Update()
 {
-    if (uv_is_active((uv_handle_t*)&close_)) {
+    if (uv_is_active((uv_handle_t*)&close_) || !connector_.empty()) {
         uv_run(loop_, UV_RUN_NOWAIT);
     }
 }
 
 void TcpClient::ServeForever()
 {
-    while (uv_is_active((uv_handle_t*)&close_)) {
+    while (uv_is_active((uv_handle_t*)&close_) || !connector_.empty()) {
         uv_run(loop_, UV_RUN_ONCE);
     }
 }

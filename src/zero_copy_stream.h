@@ -21,8 +21,6 @@ public:
     int64_t ByteCount() const;
 
 private:
-    // As streams are retired, streams_ is incremented and count_ is
-    // decremented.
     google::protobuf::RepeatedField<google::protobuf::io::ArrayInputStream*> streams_; // order
     google::protobuf::Map<google::protobuf::io::ArrayInputStream*, std::string*> reading_stream_;
     google::protobuf::RepeatedField<std::string*> cleared_buffer_;

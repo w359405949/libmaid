@@ -24,7 +24,7 @@ public:
         //MockClosure* closure = new MockClosure(con, req, res);
         //stub.HelloNotify(con, req, res, closure);
 
-        request->PrintDebugString();
+        //request->PrintDebugString();
         response->set_message("welcome to server");
         done->Run();
     }
@@ -34,7 +34,7 @@ public:
             google::protobuf::Empty* response,
             google::protobuf::Closure* done) override
     {
-        request->PrintDebugString();
+        //request->PrintDebugString();
         done->Run();
     }
 
@@ -42,25 +42,36 @@ private:
     maid::TcpServer* server_;
 };
 
-
-void OnCtrlC(uv_signal_t* handle, int statu)
+class Server : public maid::TcpServer
 {
-    printf("ctrl_c pressed:\n");
+public:
+    Server()
+    {
+        ctrl_c_.data = this;
+        uv_signal_init(mutable_loop(), &ctrl_c_);
+        uv_signal_start(&ctrl_c_, &OnCtrlC, SIGINT);
+    }
 
-    maid::TcpServer* server = (maid::TcpServer*)handle->data;
-    server->Close();
-}
+    void Close() override
+    {
+        maid::TcpServer::Close();
+        uv_signal_stop(&ctrl_c_);
+    }
 
+public:
+    static void OnCtrlC(uv_signal_t* handle, int statu)
+    {
+        Server* self = (Server*)handle->data;
+        self->Close();
+    }
+
+private:
+    uv_signal_t ctrl_c_;
+};
 
 int main()
 {
-    maid::TcpServer* server = new maid::TcpServer();
-
-    uv_signal_t ctrl_c;
-    ctrl_c.data = server;
-    uv_signal_init(server->mutable_loop(), &ctrl_c);
-    uv_signal_start(&ctrl_c, OnCtrlC, SIGINT);
-
+    Server* server = new Server();
     server->InsertService(new HelloServiceImpl(server));
     server->Listen("0.0.0.0", 5555);
     server->ServeForever();
