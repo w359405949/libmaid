@@ -54,9 +54,6 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
     GOOGLE_CHECK(queue_channel_.empty());
     GOOGLE_CHECK(channel_.empty()) << channel_.size();
 
-    connected_callbacks_.clear();
-    disconnected_callbacks_.clear();
-
     uv_mutex_destroy(&queue_channel_mutex_);
     uv_mutex_destroy(&channel_invalid_mutex_);
     uv_mutex_destroy(&inner_loop_mutex_);
@@ -100,6 +97,7 @@ void AbstractTcpChannelFactory::OnCloseFactory(uv_async_t* handle)
     }
 
     self->close_factory_ = nullptr;
+
 }
 
 void AbstractTcpChannelFactory::Update()
@@ -133,7 +131,7 @@ void AbstractTcpChannelFactory::Update()
 
     if (close_factory_ == nullptr && channel_.empty()) {
         uv_idle_stop(&update_);
-        Disconnected(nullptr);
+        close_callback_();
     }
 }
 
@@ -148,18 +146,14 @@ void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
 {
     channel_[channel] = channel;
 
-    for (auto& function : connected_callbacks_) {
-        function((int64_t)channel);
-    }
+    connected_callback_((int64_t)channel);
 }
 
 void AbstractTcpChannelFactory::Disconnected(TcpChannel* channel)
 {
     channel_.erase(channel);
 
-    for (auto& function : disconnected_callbacks_) {
-        function((int64_t)channel);
-    }
+    disconnected_callback_((int64_t)channel);
 }
 
 void AbstractTcpChannelFactory::QueueChannel(TcpChannel* channel)

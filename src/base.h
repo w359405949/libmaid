@@ -42,16 +42,16 @@ private:
     static void OnClose(uv_async_t* handle);
 
 private:
-    void ConnectedCallback(int32_t index, int64_t connection_id);
-    void DisconnectedCallback(int32_t index, int64_t connection_id);
+    void ConnectedCallback(Acceptor* acceptor, int64_t connection_id);
+    void DisconnectedCallback(Acceptor* acceptor, int64_t connection_id);
+    void CloseCallback(Acceptor* acceptor);
 
 private:
     uv_loop_t* loop_;
     uv_async_t gc_;
     uv_async_t close_;
 
-    int32_t current_index_;
-    google::protobuf::Map<int32_t, Acceptor*> acceptor_;
+    google::protobuf::Map<Acceptor*, Acceptor*> acceptor_;
     google::protobuf::RepeatedField<Acceptor*> acceptor_invalid_;
     LocalMapRepoChannel* router_;
 
@@ -99,16 +99,16 @@ private:
     static void OnClose(uv_async_t* handle);
 
 private:
-    void ConnectedCallback(int32_t index, int64_t connection_id);
-    void DisconnectedCallback(int32_t index, int64_t connection_id);
+    void ConnectedCallback(Connector* connector, int64_t connection_id);
+    void DisconnectedCallback(Connector* connector, int64_t connection_id);
+    void CloseCallback(Connector* connector);
 
 private:
     uv_loop_t* loop_;
     uv_async_t gc_;
     uv_async_t close_;
 
-    int32_t current_index_;
-    google::protobuf::Map<int32_t, Connector*> connector_;
+    google::protobuf::Map<Connector*, int64_t> connector_;
     google::protobuf::RepeatedField<Connector*> connector_invalid_;
     LocalMapRepoChannel* router_;
 

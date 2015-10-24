@@ -4,7 +4,6 @@ namespace maid {
 
 TcpServer::TcpServer()
     :loop_(nullptr),
-    current_index_(0),
     router_(new LocalMapRepoChannel())
 {
     loop_ = (uv_loop_t*)malloc(uv_loop_size());
@@ -43,7 +42,7 @@ void TcpServer::OnClose(uv_async_t* handle)
     TcpServer* self = (TcpServer*)handle->data;
 
     for (auto acceptor_it : self->acceptor_) {
-        acceptor_it.second->Close();
+        acceptor_it.first->Close();
     }
     self->acceptor_.clear();
 }
@@ -66,14 +65,11 @@ void TcpServer::OnGC(uv_async_t* handle)
 
 int32_t TcpServer::Listen(const std::string& host, int32_t port)
 {
-    while (acceptor_.find(current_index_) != acceptor_.end()) {
-        current_index_++;
-    }
-
     Acceptor* acceptor = new Acceptor(loop_, router_);
-    acceptor->AddConnectedCallback(std::bind(&TcpServer::ConnectedCallback, this, current_index_, std::placeholders::_1));
-    acceptor->AddDisconnectedCallback(std::bind(&TcpServer::DisconnectedCallback, this, current_index_, std::placeholders::_1));
-    acceptor_[current_index_] = acceptor;
+    acceptor->ConnectedCallback(std::bind(&TcpServer::ConnectedCallback, this, acceptor, std::placeholders::_1));
+    acceptor->DisconnectedCallback(std::bind(&TcpServer::DisconnectedCallback, this, acceptor, std::placeholders::_1));
+    acceptor->CloseCallback(std::bind(&TcpServer::CloseCallback, this, acceptor));
+    acceptor_[acceptor] = acceptor;
 
     return acceptor->Listen(host, port);
 }
@@ -92,27 +88,23 @@ void TcpServer::ServeForever()
     }
 }
 
-void TcpServer::ConnectedCallback(int32_t index, int64_t connection_id)
+void TcpServer::ConnectedCallback(Acceptor* acceptor, int64_t connection_id)
 {
     for (auto& callback : connected_callbacks_) {
         callback(connection_id);
     }
 }
 
-void TcpServer::DisconnectedCallback(int32_t index, int64_t connection_id)
+void TcpServer::DisconnectedCallback(Acceptor* acceptor, int64_t connection_id)
 {
     for (auto& callback : disconnected_callbacks_) {
         callback(connection_id);
     }
+}
 
-    if (connection_id != 0) {
-        return;
-    }
-
-    current_index_ = index;
-
-    Acceptor* acceptor = acceptor_[index];
-    acceptor_.erase(index);
+void TcpServer::CloseCallback(Acceptor* acceptor)
+{
+    acceptor_.erase(acceptor);
     acceptor_invalid_.Add(acceptor);
     uv_async_send(&gc_);
 }
@@ -126,7 +118,7 @@ google::protobuf::RpcChannel* TcpServer::channel(int64_t channel_id)
 {
     google::protobuf::RpcChannel* chl = maid::Channel::default_instance();
     for (auto acceptor_it : acceptor_) {
-        chl = acceptor_it.second->channel(channel_id);
+        chl = acceptor_it.first->channel(channel_id);
         if (chl != maid::Channel::default_instance()) {
             break;
         }
@@ -143,7 +135,6 @@ google::protobuf::RpcChannel* TcpServer::channel(int64_t channel_id)
 
 TcpClient::TcpClient()
     :loop_(nullptr),
-    current_index_(0),
     router_(new LocalMapRepoChannel())
 {
     loop_ = (uv_loop_t*)malloc(uv_loop_size());
@@ -182,7 +173,7 @@ void TcpClient::OnClose(uv_async_t* handle)
     uv_close((uv_handle_t*)handle, nullptr);
 
     for (auto connector_it : self->connector_) {
-        connector_it.second->Close();
+        connector_it.first->Close();
     }
     self->connector_.clear();
 }
@@ -205,39 +196,37 @@ void TcpClient::OnGC(uv_async_t* handle)
 
 int32_t TcpClient::Connect(const std::string& host, int32_t port)
 {
-    while (connector_.find(current_index_) != connector_.end()) {
-        current_index_++;
-    }
-
     Connector* connector = new Connector(loop_, router_);
-    connector->AddConnectedCallback(std::bind(&TcpClient::ConnectedCallback, this, current_index_, std::placeholders::_1));
-    connector->AddDisconnectedCallback(std::bind(&TcpClient::DisconnectedCallback, this, current_index_, std::placeholders::_1));
-    connector_[current_index_] = connector;
+    connector->ConnectedCallback(std::bind(&TcpClient::ConnectedCallback, this, connector, std::placeholders::_1));
+    connector->DisconnectedCallback(std::bind(&TcpClient::DisconnectedCallback, this, connector, std::placeholders::_1));
+    connector->CloseCallback(std::bind(&TcpClient::CloseCallback, this, connector));
+    connector_[connector]++;
+
 
     return connector->Connect(host, port);
 }
 
-void TcpClient::ConnectedCallback(int32_t index, int64_t connection_id)
+void TcpClient::ConnectedCallback(Connector* connector, int64_t connection_id)
 {
     for (auto& callback : connected_callbacks_) {
         callback(connection_id);
     }
+
+    connector_[connector] = connection_id;
 }
 
-void TcpClient::DisconnectedCallback(int32_t index, int64_t connection_id)
+void TcpClient::DisconnectedCallback(Connector* connector, int64_t connection_id)
 {
-    if (connection_id != 0) {
-        return;
-    }
+    connector->Close();
+}
 
+void TcpClient::CloseCallback(Connector* connector)
+{
     for (auto& callback : disconnected_callbacks_) {
-        callback(connection_id);
+        callback(connector_[connector]);
     }
 
-    current_index_ = index;
-
-    Connector* connector = connector_[index];
-    connector_.erase(index);
+    connector_.erase(connector);
     connector_invalid_.Add(connector);
     uv_async_send(&gc_);
 }
@@ -266,7 +255,7 @@ google::protobuf::RpcChannel* TcpClient::channel() const
 {
     google::protobuf::RpcChannel* chl = maid::Channel::default_instance();
     for (auto connector_it : connector_) {
-        chl = connector_it.second->channel();
+        chl = connector_it.first->channel();
         if (chl != maid::Channel::default_instance()) {
             break;
         }

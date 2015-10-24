@@ -35,21 +35,20 @@ public:
     virtual void Connected(TcpChannel* channel);
     virtual void Disconnected(TcpChannel* channel);
 
-    inline void AddConnectedCallback(std::function<void(int64_t)> callback)
+    inline void ConnectedCallback(std::function<void(int64_t)> callback)
     {
-        connected_callbacks_.push_back(callback);
+        connected_callback_ = callback;
     }
 
-    inline void AddDisconnectedCallback(std::function<void(int64_t)> callback)
+    inline void DisconnectedCallback(std::function<void(int64_t)> callback)
     {
-        disconnected_callbacks_.push_back(callback);
+        disconnected_callback_ = callback;
     }
 
-    inline uv_loop_t* loop()
+    inline void CloseCallback(std::function<void()> callback)
     {
-        return loop_;
+        close_callback_ = callback;
     }
-
 
     void QueueChannel(TcpChannel* channel);
     void QueueChannelInvalid(TcpChannel* channel_invalid);
@@ -95,8 +94,9 @@ private:
 
     google::protobuf::Map<TcpChannel*, TcpChannel*> channel_;
 
-    std::vector<std::function<void(int64_t)> > connected_callbacks_;
-    std::vector<std::function<void(int64_t)> > disconnected_callbacks_;
+    std::function<void(int64_t)> connected_callback_;
+    std::function<void(int64_t)> disconnected_callback_;
+    std::function<void()> close_callback_;
 };
 
 
