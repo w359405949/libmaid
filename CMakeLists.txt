@@ -33,11 +33,11 @@ link_directories(
 
 set(CMAKE_MACOSX_RPATH 1)
 
-set(cxx_strict "${cxx_strict} -std=c++11 -Wall -Wno-shadow")
+set(cxx_strict "${cxx_strict} -std=c++11 -Wall -Wno-shadow -pthread")
 set(cxx_strict "${cxx_strict} -ggdb3 -DDEBUG=1 -O0")
 #set(cxx_strict "${cxx_strict} -O3 -fPIC")
 
-    cxx_library(maid ${cxx_strict} ${source})
+cxx_library(maid ${cxx_strict} ${source})
 #cxx_shared_library(maid ${cxx_strict} ${source})
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/.libs)
@@ -54,20 +54,3 @@ INSTALL(FILES libmaid.a DESTINATION lib)
 INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/maid DESTINATION include)
 INSTALL(FILES ${header} DESTINATION include/maid/)
 INSTALL(FILES ${middleware_header} DESTINATION include/maid/middleware/)
-
-################################
-# TEST
-################################
-if (maid_test)
-    enable_testing()
-
-    ADD_SUBDIRECTORY(deps/gtest)
-    cxx_library(maid_main ${cxx_strict} test/maid_main)
-    target_link_libraries(maid_main maid gtest)
-
-    cxx_test(maid_channel_factory_test maid_main)
-    cxx_test(maid_channel_test maid_main test/test.pb.cc)
-    cxx_test(maid_controller_test maid_main )
-    cxx_test(maid_buffer_test maid_main )
-    cxx_test(maid_closure_test maid_main test/test.pb.cc)
-endif()

@@ -226,12 +226,12 @@ void TcpClient::ConnectedCallback(int32_t index, int64_t connection_id)
 
 void TcpClient::DisconnectedCallback(int32_t index, int64_t connection_id)
 {
-    for (auto& callback : disconnected_callbacks_) {
-        callback(connection_id);
-    }
-
     if (connection_id != 0) {
         return;
+    }
+
+    for (auto& callback : disconnected_callbacks_) {
+        callback(connection_id);
     }
 
     current_index_ = index;
