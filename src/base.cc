@@ -18,8 +18,8 @@ TcpServer::TcpServer()
 
 TcpServer::~TcpServer()
 {
-    OnGC(&gc_);
     uv_loop_close(loop_);
+    OnGC(&gc_);
     free(loop_);
     loop_ = nullptr;
 
@@ -104,8 +104,8 @@ void TcpServer::DisconnectedCallback(Acceptor* acceptor, int64_t connection_id)
 
 void TcpServer::CloseCallback(Acceptor* acceptor)
 {
-    acceptor_.erase(acceptor);
     acceptor_invalid_.Add(acceptor);
+    acceptor_.erase(acceptor);
     uv_async_send(&gc_);
 }
 
@@ -114,11 +114,11 @@ void TcpServer::InsertService(google::protobuf::Service* service)
     router_->Insert(service);
 }
 
-google::protobuf::RpcChannel* TcpServer::channel(int64_t channel_id)
+google::protobuf::RpcChannel* TcpServer::channel(int64_t connector_id)
 {
     google::protobuf::RpcChannel* chl = maid::Channel::default_instance();
     for (auto acceptor_it : acceptor_) {
-        chl = acceptor_it.first->channel(channel_id);
+        chl = acceptor_it.first->channel(connector_id);
         if (chl != maid::Channel::default_instance()) {
             break;
         }
@@ -149,8 +149,8 @@ TcpClient::TcpClient()
 
 TcpClient::~TcpClient()
 {
-    OnGC(&gc_);
     uv_loop_close(loop_);
+    OnGC(&gc_);
     free(loop_);
     loop_ = nullptr;
 
@@ -187,10 +187,9 @@ void TcpClient::OnGC(uv_async_t* handle)
 {
     TcpClient* self = (TcpClient*)handle->data;
 
-    for (auto connector : self->connector_invalid_) {
+    for (auto& connector : self->connector_invalid_) {
         delete connector;
     }
-
     self->connector_invalid_.Clear();
 }
 
@@ -200,8 +199,7 @@ int32_t TcpClient::Connect(const std::string& host, int32_t port)
     connector->ConnectedCallback(std::bind(&TcpClient::ConnectedCallback, this, connector, std::placeholders::_1));
     connector->DisconnectedCallback(std::bind(&TcpClient::DisconnectedCallback, this, connector, std::placeholders::_1));
     connector->CloseCallback(std::bind(&TcpClient::CloseCallback, this, connector));
-    connector_[connector]++;
-
+    connector_[connector] = 0;
 
     return connector->Connect(host, port);
 }
@@ -226,8 +224,8 @@ void TcpClient::CloseCallback(Connector* connector)
         callback(connector_[connector]);
     }
 
-    connector_.erase(connector);
     connector_invalid_.Add(connector);
+    connector_.erase(connector);
     uv_async_send(&gc_);
 }
 

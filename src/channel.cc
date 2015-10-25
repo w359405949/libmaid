@@ -96,8 +96,13 @@ void TcpChannel::OnClose(uv_async_t* handle)
 
     uv_read_stop(self->stream_);
     uv_close((uv_handle_t*)self->stream_, OnCloseHandle); // stop write
+    self->stream_ = nullptr;
+
     uv_close((uv_handle_t*)self->proto_handle_, OnCloseHandle);
+    self->proto_handle_ = nullptr;
+
     uv_close((uv_handle_t*)handle, OnCloseHandle);
+    self->close_ = nullptr;
 
     uv_mutex_lock(&self->write_buffer_mutex_);
     {
@@ -106,8 +111,6 @@ void TcpChannel::OnClose(uv_async_t* handle)
     }
     uv_mutex_unlock(&self->write_buffer_mutex_);
 
-    self->stream_ = nullptr;
-    self->proto_handle_ = nullptr;
 
     self->factory_->QueueChannelInvalid(self);
 }
@@ -135,14 +138,17 @@ void TcpChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
 
     uv_mutex_lock(&write_buffer_mutex_);
     {
-        google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
-        google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
-        coded_stream.WriteVarint32(controller_proto->ByteSize());
-        GOOGLE_CHECK(controller_proto->SerializeToCodedStream(&coded_stream));
+        do {
+            if (write_handle_ == nullptr) {
+                break;
+            }
 
-        if (write_handle_ != nullptr) {
+            google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+            google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+            coded_stream.WriteVarint32(controller_proto->ByteSize());
+            GOOGLE_CHECK(controller_proto->SerializeToCodedStream(&coded_stream));
             uv_async_send(write_handle_);
-        }
+        } while (0);
     }
     uv_mutex_unlock(&write_buffer_mutex_);
 }
@@ -168,15 +174,18 @@ void TcpChannel::OnWrite(uv_async_t* handle)
 
     TcpChannel* self = (TcpChannel*)handle->data;
 
-    if (!self->write_buffer_back_.empty()) {
-        return;
-    }
-
+    int size = 0;
     uv_mutex_lock(&self->write_buffer_mutex_);
     {
+        size = self->write_buffer_.size();
         std::swap(self->write_buffer_, self->write_buffer_back_);
     }
     uv_mutex_unlock(&self->write_buffer_mutex_);
+
+    if (self->write_buffer_.size() > 1 << 10) { // more than 1MB waiting, disconnect
+        self->Close();
+        return;
+    }
 
     if (self->write_buffer_back_.empty()) {
         return;
@@ -199,29 +208,19 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
     TcpChannel* self = (TcpChannel*)req->data;
     free(req);
 
-    self->write_buffer_back_.clear();
-
-    GOOGLE_LOG_IF(WARNING, status != 0) << uv_strerror(status);
+    GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
     if (status < 0) {
         self->Close();
         return; //
     }
 
-    if (self->write_handle_ != nullptr) {
-        uv_async_send(self->write_handle_);
-    }
+    self->write_buffer_back_.clear();
 }
 
 
 void TcpChannel::OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
     TcpChannel* self = (TcpChannel*)handle->data;
-
-    if (self->buffer_size_ > (64 << 20)) {
-        buf->base = nullptr;
-        return;
-    }
-
     std::string* buffer = self->read_stream_.ReleaseCleared();
     GOOGLE_CHECK(buffer->empty());
 
@@ -245,6 +244,9 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
     if (nread >= 0) {
         self->buffer_size_ += nread;
+        if (self->buffer_size_ > 1 << 20) {
+            uv_read_stop(self->stream_);
+        }
         google::protobuf::STLStringResizeUninitialized(buffer, nread);
 
         GOOGLE_CHECK(buffer->data() == buf->base);
@@ -271,7 +273,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         self->coded_stream_->SetTotalBytesLimit(self->buffer_size_, self->buffer_size_);
         self->buffer_size_ = 0;
     } else if (self->buffer_size_ >= self->coded_stream_->CurrentPosition() + self->lack_size_) {
-        GOOGLE_CHECK(self->lack_size_ != 0);
+        GOOGLE_CHECK(self->lack_size_);
         int64_t total_limit = self->coded_stream_->CurrentPosition() + self->coded_stream_->BytesUntilLimit();
         self->coded_stream_->SetTotalBytesLimit(total_limit, total_limit);
         self->buffer_size_ -= self->lack_size_;
@@ -280,6 +282,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
     }
 
 
+    uint64_t start = uv_hrtime();
     while (self->coded_stream_->BytesUntilTotalBytesLimit() >= 10) { // kMaxVarintBytes
         if (self->lack_size_ == 0) {
             self->prev_limit_ = self->coded_stream_->ReadLengthAndPushLimit();
@@ -292,8 +295,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         bool success = false;
         uv_mutex_lock(&self->read_proto_mutex_);
         {
-            success = self->read_proto_.Add()->ParseFromCodedStream(self->coded_stream_);
-            self->read_proto_.size();
+            success = self->complete_queue_.Add()->ParseFromCodedStream(self->coded_stream_);
         }
         uv_mutex_unlock(&self->read_proto_mutex_);
 
@@ -304,28 +306,33 @@ void TcpChannel::OnHandle(uv_async_t* handle)
 
         self->lack_size_ = 0;
         self->coded_stream_->PopLimit(self->prev_limit_);
+
+        if (uv_hrtime() > start + 10000000) {
+            uv_async_send(self->proto_handle_);
+            break;
+        }
     }
 
-
-    if (self->lack_size_ == 0) { // avoid out of protobuf total limit
+    if (self->lack_size_ == 0) { // avoid out of total limit
         delete self->coded_stream_;
         self->coded_stream_ = nullptr;
     }
+
+    uv_read_start(self->stream_, OnAlloc, OnRead);
 }
 
 void TcpChannel::Update()
 {
     //
     {
-        if (read_proto_back_.empty()) {
-            uv_mutex_lock(&read_proto_mutex_);
-            {
-                read_proto_back_.Swap(&read_proto_);
-            }
-            uv_mutex_unlock(&read_proto_mutex_);
+        google::protobuf::RepeatedPtrField<proto::ControllerProto> complete_queue_back;
+        uv_mutex_lock(&read_proto_mutex_);
+        {
+            complete_queue_back.Swap(&complete_queue_);
         }
+        uv_mutex_unlock(&read_proto_mutex_);
 
-        for (auto& controller_proto : read_proto_back_) {
+        for (auto& controller_proto : complete_queue_back) {
             controller_proto.set_connection_id((int64_t)this);
             if (controller_proto.stub()) {
                 HandleRequest(controller_proto);
@@ -339,7 +346,6 @@ void TcpChannel::Update()
                 result_callback_.erase(controller_proto.transmit_id());
             }
         }
-        read_proto_back_.Clear();
 
         for (auto& closure : queue_closure_) {
             closure->Run();
@@ -409,14 +415,17 @@ void TcpChannel::AfterHandleRequest(google::protobuf::RpcController* controller,
 
     uv_mutex_lock(&write_buffer_mutex_);
     {
-        google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
-        google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
-        coded_stream.WriteVarint32(controller_proto->ByteSize());
-        GOOGLE_CHECK(controller_proto->SerializeToCodedStream(&coded_stream));
+        do {
+            if (write_handle_ == nullptr) {
+                break;
+            }
 
-        if (write_handle_ != nullptr) {
+            google::protobuf::io::StringOutputStream string_stream(&write_buffer_);
+            google::protobuf::io::CodedOutputStream coded_stream(&string_stream);
+            coded_stream.WriteVarint32(controller_proto->ByteSize());
+            GOOGLE_CHECK(controller_proto->SerializeToCodedStream(&coded_stream));
             uv_async_send(write_handle_);
-        }
+        } while (0);
     }
     uv_mutex_unlock(&write_buffer_mutex_);
 }

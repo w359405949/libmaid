@@ -114,12 +114,6 @@ public:
 public:
     static void OnAccept(uv_stream_t* stream, int32_t status);
 
-public: // unit test only
-    inline const uv_tcp_t* handle() const
-    {
-        return handle_;
-    }
-
 private:
     uv_tcp_t* handle_;
 
@@ -143,14 +137,8 @@ public:
 public:
     static void OnConnect(uv_connect_t* req, int32_t status);
 
-public:
-    inline const uv_connect_t* req() const
-    {
-        return req_;
-    }
-
 private:
-    uv_connect_t* req_;
+    uv_tcp_t* handle_;
 
     uv_mutex_t address_mutex_;
     struct sockaddr_in address;

@@ -35,9 +35,9 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::pr
 
     uv_sem_init(&inner_loop_sem_, 0);
     uv_mutex_init(&inner_loop_mutex_);
+
     inner_loop_callback_.data = this;
     uv_async_init(inner_loop_, &inner_loop_callback_, OnInnerCallback);
-
     close_inner_loop_.data = this;
     uv_async_init(inner_loop_, &close_inner_loop_, OnCloseInnerLoop);
 
@@ -288,7 +288,7 @@ int32_t Acceptor::Listen(const std::string& host, int32_t port)
     }
     uv_async_send(&inner_loop_callback_);
     uv_mutex_unlock(&address_mutex_);
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
 
 
     return result;
@@ -311,14 +311,14 @@ void Acceptor::InnerCallback()
     }
     uv_mutex_unlock(&address_mutex_);
 
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
     if (result) {
         Close();
         return;
     }
 
     result = uv_listen((uv_stream_t*)handle_, 65535, OnAccept);
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
     if (result) {
         Close();
         return;
@@ -337,7 +337,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int status)
     uv_tcp_t* peer_stream = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
     uv_tcp_init(stream->loop, peer_stream);
     int result = uv_accept(stream, (uv_stream_t*)peer_stream);
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
     if (result) {
         uv_close((uv_handle_t*)peer_stream, OnClose);
         return;
@@ -353,7 +353,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int status)
  */
 Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
     :AbstractTcpChannelFactory(loop, router),
-    req_(nullptr)
+    handle_(nullptr)
 {
     uv_mutex_init(&address_mutex_);
 }
@@ -361,16 +361,17 @@ Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
 Connector::~Connector()
 {
     uv_mutex_destroy(&address_mutex_);
-    free(req_);
-    req_ = nullptr;
+    free(handle_);
+    handle_ = nullptr;
 }
 
 void Connector::OnConnect(uv_connect_t* req, int32_t status)
 {
     uv_stream_t* stream = req->handle;
-    Connector* self = (Connector*)req->data;
+    free(req);
 
-    GOOGLE_LOG_IF(WARNING, status != 0) << uv_strerror(status);
+    Connector* self = (Connector*)stream->data;
+    GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
 
     if (status) {
         self->Close();
@@ -390,31 +391,31 @@ int32_t Connector::Connect(const std::string& host, int32_t port)
     uv_async_send(&inner_loop_callback_);
     uv_mutex_unlock(&address_mutex_);
 
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
 
     return result;
 }
 
 void Connector::InnerCallback()
 {
-    GOOGLE_CHECK(req_ == nullptr) << "Connector::Connect called twice";
+    GOOGLE_CHECK(handle_ == nullptr) << "Connector::Connect called twice";
     int result = 0;
 
-    req_ = (uv_connect_t*)malloc(sizeof(uv_connect_t));
-    req_->data = this;
+    uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
+    handle_ = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+    handle_->data = this;
 
-    uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-
-    uv_tcp_init(inner_loop(), handle);
+    uv_tcp_init(inner_loop(), handle_);
     uv_mutex_lock(&address_mutex_);
     {
-        result = uv_tcp_connect(req_, handle, (struct sockaddr*)&address, OnConnect);
+        result = uv_tcp_connect(req, handle_, (struct sockaddr*)&address, OnConnect);
     }
     uv_mutex_unlock(&address_mutex_);
 
-    GOOGLE_LOG_IF(WARNING, result != 0) << uv_strerror(result);
+    GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
 
     if (result) {
+        free(req);
         Close();
         return;
     }

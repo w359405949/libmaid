@@ -60,7 +60,6 @@ public: // user thread
                             google::protobuf::Message* response,
                             google::protobuf::Closure* done);
 
-
 private:
     virtual int32_t HandleRequest(const proto::ControllerProto& controller_proto);
 
@@ -78,12 +77,6 @@ private:
     static void OnTimer(uv_timer_t* timer);
     static void OnCloseHandle(uv_handle_t* handle);
     static void OnClose(uv_async_t* handle);
-
-private: // unit test only
-    inline const AbstractTcpChannelFactory* factory() const
-    {
-        return factory_;
-    }
 
 private:
     uv_mutex_t close_mutex_;
@@ -111,8 +104,7 @@ private:
     // handle
     uv_mutex_t read_proto_mutex_;
     uv_async_t* proto_handle_;
-    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_;
-    google::protobuf::RepeatedPtrField<proto::ControllerProto> read_proto_back_;
+    google::protobuf::RepeatedPtrField<proto::ControllerProto> complete_queue_;
 
 private:
     AbstractTcpChannelFactory* factory_;

@@ -23,7 +23,7 @@ public:
         return loop_;
     }
 
-    google::protobuf::RpcChannel* channel(int64_t channel_id);
+    google::protobuf::RpcChannel* channel(int64_t connection_id);
 
     void InsertService(google::protobuf::Service* service);
     inline void AddConnectedCallback(std::function<void(int64_t)> callback)
@@ -73,10 +73,7 @@ public:
 
     uv_loop_t* mutable_loop()
     {
-        if (loop_ != NULL) {
-            return loop_;
-        }
-        return uv_default_loop();
+        return loop_;
     }
 
     void InsertService(google::protobuf::Service* service);
