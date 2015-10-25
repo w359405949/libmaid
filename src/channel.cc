@@ -214,14 +214,14 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
     TcpChannel* self = (TcpChannel*)req->data;
     free(req);
 
-    if (uv_is_closing((uv_handle_t*)req->handle)) {
-        return;
-    }
-
     GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
     if (status < 0) {
         self->Close();
         return; //
+    }
+
+    if (uv_is_closing((uv_handle_t*)req->handle)) {
+        return;
     }
 
     self->write_buffer_back_.clear();
@@ -258,9 +258,11 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
     if (nread >= 0) {
         self->buffer_size_ += nread;
-        if (self->buffer_size_ > 1 << 20) { // more than 1MB data not handled
-            uv_read_stop(self->stream_);
+
+        if (self->buffer_size_ > 1 << 20) { // limit 1MB data waiting.
+            uv_read_stop(stream);
         }
+
         google::protobuf::STLStringResizeUninitialized(buffer, nread);
 
         GOOGLE_CHECK(buffer->data() == buf->base);
@@ -301,10 +303,12 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         if (self->lack_size_ == 0) {
             self->prev_limit_ = self->coded_stream_->ReadLengthAndPushLimit();
         }
+
         if (self->coded_stream_->BytesUntilLimit() > self->coded_stream_->BytesUntilTotalBytesLimit()) {
             self->lack_size_ = self->coded_stream_->BytesUntilLimit() - self->coded_stream_->BytesUntilTotalBytesLimit();
             break;
         }
+
 
         bool success = false;
         uv_mutex_lock(&self->read_proto_mutex_);
@@ -314,7 +318,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         uv_mutex_unlock(&self->read_proto_mutex_);
 
         if (!success) {
-            GOOGLE_CHECK(false);
+            GOOGLE_CHECK(success);
             // TODO: close connection or just clean buffer
         }
 
@@ -322,6 +326,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         self->coded_stream_->PopLimit(self->prev_limit_);
 
         if (uv_hrtime() > start + 10000000) {
+            self->buffer_size_ += self->coded_stream_->BytesUntilTotalBytesLimit();
             uv_async_send(self->proto_handle_);
             break;
         }
@@ -332,7 +337,9 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         self->coded_stream_ = nullptr;
     }
 
-    uv_read_start(self->stream_, OnAlloc, OnRead);
+    if (!uv_is_active((uv_handle_t*)self->stream_)) {
+        uv_read_start(self->stream_, OnAlloc, OnRead);
+    }
 }
 
 void TcpChannel::Update()
