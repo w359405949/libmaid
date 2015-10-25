@@ -140,7 +140,6 @@ public:
     static void OnConnect(uv_connect_t* req, int32_t status);
 
 private:
-    bool connecting_;
     uv_mutex_t address_mutex_;
     struct sockaddr_in address;
 

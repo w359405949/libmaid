@@ -366,8 +366,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int status)
  *
  */
 Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
-    :AbstractTcpChannelFactory(loop, router),
-    connecting_(false)
+    :AbstractTcpChannelFactory(loop, router)
 {
     uv_mutex_init(&address_mutex_);
 }
@@ -387,7 +386,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
     if (status) {
         uv_close((uv_handle_t*)stream, OnCloseHandle);
-        self->Close();
+        uv_async_send(&self->inner_loop_callback_); // retry
         return;
     }
 
@@ -396,9 +395,6 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
 int32_t Connector::Connect(const std::string& host, int32_t port)
 {
-    GOOGLE_CHECK(!connecting_) << "Connector::Connect called twice";
-    connecting_ = true;
-
     int result = 0;
     uv_mutex_lock(&address_mutex_);
     {
@@ -408,7 +404,6 @@ int32_t Connector::Connect(const std::string& host, int32_t port)
     uv_mutex_unlock(&address_mutex_);
 
     GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
-
     return result;
 }
 
