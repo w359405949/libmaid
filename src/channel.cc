@@ -221,6 +221,10 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
     }
 
     self->write_buffer_back_.clear();
+
+    if (self->write_handle_ != nullptr) {
+        uv_async_send(self->write_handle_);
+    }
 }
 
 
