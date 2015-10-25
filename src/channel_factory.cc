@@ -181,7 +181,7 @@ void AbstractTcpChannelFactory::OnWork(uv_work_t* handle)
     uv_mutex_lock(&self->inner_loop_mutex_);
     {
         uv_sem_post(&self->inner_loop_sem_);
-        uv_run(self->inner_loop_, UV_RUN_ONCE);
+        uv_run(self->inner_loop_, UV_RUN_DEFAULT);
         uv_async_send(self->after_work_async_);
     }
     uv_mutex_unlock(&self->inner_loop_mutex_);
