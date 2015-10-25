@@ -177,12 +177,18 @@ void TcpChannel::OnWrite(uv_async_t* handle)
     int size = 0;
     uv_mutex_lock(&self->write_buffer_mutex_);
     {
-        size = self->write_buffer_.size();
-        std::swap(self->write_buffer_, self->write_buffer_back_);
+        do {
+            size = self->write_buffer_back_.size();
+            if (size != 0) {
+                break;
+            }
+            std::swap(self->write_buffer_, self->write_buffer_back_);
+        } while (0);
     }
     uv_mutex_unlock(&self->write_buffer_mutex_);
 
-    if (self->write_buffer_.size() > 1 << 10) { // more than 1MB waiting, disconnect
+    if (self->write_buffer_.size() > 1 << 10) { // more than 1kb waiting, disconnect
+        GOOGLE_LOG(WARNING)<<"too many data waiting, disconnect";
         self->Close();
         return;
     }
