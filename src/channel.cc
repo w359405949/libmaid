@@ -187,8 +187,8 @@ void TcpChannel::OnWrite(uv_async_t* handle)
     }
     uv_mutex_unlock(&self->write_buffer_mutex_);
 
-    if (self->write_buffer_.size() > 1 << 10) { // more than 1kb waiting, disconnect
-        GOOGLE_LOG(WARNING)<<"too many data waiting, disconnect";
+    if (self->write_buffer_.size() > 1 << 20) { // more than 1mb waiting, disconnect
+        GOOGLE_LOG(WARNING)<<"too many data waiting, disconnect:"<<self->write_buffer_.size();
         self->Close();
         return;
     }
@@ -254,7 +254,7 @@ void TcpChannel::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
     if (nread >= 0) {
         self->buffer_size_ += nread;
-        if (self->buffer_size_ > 1 << 20) {
+        if (self->buffer_size_ > 1 << 20) { // more than 1MB data not handled
             uv_read_stop(self->stream_);
         }
         google::protobuf::STLStringResizeUninitialized(buffer, nread);

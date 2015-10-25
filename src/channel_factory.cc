@@ -25,6 +25,7 @@ AbstractTcpChannelFactory::AbstractTcpChannelFactory(uv_loop_t* loop, google::pr
     uv_idle_init(loop_, &update_);
     uv_idle_start(&update_, OnUpdate);
 
+    uv_mutex_init(&close_factory_mutex_);
     close_factory_ = (uv_async_t*)malloc(sizeof(uv_async_t));
     close_factory_->data = this;
     uv_async_init(loop_, close_factory_, OnCloseFactory);
@@ -56,6 +57,7 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
 
     uv_mutex_destroy(&queue_channel_mutex_);
     uv_mutex_destroy(&channel_invalid_mutex_);
+    uv_mutex_destroy(&close_factory_mutex_);
     uv_mutex_destroy(&inner_loop_mutex_);
     uv_sem_destroy(&inner_loop_sem_);
 
@@ -66,7 +68,7 @@ AbstractTcpChannelFactory::~AbstractTcpChannelFactory()
     router_channel_ = nullptr;
 }
 
-void AbstractTcpChannelFactory::OnClose(uv_handle_t* handle)
+void AbstractTcpChannelFactory::OnCloseHandle(uv_handle_t* handle)
 {
     free(handle);
 }
@@ -79,25 +81,29 @@ void AbstractTcpChannelFactory::OnCloseFactory(uv_async_t* handle)
 
     AbstractTcpChannelFactory* self = (AbstractTcpChannelFactory*)handle->data;
 
-    uv_close((uv_handle_t*)self->after_work_async_, OnClose);
-    uv_close((uv_handle_t*)self->close_factory_, OnClose);
+    uv_close((uv_handle_t*)self->after_work_async_, OnCloseHandle);
+    uv_close((uv_handle_t*)self->close_factory_, OnCloseHandle);
 
+    uv_sem_wait(&self->inner_loop_sem_); // wait loop run
     uv_async_send(&self->close_inner_loop_);
-    uv_sem_wait(&self->inner_loop_sem_);
-    uv_mutex_lock(&self->inner_loop_mutex_);
+    uv_mutex_lock(&self->inner_loop_mutex_); // wait loop stop
     {
         uv_close((uv_handle_t*)&self->inner_loop_callback_, nullptr);
         uv_close((uv_handle_t*)&self->close_inner_loop_, nullptr);
     }
     uv_mutex_unlock(&self->inner_loop_mutex_);
-    uv_loop_close(self->inner_loop_);
 
     for (auto& channel : self->channel_) {
         channel.second->Close();
     }
 
-    self->close_factory_ = nullptr;
+    uv_loop_close(self->inner_loop_);
 
+    uv_mutex_lock(&self->close_factory_mutex_);
+    {
+        self->close_factory_ = nullptr;
+    }
+    uv_mutex_unlock(&self->close_factory_mutex_);
 }
 
 void AbstractTcpChannelFactory::Update()
@@ -129,17 +135,25 @@ void AbstractTcpChannelFactory::Update()
         delete channel_invalid;
     }
 
-    if (close_factory_ == nullptr && channel_.empty()) {
-        uv_idle_stop(&update_);
-        close_callback_();
+    uv_mutex_lock(&close_factory_mutex_);
+    {
+        if (close_factory_ == nullptr && channel_.empty()) {
+            uv_idle_stop(&update_);
+            close_callback_();
+        }
     }
+    uv_mutex_unlock(&close_factory_mutex_);
 }
 
 void AbstractTcpChannelFactory::Close()
 {
-    if (close_factory_ != nullptr) {
-        uv_async_send(close_factory_);
+    uv_mutex_lock(&close_factory_mutex_);
+    {
+        if (close_factory_ != nullptr) {
+            uv_async_send(close_factory_);
+        }
     }
+    uv_mutex_unlock(&close_factory_mutex_);
 }
 
 void AbstractTcpChannelFactory::Connected(TcpChannel* channel)
@@ -339,7 +353,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int status)
     int result = uv_accept(stream, (uv_stream_t*)peer_stream);
     GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
     if (result) {
-        uv_close((uv_handle_t*)peer_stream, OnClose);
+        uv_close((uv_handle_t*)peer_stream, OnCloseHandle);
         return;
     }
 
@@ -353,7 +367,7 @@ void Acceptor::OnAccept(uv_stream_t* stream, int status)
  */
 Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
     :AbstractTcpChannelFactory(loop, router),
-    handle_(nullptr)
+    connecting_(false)
 {
     uv_mutex_init(&address_mutex_);
 }
@@ -361,8 +375,6 @@ Connector::Connector(uv_loop_t* loop, google::protobuf::RpcChannel* router)
 Connector::~Connector()
 {
     uv_mutex_destroy(&address_mutex_);
-    free(handle_);
-    handle_ = nullptr;
 }
 
 void Connector::OnConnect(uv_connect_t* req, int32_t status)
@@ -374,6 +386,7 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
     GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
 
     if (status) {
+        uv_close((uv_handle_t*)stream, OnCloseHandle);
         self->Close();
         return;
     }
@@ -383,6 +396,9 @@ void Connector::OnConnect(uv_connect_t* req, int32_t status)
 
 int32_t Connector::Connect(const std::string& host, int32_t port)
 {
+    GOOGLE_CHECK(!connecting_) << "Connector::Connect called twice";
+    connecting_ = true;
+
     int result = 0;
     uv_mutex_lock(&address_mutex_);
     {
@@ -398,23 +414,24 @@ int32_t Connector::Connect(const std::string& host, int32_t port)
 
 void Connector::InnerCallback()
 {
-    GOOGLE_CHECK(handle_ == nullptr) << "Connector::Connect called twice";
     int result = 0;
 
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
-    handle_ = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-    handle_->data = this;
+    req->data = this;
+    uv_tcp_t* handle = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+    handle->data = this;
 
-    uv_tcp_init(inner_loop(), handle_);
+    uv_tcp_init(inner_loop(), handle);
     uv_mutex_lock(&address_mutex_);
     {
-        result = uv_tcp_connect(req, handle_, (struct sockaddr*)&address, OnConnect);
+        result = uv_tcp_connect(req, handle, (struct sockaddr*)&address, OnConnect);
     }
     uv_mutex_unlock(&address_mutex_);
 
     GOOGLE_LOG_IF(WARNING, result) << uv_strerror(result);
 
     if (result) {
+        uv_close((uv_handle_t*)handle, OnCloseHandle);
         free(req);
         Close();
         return;

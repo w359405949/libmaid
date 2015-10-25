@@ -65,21 +65,23 @@ protected:
     static void OnUpdate(uv_idle_t* handle);
     static void OnWork(uv_work_t* req);
     static void OnAfterWork(uv_async_t* handle);
-    static void OnCloseInnerLoop(uv_async_t* handle);
     static void OnInnerCallback(uv_async_t* handle);
-    static void OnClose(uv_handle_t* handle);
     static void OnFinishWork(uv_work_t* work, int status);
+    static void OnCloseInnerLoop(uv_async_t* handle);
     static void OnCloseFactory(uv_async_t* handle);
+    static void OnCloseHandle(uv_handle_t* handle);
 
 protected:
     uv_async_t inner_loop_callback_;
 
 private:
     uv_loop_t* loop_;
-    uv_async_t* close_factory_;
     uv_idle_t update_;
     uv_async_t* after_work_async_;
     google::protobuf::RpcChannel* router_channel_;
+
+    uv_async_t* close_factory_;
+    uv_mutex_t close_factory_mutex_;
 
     uv_loop_t* inner_loop_;
     uv_mutex_t inner_loop_mutex_;
@@ -138,8 +140,7 @@ public:
     static void OnConnect(uv_connect_t* req, int32_t status);
 
 private:
-    uv_tcp_t* handle_;
-
+    bool connecting_;
     uv_mutex_t address_mutex_;
     struct sockaddr_in address;
 
