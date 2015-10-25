@@ -214,6 +214,10 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
     TcpChannel* self = (TcpChannel*)req->data;
     free(req);
 
+    if (uv_is_closing((uv_handle_t*)req->handle)) {
+        return;
+    }
+
     GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
     if (status < 0) {
         self->Close();
