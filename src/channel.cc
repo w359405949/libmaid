@@ -212,7 +212,12 @@ void TcpChannel::OnWrite(uv_async_t* handle)
 void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
 {
     TcpChannel* self = (TcpChannel*)req->data;
+    uv_stream_t* stream = req->handle;
     free(req);
+
+    if (uv_is_closing((uv_handle_t*)stream)) {
+        return;
+    }
 
     GOOGLE_LOG_IF(WARNING, status) << uv_strerror(status);
     if (status < 0) {
@@ -220,9 +225,6 @@ void TcpChannel::AfterWrite(uv_write_t* req, int32_t status)
         return; //
     }
 
-    if (uv_is_closing((uv_handle_t*)req->handle)) {
-        return;
-    }
 
     self->write_buffer_back_.clear();
 
@@ -288,7 +290,7 @@ void TcpChannel::OnHandle(uv_async_t* handle)
         self->coded_stream_ = new google::protobuf::io::CodedInputStream(&self->read_stream_);
         self->coded_stream_->SetTotalBytesLimit(self->buffer_size_, self->buffer_size_);
         self->buffer_size_ = 0;
-    } else if (self->buffer_size_ >= self->coded_stream_->CurrentPosition() + self->lack_size_) {
+    } else if (self->buffer_size_ >= self->lack_size_) {
         GOOGLE_CHECK(self->lack_size_);
         int64_t total_limit = self->coded_stream_->CurrentPosition() + self->coded_stream_->BytesUntilLimit();
         self->coded_stream_->SetTotalBytesLimit(total_limit, total_limit);
